@@ -13,5 +13,8 @@ public class AppConfig
     public int HoverDelayMs { get; set; } = 250;
     public string Hotkey { get; set; } = "Ctrl+Alt+Space";
 
+    /// <summary>Через сколько секунд бездействия пригасить кружок (0 = выключено).</summary>
+    public int IdleFadeSeconds { get; set; } = 0;
+
     public List<TargetItem> Targets { get; set; } = new();
 }

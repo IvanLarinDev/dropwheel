@@ -10,6 +10,15 @@
     <AssemblyName>Dropwheel</AssemblyName>
     <RootNamespace>Dropwheel</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>dropwheel.ico</ApplicationIcon>
+    <Version>0.2.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- run.cmd publish: один exe (framework-dependent, нужен .NET Desktop Runtime) -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <DebugType>none</DebugType>
   </PropertyGroup>
 
   <ItemGroup>

@@ -31,8 +31,9 @@ public partial class OverlayWindow
     private void OnGlobalMouse(int x, int y, bool leftDown)
     {
         if (_movingOrb) return;
-        if (!leftDown) { _proximityOpened = false; return; }
         double dx = x - _orbSX, dy = y - _orbSY, d2 = dx * dx + dy * dy;
+        WakeIdle(d2);
+        if (!leftDown) { _proximityOpened = false; return; }
         if (!_open && d2 < _openR2)
         { _proximityOpened = true; OpenCloud(); }
         else if (_open && _proximityOpened && d2 > _closeR2)

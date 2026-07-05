@@ -37,7 +37,10 @@ public partial class OverlayWindow : Window
         var orbMenu = new System.Windows.Controls.ContextMenu();
         var newGroup = new System.Windows.Controls.MenuItem { Header = "New group…" };
         newGroup.Click += (_, _) => CreateGroup();
+        var settings = new System.Windows.Controls.MenuItem { Header = "Settings…" };
+        settings.Click += (_, _) => OpenSettings();
         orbMenu.Items.Add(newGroup);
+        orbMenu.Items.Add(settings);
         Orb.ContextMenu = orbMenu;
 
         Root.MouseEnter += (_, _) => _closeTimer.Stop();
@@ -46,7 +49,7 @@ public partial class OverlayWindow : Window
         DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
         Deactivated += (_, _) => CloseCloud();
 
-        Loaded += (_, _) => { PlaceWindow(); InitProximity(); InitHotkeyAndFullscreen(); };
+        Loaded += (_, _) => { PlaceWindow(); InitProximity(); InitHotkeyAndFullscreen(); InitIdleFade(); };
         LocationChanged += (_, _) => UpdateOrbScreenPos();
     }
 }
