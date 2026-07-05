@@ -31,9 +31,9 @@ public partial class OverlayWindow
         {
             if (t.IsGroup)
             {
-                // drag-hover 500 мс раскрывает группу
+                // быстрый бросок = добавить в группу; задержка 500 мс = раскрыть её
                 StartGroupHover(t, back: false);
-                e.Effects = DragDropEffects.Scroll;
+                e.Effects = DragDropEffects.Link;
                 e.Handled = true;
             }
             else OnBubbleDragOver(t, badge, e);
@@ -43,7 +43,11 @@ public partial class OverlayWindow
             badge.Visibility = Visibility.Collapsed;
             if (t.IsGroup) _groupHover?.Stop();
         };
-        panel.Drop += (_, e) => { if (!t.IsGroup) OnBubbleDrop(t, badge, e); };
+        panel.Drop += (_, e) =>
+        {
+            if (t.IsGroup) OnGroupDrop(t, e);
+            else OnBubbleDrop(t, badge, e);
+        };
         return panel;
     }
 }
