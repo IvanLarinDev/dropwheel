@@ -14,7 +14,12 @@ public static class TargetStore
     public static string FilePath => Path.Combine(Dir, "config.json");
 
     private static readonly JsonSerializerOptions Opts = new()
-    { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
+    {
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() },
+        // OrbX/OrbY используют NaN как «не задано»
+        NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+    };
 
     public static void Load()
     {

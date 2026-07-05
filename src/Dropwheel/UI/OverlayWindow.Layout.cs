@@ -9,11 +9,17 @@ public partial class OverlayWindow
 {
     private void PlaceWindow()
     {
-        var wa = SystemParameters.WorkArea;
         double cx = TargetStore.Config.OrbX, cy = TargetStore.Config.OrbY;
-        if (cx < 0 || cy < 0) { cx = wa.Right - 90; cy = wa.Top + wa.Height / 2; }
-        Left = Math.Clamp(cx - HalfSize, wa.Left - HalfSize + 24, wa.Right - HalfSize - 24);
-        Top  = Math.Clamp(cy - HalfSize, wa.Top  - HalfSize + 24, wa.Bottom - HalfSize - 24);
+        if (double.IsNaN(cx) || double.IsNaN(cy))
+        {
+            var wa = SystemParameters.WorkArea;
+            cx = wa.Right - 90; cy = wa.Top + wa.Height / 2;
+        }
+        // границы всего виртуального экрана — кружок можно держать на любом мониторе
+        double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
+        double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
+        Left = Math.Clamp(cx - HalfSize, l - HalfSize + 24, r - HalfSize - 24);
+        Top  = Math.Clamp(cy - HalfSize, t - HalfSize + 24, b - HalfSize - 24);
     }
 
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)

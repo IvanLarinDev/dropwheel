@@ -4,12 +4,14 @@ public class AppConfig
 {
     public DropAction GlobalAction { get; set; } = DropAction.Copy;
 
-    // Центр кружка в экранных координатах; -1 = по умолчанию (правый край, середина).
-    public double OrbX { get; set; } = -1;
-    public double OrbY { get; set; } = -1;
+    // Центр кружка (DIP, виртуальный экран); NaN = по умолчанию (правый край primary).
+    // -1 не годится как маркер: монитор слева от основного даёт отрицательные координаты.
+    public double OrbX { get; set; } = double.NaN;
+    public double OrbY { get; set; } = double.NaN;
 
     public double OrbOpacity { get; set; } = 0.8;
     public int HoverDelayMs { get; set; } = 250;
+    public string Hotkey { get; set; } = "Ctrl+Alt+Space";
 
     public List<TargetItem> Targets { get; set; } = new();
 }
