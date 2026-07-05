@@ -1,0 +1,12 @@
+<Window x:Class="Dropwheel.UI.PromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Dropwheel" Width="300" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" Topmost="True">
+    <StackPanel Margin="16">
+        <TextBlock x:Name="Caption" Margin="0,0,0,6"/>
+        <TextBox x:Name="Input" Margin="0,0,0,12"/>
+        <Button Content="OK" Width="90" HorizontalAlignment="Right"
+                IsDefault="True" Padding="8,4" Click="OnOk"/>
+    </StackPanel>
+</Window>

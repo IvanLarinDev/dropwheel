@@ -34,6 +34,12 @@ public partial class OverlayWindow : Window
         Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud(); };
         Orb.Drop += OnOrbDrop; // добавить цель перетаскиванием на кружок
 
+        var orbMenu = new System.Windows.Controls.ContextMenu();
+        var newGroup = new System.Windows.Controls.MenuItem { Header = "New group…" };
+        newGroup.Click += (_, _) => CreateGroup();
+        orbMenu.Items.Add(newGroup);
+        Orb.ContextMenu = orbMenu;
+
         Root.MouseEnter += (_, _) => _closeTimer.Stop();
         Root.MouseLeave += (_, _) => { if (_open) _closeTimer.Start(); };
         DragEnter += (_, _) => _closeTimer.Stop();

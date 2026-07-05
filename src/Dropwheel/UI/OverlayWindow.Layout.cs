@@ -45,6 +45,17 @@ public partial class OverlayWindow
         _toastTimer.Start();
     }
 
+    private void CreateGroup()
+    {
+        var p = new PromptWindow("New group", "Group name:") { Owner = this };
+        if (p.ShowDialog() == true && p.Value.Trim() is { Length: > 0 } name)
+        {
+            TargetStore.Config.Targets.Add(new TargetItem { Name = name, Children = new() });
+            TargetStore.Save();
+            if (_open) BuildCloud();
+        }
+    }
+
     private void OpenEditor(TargetItem t)
     {
         var dlg = new TargetEditorWindow(t) { Owner = this };

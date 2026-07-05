@@ -17,6 +17,8 @@
             <ComboBoxItem Content="Always copy"/>
             <ComboBoxItem Content="Always move"/>
         </ComboBox>
+        <TextBlock x:Name="GroupLabel" Text="Group"/>
+        <ComboBox x:Name="GroupCombo" Margin="0,4,0,10"/>
         <CheckBox x:Name="PinBox" Content="Pin closer to center" Margin="0,0,0,14"/>
         <DockPanel>
             <Button Content="Delete target" Click="OnDelete" DockPanel.Dock="Left"

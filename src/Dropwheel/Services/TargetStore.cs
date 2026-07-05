@@ -37,6 +37,25 @@ public static class TargetStore
         File.WriteAllText(FilePath, JsonSerializer.Serialize(Config, Opts));
     }
 
+    public static IEnumerable<TargetItem> Groups => Config.Targets.Where(t => t.IsGroup);
+
+    /// <summary>Убрать цель отовсюду (из корня и из всех групп).</summary>
+    public static void RemoveEverywhere(TargetItem item)
+    {
+        Config.Targets.Remove(item);
+        foreach (var g in Groups) g.Children!.Remove(item);
+    }
+
+    /// <summary>Переместить цель в группу (null = в корень).</summary>
+    public static void MoveToGroup(TargetItem item, TargetItem? group)
+    {
+        RemoveEverywhere(item);
+        (group?.Children ?? Config.Targets).Add(item);
+    }
+
+    public static TargetItem? FindParentGroup(TargetItem item)
+        => Groups.FirstOrDefault(g => g.Children!.Contains(item));
+
     private static AppConfig Defaults()
     {
         static string P(Environment.SpecialFolder f) => Environment.GetFolderPath(f);

@@ -11,19 +11,29 @@ public partial class OverlayWindow
 {
     private FrameworkElement MakeBubble(TargetItem t)
     {
-        var icon = new Image
-        {
-            Width = 32, Height = 32, Source = IconService.GetIcon(t.Path),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
+        UIElement inner = t.IsGroup
+            ? new TextBlock
+            {
+                Text = t.Children!.Count.ToString(), FontSize = 18,
+                FontWeight = FontWeights.Bold, Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            }
+            : new Image
+            {
+                Width = 32, Height = 32, Source = IconService.GetIcon(t.Path),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
         var circle = new Border
         {
             Width = 54, Height = 54, CornerRadius = new CornerRadius(27),
             Background = new SolidColorBrush(Color.FromArgb(0xF2, 0x1E, 0x2A, 0x3E)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF)),
+            BorderBrush = t.IsGroup
+                ? new SolidColorBrush(Color.FromArgb(0x60, 0x7C, 0xC4, 0xFF))
+                : new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF)),
             BorderThickness = new Thickness(2),
-            Child = icon
+            Child = inner
         };
         var badge = new Border
         {
