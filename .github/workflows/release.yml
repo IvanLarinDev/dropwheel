@@ -1,0 +1,36 @@
+name: Release
+
+# Пуш тега вида v1.2.3 -> publish single-file exe -> zip -> GitHub Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish (framework-dependent, single file)
+        run: dotnet publish src/Dropwheel -c Release -o dist
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist/* -DestinationPath "Dropwheel-${{ github.ref_name }}-win-x64.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Dropwheel-*.zip
+          generate_release_notes: true
+          body: |
+            Dropwheel — overlay launcher & drag-and-drop wheel for Windows 10/11.
+            Requires .NET 10 Desktop Runtime (framework-dependent build).
+            Unzip and run Dropwheel.exe. Config: %AppData%\Dropwheel\config.json
