@@ -48,13 +48,33 @@ public partial class OverlayWindow
         var top = new Grid { Width = 70, Height = 66 };
         top.Children.Add(sq);
         top.Children.Add(badge);
-        var label = new TextBlock
+        return WireBubble(t, badge, MakeLabel(t.Name), top, sq);
+    }
+
+    /// <summary>Подпись плитки: в тёмных темах — текст с тенью,
+    /// в светлой — на пилюле-подложке, чтобы читалась на любых обоях.</summary>
+    private static FrameworkElement MakeLabel(string text)
+    {
+        var th = Themes.Current;
+        var tb = new TextBlock
         {
-            Text = t.Name, Foreground = new SolidColorBrush(th.Label), FontSize = 11.5,
+            Text = text, Foreground = new SolidColorBrush(th.Label), FontSize = 11.5,
             TextAlignment = TextAlignment.Center, MaxWidth = 76,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Effect = new DropShadowEffect { BlurRadius = 3, ShadowDepth = 1, Opacity = 0.8 }
+            TextTrimming = TextTrimming.CharacterEllipsis
         };
-        return WireBubble(t, badge, label, top, sq);
+        if (th.LabelBg.A == 0)
+        {
+            tb.Effect = new DropShadowEffect { BlurRadius = 3, ShadowDepth = 1, Opacity = 0.8 };
+            return tb;
+        }
+        return new Border
+        {
+            Background = new SolidColorBrush(th.LabelBg),
+            CornerRadius = new CornerRadius(7),
+            Padding = new Thickness(7, 1, 7, 2),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Effect = new DropShadowEffect { BlurRadius = 6, ShadowDepth = 1, Opacity = 0.35 },
+            Child = tb
+        };
     }
 }

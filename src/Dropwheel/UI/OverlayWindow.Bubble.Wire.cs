@@ -8,7 +8,7 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    private StackPanel WireBubble(TargetItem t, Border badge, TextBlock label, Grid top, Border sq)
+    private StackPanel WireBubble(TargetItem t, Border badge, FrameworkElement label, Grid top, Border sq)
     {
         var th = Themes.Current;
         var panel = new StackPanel

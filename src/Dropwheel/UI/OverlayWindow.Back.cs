@@ -26,11 +26,7 @@ public partial class OverlayWindow
         var panel = new StackPanel
         { Width = 76, AllowDrop = true, Background = Brushes.Transparent };
         panel.Children.Add(new Grid { Width = 70, Height = 66, Children = { sq } });
-        panel.Children.Add(new TextBlock
-        {
-            Text = "Back", Foreground = new SolidColorBrush(th.Label), FontSize = 11.5,
-            TextAlignment = TextAlignment.Center
-        });
+        panel.Children.Add(MakeLabel("Back"));
         panel.MouseEnter += (_, _) => { sq.Background = new SolidColorBrush(th.TileHot); SetSpokeLit(panel, true); };
         panel.MouseLeave += (_, _) => { sq.Background = new SolidColorBrush(th.TileBg); SetSpokeLit(panel, false); };
         panel.MouseLeftButtonUp += (_, e) => { EnterGroup(null); e.Handled = true; };
