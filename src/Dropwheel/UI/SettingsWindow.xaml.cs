@@ -10,6 +10,8 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         var c = TargetStore.Config;
+        foreach (var name in Themes.All.Keys) ThemeBox.Items.Add(name);
+        ThemeBox.SelectedItem = Themes.All.ContainsKey(c.Theme) ? c.Theme : "Fluent";
         ActionBox.SelectedIndex = c.GlobalAction == DropAction.Move ? 1 : 0;
         HoverBox.Text = c.HoverDelayMs.ToString();
         OpacitySlider.Value = c.OrbOpacity;
@@ -21,6 +23,7 @@ public partial class SettingsWindow : Window
     private void OnSave(object sender, RoutedEventArgs e)
     {
         var c = TargetStore.Config;
+        if (ThemeBox.SelectedItem is string theme) c.Theme = theme;
         c.GlobalAction = ActionBox.SelectedIndex == 1 ? DropAction.Move : DropAction.Copy;
         if (int.TryParse(HoverBox.Text, out int hover)) c.HoverDelayMs = Math.Clamp(hover, 0, 2000);
         c.OrbOpacity = Math.Round(OpacitySlider.Value, 2);

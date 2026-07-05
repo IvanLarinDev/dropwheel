@@ -16,5 +16,8 @@ public class AppConfig
     /// <summary>Через сколько секунд бездействия пригасить кружок (0 = выключено).</summary>
     public int IdleFadeSeconds { get; set; } = 0;
 
+    /// <summary>Тема оформления: Fluent, Dark, Light, Neon.</summary>
+    public string Theme { get; set; } = "Fluent";
+
     public List<TargetItem> Targets { get; set; } = new();
 }

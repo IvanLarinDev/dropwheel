@@ -9,12 +9,14 @@ namespace Dropwheel.UI;
 public partial class TargetEditorWindow : Window
 {
     private readonly TargetItem _target;
+    private readonly TargetItem? _preselect;
     private readonly List<TargetItem?> _groupChoices = new() { null };
 
-    public TargetEditorWindow(TargetItem t)
+    public TargetEditorWindow(TargetItem t, TargetItem? preselectGroup = null)
     {
         InitializeComponent();
         _target = t;
+        _preselect = preselectGroup;
         NameBox.Text = t.Name;
         PathBox.Text = t.Path;
         ActionBox.SelectedIndex = (int)t.Override;
@@ -32,8 +34,8 @@ public partial class TargetEditorWindow : Window
             GroupCombo.Items.Add("— (root)");
             foreach (var g in TargetStore.Groups)
             { _groupChoices.Add(g); GroupCombo.Items.Add(g.Name); }
-            GroupCombo.SelectedIndex =
-                Math.Max(0, _groupChoices.IndexOf(TargetStore.FindParentGroup(_target)));
+            GroupCombo.SelectedIndex = Math.Max(0,
+                _groupChoices.IndexOf(TargetStore.FindParentGroup(_target) ?? _preselect));
         }
     }
 

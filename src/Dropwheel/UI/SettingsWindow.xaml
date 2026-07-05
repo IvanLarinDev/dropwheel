@@ -4,6 +4,8 @@
         Title="Settings — Dropwheel" Width="340" SizeToContent="Height"
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Topmost="True">
     <StackPanel Margin="16">
+        <TextBlock Text="Theme"/>
+        <ComboBox x:Name="ThemeBox" Margin="0,4,0,10"/>
         <TextBlock Text="Default drop action"/>
         <ComboBox x:Name="ActionBox" Margin="0,4,0,10">
             <ComboBoxItem Content="Copy"/>

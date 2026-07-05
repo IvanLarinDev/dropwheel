@@ -6,21 +6,39 @@
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize">
     <Canvas x:Name="Root">
+        <!-- обод колеса -->
+        <Ellipse x:Name="Rim" Width="340" Height="340" Canvas.Left="60" Canvas.Top="60"
+                 StrokeThickness="34" Opacity="0" IsHitTestVisible="False"
+                 RenderTransformOrigin="0.5,0.5">
+            <Ellipse.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="RimScale" ScaleX="0.7" ScaleY="0.7"/>
+                    <RotateTransform x:Name="RimRot" Angle="-10"/>
+                </TransformGroup>
+            </Ellipse.RenderTransform>
+        </Ellipse>
+
         <Canvas x:Name="Cloud"/>
-        <Grid x:Name="Orb" Width="46" Height="46" Canvas.Left="207" Canvas.Top="207"
+
+        <!-- ступица -->
+        <Grid x:Name="Orb" Width="56" Height="56" Canvas.Left="202" Canvas.Top="202"
               AllowDrop="True" Cursor="Hand" Background="Transparent">
-            <Ellipse x:Name="OrbBall">
-                <Ellipse.Fill>
-                    <RadialGradientBrush GradientOrigin="0.35,0.3">
-                        <GradientStop Color="#6FB6FF" Offset="0"/>
-                        <GradientStop Color="#2F6FD0" Offset="1"/>
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
+            <Ellipse x:Name="HubBall" StrokeThickness="1">
                 <Ellipse.Effect>
-                    <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.6"/>
+                    <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.55"/>
                 </Ellipse.Effect>
             </Ellipse>
+            <Ellipse x:Name="HubCore" Width="22" Height="22"/>
+            <Ellipse x:Name="Bolt1" Width="4" Height="4" HorizontalAlignment="Center"
+                     VerticalAlignment="Top" Margin="0,7,0,0"/>
+            <Ellipse x:Name="Bolt2" Width="4" Height="4" HorizontalAlignment="Center"
+                     VerticalAlignment="Bottom" Margin="0,0,0,7"/>
+            <Ellipse x:Name="Bolt3" Width="4" Height="4" HorizontalAlignment="Left"
+                     VerticalAlignment="Center" Margin="7,0,0,0"/>
+            <Ellipse x:Name="Bolt4" Width="4" Height="4" HorizontalAlignment="Right"
+                     VerticalAlignment="Center" Margin="0,0,7,0"/>
         </Grid>
+
         <Border x:Name="Toast" Canvas.Left="90" Canvas.Top="412" Visibility="Collapsed"
                 Background="#E6161E2C" CornerRadius="8" Padding="10,6" MaxWidth="280">
             <StackPanel Orientation="Horizontal">

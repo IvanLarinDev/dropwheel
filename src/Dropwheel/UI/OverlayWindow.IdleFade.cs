@@ -34,6 +34,8 @@ public partial class OverlayWindow
     /// <summary>Применить изменённые настройки без перезапуска.</summary>
     public void ApplySettings()
     {
+        PaintHub();
+        if (_open) BuildCloud();
         Orb.Opacity = TargetStore.Config.OrbOpacity;
         _hoverTimer.Interval = TimeSpan.FromMilliseconds(TargetStore.Config.HoverDelayMs);
         _dimmed = false;

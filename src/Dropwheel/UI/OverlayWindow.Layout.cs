@@ -62,11 +62,23 @@ public partial class OverlayWindow
         }
     }
 
-    private void OpenEditor(TargetItem t)
+    private void OpenEditor(TargetItem t, TargetItem? preselectGroup = null)
     {
-        var dlg = new TargetEditorWindow(t) { Owner = this };
+        var dlg = new TargetEditorWindow(t, preselectGroup) { Owner = this };
         dlg.ShowDialog();
         TargetStore.Save();
         if (_open) BuildCloud();
+    }
+
+    /// <summary>Перекрасить ступицу и обод в цвета текущей темы.</summary>
+    private void PaintHub()
+    {
+        var th = Themes.Current;
+        HubBall.Fill = new System.Windows.Media.SolidColorBrush(th.HubBg);
+        HubBall.Stroke = new System.Windows.Media.SolidColorBrush(th.HubBorder);
+        HubCore.Fill = new System.Windows.Media.RadialGradientBrush(th.Accent, th.HubBg);
+        var boltBrush = new System.Windows.Media.SolidColorBrush(th.HubBorder);
+        Bolt1.Fill = Bolt2.Fill = Bolt3.Fill = Bolt4.Fill = boltBrush;
+        Rim.Stroke = new System.Windows.Media.SolidColorBrush(th.Rim);
     }
 }
