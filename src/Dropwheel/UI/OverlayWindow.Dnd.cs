@@ -19,9 +19,12 @@ public partial class OverlayWindow
 
     private void OnBubbleDragOver(TargetItem t, Border badge, DragEventArgs e)
     {
-        if (!e.Data.GetDataPresent(DataFormats.FileDrop) || !t.IsFolder)
+        bool real = e.Data.GetDataPresent(DataFormats.FileDrop);
+        bool virt = !real && VirtualFileService.HasVirtualFiles(e.Data);
+        if ((!real && !virt) || !t.IsFolder)
         { e.Effects = DragDropEffects.None; e.Handled = true; return; }
-        var act = Resolve(t, e);
+
+        var act = virt ? DropAction.Copy : Resolve(t, e); // виртуальные — только копия
         e.Effects = act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
         ((TextBlock)badge.Child).Text = act == DropAction.Move ? "➜" : "⧉";
         badge.Background = act == DropAction.Move ? Brushes.Orange : Brushes.MediumSpringGreen;
@@ -32,13 +35,23 @@ public partial class OverlayWindow
     private void OnBubbleDrop(TargetItem t, Border badge, DragEventArgs e)
     {
         badge.Visibility = Visibility.Collapsed;
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
-        var act = Resolve(t, e);
-        bool ok = FileOps.Execute(files, t.Path, act);
-        if (ok) RememberOp(act, files, t.Path);
-        ShowToast(ok
-            ? $"{(act == DropAction.Move ? "➜ Moved" : "⧉ Copied")}: {files.Length} item(s) → {t.Name}"
-            : "Operation was not completed", ok);
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+        {
+            var act = Resolve(t, e);
+            bool ok = FileOps.Execute(files, t.Path, act);
+            if (ok) RememberOp(act, files, t.Path);
+            ShowToast(ok
+                ? $"{(act == DropAction.Move ? "➜ Moved" : "⧉ Copied")}: {files.Length} item(s) → {t.Name}"
+                : "Operation was not completed", ok);
+        }
+        else if (VirtualFileService.HasVirtualFiles(e.Data))
+        {
+            var saved = VirtualFileService.Extract(e.Data, t.Path);
+            if (saved.Length > 0) RememberOp(DropAction.Copy, saved, t.Path);
+            ShowToast(saved.Length > 0
+                ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
+                : "Nothing to save", saved.Length > 0);
+        }
         CloseCloud();
         e.Handled = true;
     }
