@@ -1,4 +1,6 @@
 # Dropwheel
+<img width="460" height="460" alt="PixPin_2026-07-05_15-25-48" src="https://github.com/user-attachments/assets/becab6e4-a227-4759-875a-3cfd84b63fcb" />
+
 
 [![CI](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/IvanLarinDev/dropwheel)](https://github.com/IvanLarinDev/dropwheel/releases/latest)
