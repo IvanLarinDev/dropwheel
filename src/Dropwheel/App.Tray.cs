@@ -15,13 +15,13 @@ public partial class App
             Text = "Dropwheel"
         };
         var menu = new WF.ContextMenuStrip();
-        var auto = new WF.ToolStripMenuItem("Автозапуск с Windows")
+        var auto = new WF.ToolStripMenuItem("Start with Windows")
         { Checked = StartupService.IsEnabled, CheckOnClick = true };
         auto.Click += (_, _) => StartupService.SetEnabled(auto.Checked);
         menu.Items.Add(auto);
-        menu.Items.Add("Открыть папку конфига", null, (_, _) => LaunchService.OpenConfigFolder());
+        menu.Items.Add("Open config folder", null, (_, _) => LaunchService.OpenConfigFolder());
         menu.Items.Add(new WF.ToolStripSeparator());
-        menu.Items.Add("Выход", null, (_, _) => ExitApp());
+        menu.Items.Add("Exit", null, (_, _) => ExitApp());
         _tray.ContextMenuStrip = menu;
         _tray.DoubleClick += (_, _) => _overlay?.ToggleCloud();
     }

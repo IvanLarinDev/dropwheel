@@ -1,27 +1,27 @@
 <Window x:Class="Dropwheel.UI.TargetEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Цель — Dropwheel" Width="360" SizeToContent="Height"
+        Title="Target — Dropwheel" Width="360" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize" Topmost="True">
     <StackPanel Margin="16">
-        <TextBlock Text="Имя"/>
+        <TextBlock Text="Name"/>
         <TextBox x:Name="NameBox" Margin="0,4,0,10"/>
-        <TextBlock Text="Путь (папка или .exe)"/>
+        <TextBlock Text="Path (folder or .exe)"/>
         <DockPanel Margin="0,4,0,10">
             <Button Content="…" Width="28" DockPanel.Dock="Right" Margin="6,0,0,0" Click="OnBrowse"/>
             <TextBox x:Name="PathBox"/>
         </DockPanel>
-        <TextBlock Text="Действие при броске файла"/>
+        <TextBlock Text="Action on file drop"/>
         <ComboBox x:Name="ActionBox" Margin="0,4,0,10">
-            <ComboBoxItem Content="Как везде (глобальная настройка)"/>
-            <ComboBoxItem Content="Всегда копировать"/>
-            <ComboBoxItem Content="Всегда перемещать"/>
+            <ComboBoxItem Content="Default (global setting)"/>
+            <ComboBoxItem Content="Always copy"/>
+            <ComboBoxItem Content="Always move"/>
         </ComboBox>
-        <CheckBox x:Name="PinBox" Content="Закрепить ближе к центру" Margin="0,0,0,14"/>
+        <CheckBox x:Name="PinBox" Content="Pin closer to center" Margin="0,0,0,14"/>
         <DockPanel>
-            <Button Content="Удалить цель" Click="OnDelete" DockPanel.Dock="Left"
+            <Button Content="Delete target" Click="OnDelete" DockPanel.Dock="Left"
                     Foreground="Firebrick" Padding="8,4"/>
-            <Button Content="Сохранить" Click="OnSave" Width="100" Padding="8,4"
+            <Button Content="Save" Click="OnSave" Width="100" Padding="8,4"
                     HorizontalAlignment="Right"/>
         </DockPanel>
     </StackPanel>

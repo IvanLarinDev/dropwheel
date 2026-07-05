@@ -41,10 +41,10 @@ public static class TargetStore
     {
         static string P(Environment.SpecialFolder f) => Environment.GetFolderPath(f);
         return new AppConfig { Targets = {
-            new() { Name = "Загрузки",      Path = Path.Combine(P(Environment.SpecialFolder.UserProfile), "Downloads"), Pinned = true },
-            new() { Name = "Документы",     Path = P(Environment.SpecialFolder.MyDocuments), Pinned = true },
-            new() { Name = "Рабочий стол",  Path = P(Environment.SpecialFolder.DesktopDirectory) },
-            new() { Name = "Картинки",      Path = P(Environment.SpecialFolder.MyPictures) },
+            new() { Name = "Downloads", Path = Path.Combine(P(Environment.SpecialFolder.UserProfile), "Downloads"), Pinned = true },
+            new() { Name = "Documents", Path = P(Environment.SpecialFolder.MyDocuments), Pinned = true },
+            new() { Name = "Desktop",   Path = P(Environment.SpecialFolder.DesktopDirectory) },
+            new() { Name = "Pictures",  Path = P(Environment.SpecialFolder.MyPictures) },
         }};
     }
 }

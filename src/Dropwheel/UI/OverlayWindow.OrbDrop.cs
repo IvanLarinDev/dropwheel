@@ -18,7 +18,7 @@ public partial class OverlayWindow
             TargetStore.Config.Targets.Add(new TargetItem { Name = name, Path = p });
         }
         TargetStore.Save();
-        ShowToast($"Добавлено целей: {paths.Length}");
+        ShowToast($"Targets added: {paths.Length}");
         if (_open) BuildCloud();
         e.Handled = true;
     }

@@ -36,8 +36,8 @@ public partial class OverlayWindow
         var act = Resolve(t, e);
         bool ok = FileOps.Execute(files, t.Path, act);
         ShowToast(ok
-            ? $"{(act == DropAction.Move ? "➜ Перемещено" : "⧉ Скопировано")}: {files.Length} шт. → {t.Name}"
-            : "Операция не выполнена");
+            ? $"{(act == DropAction.Move ? "➜ Moved" : "⧉ Copied")}: {files.Length} item(s) → {t.Name}"
+            : "Operation was not completed");
         CloseCloud();
         e.Handled = true;
     }
