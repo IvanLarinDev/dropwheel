@@ -21,10 +21,13 @@ public partial class OverlayWindow
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
         {
             CloseCloud();
+            _movingOrb = true;
             DragMove(); // блокирует до отпускания кнопки
+            _movingOrb = false;
             TargetStore.Config.OrbX = Left + HalfSize;
             TargetStore.Config.OrbY = Top + HalfSize;
             TargetStore.Save();
+            UpdateOrbScreenPos();
         }
         else ToggleCloud();
         e.Handled = true;
@@ -32,11 +35,13 @@ public partial class OverlayWindow
 
     public void ToggleCloud() { if (_open) CloseCloud(); else OpenCloud(); }
 
-    private void ShowToast(string msg)
+    private void ShowToast(string msg, bool canUndo = false)
     {
         ToastText.Text = msg;
+        UndoLink.Visibility = canUndo ? Visibility.Visible : Visibility.Collapsed;
         Toast.Visibility = Visibility.Visible;
         _toastTimer.Stop();
+        _toastTimer.Interval = TimeSpan.FromSeconds(canUndo ? 6 : 3);
         _toastTimer.Start();
     }
 

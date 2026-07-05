@@ -23,8 +23,13 @@
         </Grid>
         <Border x:Name="Toast" Canvas.Left="90" Canvas.Top="412" Visibility="Collapsed"
                 Background="#E6161E2C" CornerRadius="8" Padding="10,6" MaxWidth="280">
-            <TextBlock x:Name="ToastText" Foreground="White" FontSize="12"
-                       TextTrimming="CharacterEllipsis"/>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="ToastText" Foreground="White" FontSize="12"
+                           TextTrimming="CharacterEllipsis" MaxWidth="210"/>
+                <TextBlock x:Name="UndoLink" Text="  Undo" Foreground="#7CC4FF" FontSize="12"
+                           FontWeight="SemiBold" Cursor="Hand" Visibility="Collapsed"
+                           MouseLeftButtonUp="OnUndoClick"/>
+            </StackPanel>
         </Border>
     </Canvas>
 </Window>

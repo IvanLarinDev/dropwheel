@@ -7,8 +7,8 @@ namespace Dropwheel.Services;
 /// конфликт-диалоги и отмена через Корзину (FOF_ALLOWUNDO) бесплатно.</summary>
 public static class FileOps
 {
-    private const uint FO_MOVE = 0x0001, FO_COPY = 0x0002;
-    private const ushort FOF_ALLOWUNDO = 0x0040, FOF_NOCONFIRMMKDIR = 0x0200;
+    private const uint FO_MOVE = 0x0001, FO_COPY = 0x0002, FO_DELETE = 0x0003;
+    private const ushort FOF_ALLOWUNDO = 0x0040, FOF_NOCONFIRMMKDIR = 0x0200, FOF_NOCONFIRMATION = 0x0010;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct SHFILEOPSTRUCT
@@ -34,6 +34,19 @@ public static class FileOps
             pFrom  = string.Join("\0", files) + "\0\0",
             pTo    = destFolder + "\0\0",
             fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR,
+        };
+        return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
+    }
+
+    /// <summary>Удаление в Корзину без подтверждения (для Undo после копирования).</summary>
+    public static bool Delete(IEnumerable<string> paths)
+    {
+        var op = new SHFILEOPSTRUCT
+        {
+            wFunc  = FO_DELETE,
+            pFrom  = string.Join("\0", paths) + "\0\0",
+            pTo    = "\0\0",
+            fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION,
         };
         return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
     }

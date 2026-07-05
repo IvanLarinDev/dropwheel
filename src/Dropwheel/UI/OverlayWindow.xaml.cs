@@ -40,6 +40,7 @@ public partial class OverlayWindow : Window
         DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
         Deactivated += (_, _) => CloseCloud();
 
-        Loaded += (_, _) => PlaceWindow();
+        Loaded += (_, _) => { PlaceWindow(); InitProximity(); };
+        LocationChanged += (_, _) => UpdateOrbScreenPos();
     }
 }

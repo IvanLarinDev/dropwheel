@@ -35,9 +35,10 @@ public partial class OverlayWindow
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
         var act = Resolve(t, e);
         bool ok = FileOps.Execute(files, t.Path, act);
+        if (ok) RememberOp(act, files, t.Path);
         ShowToast(ok
             ? $"{(act == DropAction.Move ? "➜ Moved" : "⧉ Copied")}: {files.Length} item(s) → {t.Name}"
-            : "Operation was not completed");
+            : "Operation was not completed", ok);
         CloseCloud();
         e.Handled = true;
     }

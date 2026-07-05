@@ -26,7 +26,17 @@ public static class IconService
 
     private const uint SHGFI_ICON = 0x100, SHGFI_LARGEICON = 0x0;
 
+    private static readonly Dictionary<string, ImageSource?> _cache = new();
+
     public static ImageSource? GetIcon(string path)
+    {
+        if (_cache.TryGetValue(path, out var cached)) return cached;
+        var icon = Extract(path);
+        _cache[path] = icon;
+        return icon;
+    }
+
+    private static ImageSource? Extract(string path)
     {
         var info = new SHFILEINFO();
         SHGetFileInfo(path, 0, ref info, (uint)Marshal.SizeOf(info), SHGFI_ICON | SHGFI_LARGEICON);
