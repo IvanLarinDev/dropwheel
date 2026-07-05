@@ -44,6 +44,19 @@ public partial class OverlayWindow
         Cloud.Children.Clear();
         _spokes.Clear();
         var th = Themes.Current;
+
+        // Невидимая круглая подложка: мышь над «пустотой» внутри колеса остаётся
+        // «внутри окна» (иначе смена уровня группы мгновенно запускала MouseLeave
+        // и таймер закрытия). Клик по пустому месту — явное закрытие.
+        var backdrop = new System.Windows.Shapes.Ellipse
+        {
+            Width = 452, Height = 452,
+            Fill = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)),
+        };
+        Canvas.SetLeft(backdrop, HalfSize - 226);
+        Canvas.SetTop(backdrop, HalfSize - 226);
+        backdrop.MouseLeftButtonUp += (_, e) => { CloseCloud(); e.Handled = true; };
+        Cloud.Children.Add(backdrop);
         var source = _currentGroup?.Children ?? TargetStore.Config.Targets;
         var items = new List<FrameworkElement>();
         if (_currentGroup != null) items.Add(MakeBackBubble());
@@ -117,6 +130,7 @@ public partial class OverlayWindow
     private void EnterGroup(TargetItem? group)
     {
         _currentGroup = group;
+        _closeTimer.Stop(); // навигация ≠ уход мыши
         if (_open) BuildCloud();
     }
 
