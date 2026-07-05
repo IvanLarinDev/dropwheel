@@ -11,7 +11,7 @@
     <RootNamespace>Dropwheel</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>dropwheel.ico</ApplicationIcon>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

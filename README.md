@@ -1,60 +1,79 @@
 # Dropwheel
 
-Оверлей-лаунчер для Windows 10/11: плавающий кружок поверх окон,
-раскрывающийся в радиальное «колесо» целей (папки и приложения).
-Файлы бросаются на цели drag&drop'ом — копирование или перемещение
-управляется глобальной настройкой с оверрайдом на конкретную цель.
+[![CI](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/IvanLarinDev/dropwheel)](https://github.com/IvanLarinDev/dropwheel/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Сборка и запуск
+Overlay launcher for Windows 10/11: a floating orb that expands into a radial
+**wheel** of targets (folders and apps). Drop files onto targets to copy or
+move them — the action is controlled by a global setting with per-target
+overrides. The wheel opens by itself when a drag approaches the orb.
+
+## Install
+
+Grab the [latest release](https://github.com/IvanLarinDev/dropwheel/releases/latest):
+
+- `Dropwheel-vX.Y.Z-win-x64.zip` — small; requires the .NET 10 Desktop Runtime
+- `Dropwheel-vX.Y.Z-win-x64-self-contained.zip` — larger; no runtime needed
+
+Unzip anywhere and run `Dropwheel.exe`. Config lives in `%AppData%\Dropwheel\config.json`.
+
+## Build from source
 
     cd src/Dropwheel
     dotnet run
 
-Требуется .NET 10 SDK (Windows). Конфиг: `%AppData%\Dropwheel\config.json`.
+Requires the .NET 10 SDK (Windows). `run.cmd` at the repo root wraps the
+common loops: `run.cmd [run|build|publish|stop]`.
 
-## Управление
+## Controls
 
-| Действие              | Как                                          |
-|-----------------------|----------------------------------------------|
-| Раскрыть колесо       | навести на кружок (250 мс) или клик          |
-| Бросить файл          | перетащить на кружок → бросить на цель       |
-| Копия / перенос       | Ctrl = копия, Shift = перенос (в момент броска) |
-| Редактор цели         | ПКМ по цели                                  |
-| Добавить цель         | перетащить папку/exe на кружок               |
-| Передвинуть кружок    | Alt + ЛКМ, тянуть (любой монитор)            |
-| Колесо у курсора      | Ctrl+Alt+Space (настраивается: `Hotkey`)     |
-| Автозапуск, выход     | меню иконки в трее                           |
+| Action                | How                                                |
+|-----------------------|----------------------------------------------------|
+| Open the wheel        | hover the orb (250 ms), click it, or drag a file near it |
+| Drop a file           | drag onto a target tile; badge shows ⧉ copy / ➜ move |
+| Force copy / move     | hold Ctrl / Shift while dropping                   |
+| Undo last drop        | click “Undo” in the toast (6 s)                    |
+| Edit a target         | right-click its tile                               |
+| Add a target          | drop a folder/exe onto the “+” tile or the orb     |
+| Create a group        | right-click the orb → “New group…”                 |
+| Enter a group         | click its tile, or hover it for 0.5 s while dragging |
+| Move the orb          | Alt + left-drag (any monitor)                      |
+| Wheel at cursor       | Ctrl+Alt+Space (configurable)                      |
+| Settings              | tray icon or orb context menu                      |
 
-В полноэкранных приложениях (игры, презентации) кружок прячется сам.
+The orb hides automatically in full-screen apps (games, presentations) and can
+fade out when idle (see Settings). Themes: Fluent, Dark, Light, Neon.
 
-Приоритет действия при броске: модификатор → оверрайд цели → глобальная
-настройка (`GlobalAction` в конфиге, по умолчанию Copy).
+## Sorter targets
 
-## Структура
-
-    src/Dropwheel/
-      Models/    TargetItem, AppConfig
-      Services/  TargetStore (JSON-конфиг), FileOps (SHFileOperation),
-                 LaunchService, IconService, StartupService
-      UI/        OverlayWindow (кружок + облако, partial),
-                 TargetEditorWindow
-    docs/        концепт
-
-## Автосортировка
-
-Цель с полем `SortRules` раскидывает брошенные файлы по подпапкам
-(бабл с янтарной обводкой, бейдж ⇅):
+A target with `SortRules` distributes dropped files into subfolders
+(amber-bordered tile, ⇅ badge):
 
     { "Name": "Sort", "Path": "D:\\Sorted",
       "SortRules": { "jpg png webp": "Images", "pdf docx": "Docs", "*": "Other" } }
 
-Ключ — расширения через пробел, `*` — всё остальное. Значение — подпапка
-относительно `Path` или абсолютный путь. Файл без совпадений (и без `*`)
-падает в корень цели. Undo отменяет всю раскладку целиком.
+Keys are space-separated extensions, `*` catches the rest. Values are
+subfolders relative to `Path` or absolute paths. Undo reverts the whole batch.
 
-## Известные ограничения (MVP)
+## Project layout
 
-- Drag из процессов с правами администратора не работает (UIPI).
-- Виртуальные файлы (Outlook/браузер) сохраняются только копией;
-  переименованные конфликт-диалогом файлы не отслеживаются в Undo.
-- Мультимонитор — частично (один кружок).
+    src/Dropwheel/
+      Models/    TargetItem, AppConfig
+      Services/  TargetStore (JSON config), FileOps (SHFileOperation),
+                 VirtualFileService, SortService, MouseHook, HotkeyService,
+                 LaunchService, IconService, StartupService, FullscreenDetector
+      UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
+                 TargetEditorWindow, SettingsWindow, Themes
+    docs/        concept notes
+
+## Known limitations
+
+- Dragging from elevated (admin) processes does not work — Windows UIPI.
+- Virtual files (Outlook attachments, browser drags) are always copied;
+  files renamed by the conflict dialog are not tracked by Undo.
+- One orb (multi-monitor placement works; one wheel instance).
+
+## License
+
+[MIT](LICENSE) © Ivan Larin

@@ -19,11 +19,18 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Publish (framework-dependent, single file)
-        run: dotnet publish src/Dropwheel -c Release -o dist
+        run: dotnet publish src/Dropwheel -c Release -o dist-fd
+
+      - name: Publish (self-contained, single file)
+        run: >
+          dotnet publish src/Dropwheel -c Release -r win-x64 --self-contained true
+          -p:IncludeNativeLibrariesForSelfExtract=true -o dist-sc
 
       - name: Zip
         shell: pwsh
-        run: Compress-Archive -Path dist/* -DestinationPath "Dropwheel-${{ github.ref_name }}-win-x64.zip"
+        run: |
+          Compress-Archive -Path dist-fd/* -DestinationPath "Dropwheel-${{ github.ref_name }}-win-x64.zip"
+          Compress-Archive -Path dist-sc/* -DestinationPath "Dropwheel-${{ github.ref_name }}-win-x64-self-contained.zip"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -32,5 +39,7 @@ jobs:
           generate_release_notes: true
           body: |
             Dropwheel — overlay launcher & drag-and-drop wheel for Windows 10/11.
-            Requires .NET 10 Desktop Runtime (framework-dependent build).
             Unzip and run Dropwheel.exe. Config: %AppData%\Dropwheel\config.json
+
+            - `win-x64.zip` — small, requires .NET 10 Desktop Runtime
+            - `win-x64-self-contained.zip` — larger, no runtime needed
