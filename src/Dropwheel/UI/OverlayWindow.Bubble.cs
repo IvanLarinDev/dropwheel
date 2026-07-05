@@ -29,8 +29,8 @@ public partial class OverlayWindow
         {
             Width = 54, Height = 54, CornerRadius = new CornerRadius(27),
             Background = new SolidColorBrush(Color.FromArgb(0xF2, 0x1E, 0x2A, 0x3E)),
-            BorderBrush = t.IsGroup
-                ? new SolidColorBrush(Color.FromArgb(0x60, 0x7C, 0xC4, 0xFF))
+            BorderBrush = t.IsGroup ? new SolidColorBrush(Color.FromArgb(0x60, 0x7C, 0xC4, 0xFF))
+                : t.IsSorter ? new SolidColorBrush(Color.FromArgb(0x70, 0xFF, 0xB8, 0x4D))
                 : new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF)),
             BorderThickness = new Thickness(2),
             Child = inner

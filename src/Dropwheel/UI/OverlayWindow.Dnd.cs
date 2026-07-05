@@ -26,7 +26,7 @@ public partial class OverlayWindow
 
         var act = virt ? DropAction.Copy : Resolve(t, e); // виртуальные — только копия
         e.Effects = act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
-        ((TextBlock)badge.Child).Text = act == DropAction.Move ? "➜" : "⧉";
+        ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : act == DropAction.Move ? "➜" : "⧉";
         badge.Background = act == DropAction.Move ? Brushes.Orange : Brushes.MediumSpringGreen;
         badge.Visibility = Visibility.Visible;
         e.Handled = true;
@@ -37,6 +37,13 @@ public partial class OverlayWindow
         badge.Visibility = Visibility.Collapsed;
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
         {
+            if (t.IsSorter)
+            {
+                DropSorted(t, files, Resolve(t, e));
+                CloseCloud();
+                e.Handled = true;
+                return;
+            }
             var act = Resolve(t, e);
             bool ok = FileOps.Execute(files, t.Path, act);
             if (ok) RememberOp(act, files, t.Path);
@@ -47,7 +54,11 @@ public partial class OverlayWindow
         else if (VirtualFileService.HasVirtualFiles(e.Data))
         {
             var saved = VirtualFileService.Extract(e.Data, t.Path);
-            if (saved.Length > 0) RememberOp(DropAction.Copy, saved, t.Path);
+            if (saved.Length > 0)
+            {
+                if (t.IsSorter) SortSavedVirtuals(t, saved);
+                else RememberOp(DropAction.Copy, saved, t.Path);
+            }
             ShowToast(saved.Length > 0
                 ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
                 : "Nothing to save", saved.Length > 0);

@@ -16,7 +16,13 @@ public class TargetItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<TargetItem>? Children { get; set; }
 
+    /// <summary>Правила сортировки: ключ — расширения через пробел («jpg png») или «*»,
+    /// значение — подпапка относительно Path или абсолютный путь. null — обычная цель.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? SortRules { get; set; }
+
     [JsonIgnore] public bool IsGroup => Children != null;
+    [JsonIgnore] public bool IsSorter => SortRules is { Count: > 0 };
     [JsonIgnore] public bool IsFolder => !IsGroup && Directory.Exists(Path);
     [JsonIgnore] public bool Exists => IsGroup || IsFolder || File.Exists(Path);
 }

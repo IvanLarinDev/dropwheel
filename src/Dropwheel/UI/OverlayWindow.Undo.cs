@@ -8,10 +8,14 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    private (DropAction Act, string[] Sources, string Dest)? _lastOp;
+    // Одна операция броска может состоять из нескольких перемещений (сортировщик).
+    private readonly List<(DropAction Act, string[] Sources, string Dest)> _lastOps = new();
 
     private void RememberOp(DropAction act, string[] sources, string dest)
-        => _lastOp = (act, sources, dest);
+    { _lastOps.Clear(); _lastOps.Add((act, sources, dest)); }
+
+    private void RememberOps(IEnumerable<(DropAction, string[], string)> ops)
+    { _lastOps.Clear(); _lastOps.AddRange(ops); }
 
     private void OnUndoClick(object sender, MouseButtonEventArgs e)
     {
@@ -23,8 +27,15 @@ public partial class OverlayWindow
     /// Файлы, переименованные конфликт-диалогом, не отслеживаем.</summary>
     private void Undo()
     {
-        if (_lastOp is not { } op) return;
-        _lastOp = null;
+        if (_lastOps.Count == 0) return;
+        bool ok = true;
+        foreach (var op in _lastOps) ok &= UndoOne(op);
+        _lastOps.Clear();
+        ShowToast(ok ? "↩ Undone" : "Could not undo completely");
+    }
+
+    private static bool UndoOne((DropAction Act, string[] Sources, string Dest) op)
+    {
         bool ok = true;
         if (op.Act == DropAction.Copy)
         {
@@ -43,6 +54,6 @@ public partial class OverlayWindow
                     ok &= FileOps.Execute(new[] { dst }, dir, DropAction.Move);
             }
         }
-        ShowToast(ok ? "↩ Undone" : "Could not undo completely");
+        return ok;
     }
 }
