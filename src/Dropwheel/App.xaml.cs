@@ -18,6 +18,7 @@ public partial class App : Application
         if (!isNew) { Shutdown(); return; }
         base.OnStartup(e);
 
+        StartupService.RefreshPath();
         TargetStore.Load();
         _overlay = new OverlayWindow();
         _overlay.Show();

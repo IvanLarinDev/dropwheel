@@ -3,11 +3,11 @@ using Dropwheel.Models;
 
 namespace Dropwheel.Services;
 
-/// <summary>Раскладка файлов по правилам цели-сортировщика.</summary>
+/// <summary>Distributes files according to a sorter target's rules.</summary>
 public static class SortService
 {
-    /// <summary>Возвращает план: папка-назначение → файлы. Без совпадений и без «*» —
-    /// файл идёт в корень цели (t.Path).</summary>
+    /// <summary>Returns a plan: destination folder → files. With no match and no "*"
+    /// a file goes to the target root (t.Path).</summary>
     public static Dictionary<string, List<string>> Plan(TargetItem t, IEnumerable<string> files)
     {
         var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);

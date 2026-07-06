@@ -8,8 +8,8 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    /// <summary>Всегда свободная ячейка «+»: клик — редактор новой цели,
-    /// бросок папки/exe — добавить в текущий уровень (корень или открытую группу).</summary>
+    /// <summary>The always-free "+" cell: click opens the new-target editor,
+    /// dropping a folder/exe adds it to the current level (root or open group).</summary>
     private FrameworkElement MakePlusTile()
     {
         var th = Themes.Current;
@@ -42,7 +42,7 @@ public partial class OverlayWindow
             e.Handled = true;
         };
         panel.DragOver += (_, e) => { e.Effects = DragDropEffects.Link; e.Handled = true; };
-        panel.Drop += OnOrbDrop; // та же логика: добавить в текущий уровень
+        panel.Drop += OnOrbDrop; // same logic: add to the current level
         return panel;
     }
 }

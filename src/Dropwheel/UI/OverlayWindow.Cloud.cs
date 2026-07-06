@@ -11,8 +11,8 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    private const double RingR = 170;          // радиус середины обода
-    private TargetItem? _currentGroup;         // null = корневой уровень
+    private const double RingR = 170;          // radius of the rim centerline
+    private TargetItem? _currentGroup;         // null = root level
     private TargetItem? _pendingGroup;
     private bool _pendingBack;
     private DispatcherTimer? _groupHover;
@@ -37,17 +37,17 @@ public partial class OverlayWindow
         Rim.Opacity = 0;
     }
 
-    /// <summary>Все плитки на ободе одним кольцом; последняя ячейка — всегда «+».
-    /// Внутри группы первой идёт «Back».</summary>
+    /// <summary>All tiles form one ring on the rim; the last cell is always "+".
+    /// Inside a group the first tile is "Back".</summary>
     private void BuildCloud()
     {
         Cloud.Children.Clear();
         _spokes.Clear();
         var th = Themes.Current;
 
-        // Невидимая круглая подложка: мышь над «пустотой» внутри колеса остаётся
-        // «внутри окна» (иначе смена уровня группы мгновенно запускала MouseLeave
-        // и таймер закрытия). Клик по пустому месту — явное закрытие.
+        // Invisible round backdrop: the mouse over the "empty" space inside the
+        // wheel stays "inside the window" (otherwise switching group levels fired
+        // MouseLeave and the close timer instantly). Clicking empty space closes.
         var backdrop = new System.Windows.Shapes.Ellipse
         {
             Width = 452, Height = 452,
@@ -130,7 +130,7 @@ public partial class OverlayWindow
     private void EnterGroup(TargetItem? group)
     {
         _currentGroup = group;
-        _closeTimer.Stop(); // навигация ≠ уход мыши
+        _closeTimer.Stop(); // navigation is not mouse-leave
         if (_open) BuildCloud();
     }
 

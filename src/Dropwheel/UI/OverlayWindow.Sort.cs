@@ -7,7 +7,7 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    /// <summary>Бросок реальных файлов на цель-сортировщик: раскладываем по правилам.</summary>
+    /// <summary>Real files dropped on a sorter target: distribute by the rules.</summary>
     private void DropSorted(TargetItem t, string[] files, DropAction act)
     {
         var plan = SortService.Plan(t, files);
@@ -25,8 +25,8 @@ public partial class OverlayWindow
             : "Sorting was not completed", ops.Count > 0);
     }
 
-    /// <summary>Виртуальные файлы уже сохранены в корень сортировщика —
-    /// доразложить по правилам. Undo для них = удалить (это копии).</summary>
+    /// <summary>Virtual files are already saved into the sorter root — distribute
+    /// them by the rules. Undo for them means delete (they are copies).</summary>
     private void SortSavedVirtuals(TargetItem t, string[] saved)
     {
         var plan = SortService.Plan(t, saved);

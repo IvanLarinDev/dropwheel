@@ -2,8 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace Dropwheel.Services;
 
-/// <summary>Определяет, что на переднем плане полноэкранное приложение/игра/презентация —
-/// в этом случае оверлей прячется, чтобы не мешать.</summary>
+/// <summary>Detects a fullscreen app/game/presentation in the foreground —
+/// the overlay hides to stay out of the way.</summary>
 public static class FullscreenDetector
 {
     private enum Quns

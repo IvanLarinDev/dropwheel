@@ -8,8 +8,8 @@ public partial class OverlayWindow
     private DispatcherTimer? _idleTimer;
     private bool _dimmed;
 
-    /// <summary>Кружок пригасает до 0.25 после N секунд без активности рядом;
-    /// любое движение мыши вблизи (по данным LL-хука) возвращает прозрачность.</summary>
+    /// <summary>The orb dims to 0.25 after N seconds without nearby activity;
+    /// any mouse movement close by (via the LL hook) restores opacity.</summary>
     private void InitIdleFade()
     {
         int s = TargetStore.Config.IdleFadeSeconds;
@@ -31,7 +31,7 @@ public partial class OverlayWindow
         _idleTimer.Start();
     }
 
-    /// <summary>Применить изменённые настройки без перезапуска.</summary>
+    /// <summary>Apply changed settings without a restart.</summary>
     public void ApplySettings()
     {
         PaintHub();
@@ -45,7 +45,7 @@ public partial class OverlayWindow
         _hotkey?.Dispose();
         _hotkey = null;
         try { _hotkey = new HotkeyService(this, TargetStore.Config.Hotkey, OnHotkey); }
-        catch { /* хоткей занят */ }
+        catch { /* hotkey taken */ }
     }
 
     public void OpenSettings()

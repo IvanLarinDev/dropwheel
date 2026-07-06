@@ -15,7 +15,7 @@ public partial class OverlayWindow
             var wa = SystemParameters.WorkArea;
             cx = wa.Right - 90; cy = wa.Top + wa.Height / 2;
         }
-        // границы всего виртуального экрана — кружок можно держать на любом мониторе
+        // bounds of the whole virtual screen — the orb may live on any monitor
         double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
         double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
         Left = Math.Clamp(cx - HalfSize, l - HalfSize + 24, r - HalfSize - 24);
@@ -28,7 +28,7 @@ public partial class OverlayWindow
         {
             CloseCloud();
             _movingOrb = true;
-            DragMove(); // блокирует до отпускания кнопки
+            DragMove(); // blocks until the button is released
             _movingOrb = false;
             TargetStore.Config.OrbX = Left + HalfSize;
             TargetStore.Config.OrbY = Top + HalfSize;
@@ -70,7 +70,7 @@ public partial class OverlayWindow
         if (_open) BuildCloud();
     }
 
-    /// <summary>Перекрасить ступицу и обод в цвета текущей темы.</summary>
+    /// <summary>Repaint the hub and rim with the current theme colors.</summary>
     private void PaintHub()
     {
         var th = Themes.Current;

@@ -8,7 +8,7 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    // Одна операция броска может состоять из нескольких перемещений (сортировщик).
+    // One drop operation may consist of several moves (sorter).
     private readonly List<(DropAction Act, string[] Sources, string Dest)> _lastOps = new();
 
     private void RememberOp(DropAction act, string[] sources, string dest)
@@ -23,8 +23,8 @@ public partial class OverlayWindow
         Undo();
     }
 
-    /// <summary>Best-effort: copy → удалить копии (в Корзину), move → вернуть на место.
-    /// Файлы, переименованные конфликт-диалогом, не отслеживаем.</summary>
+    /// <summary>Best-effort: copy → delete the copies (to Recycle Bin), move → move back.
+    /// Files renamed by the conflict dialog are not tracked.</summary>
     private void Undo()
     {
         if (_lastOps.Count == 0) return;

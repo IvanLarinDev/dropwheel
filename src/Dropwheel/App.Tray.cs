@@ -40,9 +40,9 @@ public partial class App
 
     private void ExitApp()
     {
-        // Save() здесь намеренно нет: конфиг пишется в момент каждого изменения,
-        // а сохранение при выходе позволяло устаревшему экземпляру затирать
-        // правки, сделанные на диске или другим экземпляром.
+        // No Save() here on purpose: config is written on every change,
+        // and saving on exit let a stale instance overwrite edits made
+        // on disk or by another instance.
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
         Shutdown();
     }

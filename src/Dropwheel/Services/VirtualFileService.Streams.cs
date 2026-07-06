@@ -18,7 +18,7 @@ public static partial class VirtualFileService
         {
             cfFormat = (short)System.Windows.DataFormats.GetDataFormat(ContentsFormat).Id,
             dwAspect = DVASPECT.DVASPECT_CONTENT,
-            lindex = index, // номер элемента в FILEGROUPDESCRIPTOR
+            lindex = index, // item index in FILEGROUPDESCRIPTOR
             tymed = TYMED.TYMED_ISTREAM | TYMED.TYMED_HGLOBAL,
         };
         com.GetData(ref fmt, out STGMEDIUM med);

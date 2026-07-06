@@ -4,8 +4,8 @@ public class AppConfig
 {
     public DropAction GlobalAction { get; set; } = DropAction.Copy;
 
-    // Центр кружка (DIP, виртуальный экран); NaN = по умолчанию (правый край primary).
-    // -1 не годится как маркер: монитор слева от основного даёт отрицательные координаты.
+    // Orb center (DIP, virtual screen); NaN = default (right edge of primary).
+    // -1 is no good as a marker: a monitor left of the primary yields negative coordinates.
     public double OrbX { get; set; } = double.NaN;
     public double OrbY { get; set; } = double.NaN;
 
@@ -13,10 +13,10 @@ public class AppConfig
     public int HoverDelayMs { get; set; } = 250;
     public string Hotkey { get; set; } = "Ctrl+Alt+Space";
 
-    /// <summary>Через сколько секунд бездействия пригасить кружок (0 = выключено).</summary>
+    /// <summary>Seconds of inactivity before the orb dims (0 = off).</summary>
     public int IdleFadeSeconds { get; set; } = 0;
 
-    /// <summary>Тема оформления: Fluent, Dark, Light, Neon.</summary>
+    /// <summary>UI theme: Fluent, Dark, Light, Neon.</summary>
     public string Theme { get; set; } = "Fluent";
 
     public List<TargetItem> Targets { get; set; } = new();

@@ -8,7 +8,7 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    /// <summary>Приоритет: модификатор (Ctrl/Shift) → оверрайд цели → глобальная настройка.</summary>
+    /// <summary>Priority: modifier (Ctrl/Shift) → target override → global setting.</summary>
     private static DropAction Resolve(TargetItem t, DragEventArgs e)
     {
         if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey)) return DropAction.Copy;
@@ -24,7 +24,7 @@ public partial class OverlayWindow
         if ((!real && !virt) || !t.IsFolder)
         { e.Effects = DragDropEffects.None; e.Handled = true; return; }
 
-        var act = virt ? DropAction.Copy : Resolve(t, e); // виртуальные — только копия
+        var act = virt ? DropAction.Copy : Resolve(t, e); // virtual files: copy only
         e.Effects = act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
         ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : act == DropAction.Move ? "➜" : "⧉";
         badge.Background = act == DropAction.Move ? Brushes.Orange : Brushes.MediumSpringGreen;

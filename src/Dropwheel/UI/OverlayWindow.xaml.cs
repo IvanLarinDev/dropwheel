@@ -6,7 +6,7 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow : Window
 {
-    private const double HalfSize = 230; // окно 460x460, кружок в центре
+    private const double HalfSize = 230; // 460x460 window, orb centered
 
     private readonly DispatcherTimer _hoverTimer;
     private readonly DispatcherTimer _closeTimer;
@@ -32,7 +32,7 @@ public partial class OverlayWindow : Window
         Orb.MouseLeave += (_, _) => _hoverTimer.Stop();
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
         Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud(); };
-        Orb.Drop += OnOrbDrop; // добавить цель перетаскиванием на кружок
+        Orb.Drop += OnOrbDrop; // dropping on the orb adds a target
 
         var orbMenu = new System.Windows.Controls.ContextMenu();
         var newGroup = new System.Windows.Controls.MenuItem { Header = "New group…" };

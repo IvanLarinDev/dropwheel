@@ -1,6 +1,6 @@
 name: Release
 
-# Пуш тега вида v1.2.3 -> publish single-file exe -> zip -> GitHub Release
+# Tag push like v1.2.3 -> publish single-file exe -> zip -> GitHub Release
 on:
   push:
     tags: ['v*']

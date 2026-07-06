@@ -14,7 +14,7 @@ public static class LaunchService
             else
                 Process.Start(new ProcessStartInfo(t.Path) { UseShellExecute = true });
         }
-        catch { /* цель могла исчезнуть — молча игнорируем */ }
+        catch { /* target may no longer exist — ignore */ }
     }
 
     public static void OpenConfigFolder() =>

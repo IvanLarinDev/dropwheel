@@ -5,7 +5,7 @@ using System.Windows.Interop;
 
 namespace Dropwheel.Services;
 
-/// <summary>Глобальный хоткей через RegisterHotKey. Строка вида "Ctrl+Alt+Space".</summary>
+/// <summary>Global hotkey via RegisterHotKey. String form: "Ctrl+Alt+Space".</summary>
 public sealed class HotkeyService : IDisposable
 {
     [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);

@@ -6,7 +6,7 @@
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
         ResizeMode="NoResize">
     <Canvas x:Name="Root">
-        <!-- обод колеса -->
+        <!-- wheel rim -->
         <Ellipse x:Name="Rim" Width="340" Height="340" Canvas.Left="60" Canvas.Top="60"
                  StrokeThickness="34" Opacity="0" IsHitTestVisible="False"
                  RenderTransformOrigin="0.5,0.5">
@@ -20,7 +20,7 @@
 
         <Canvas x:Name="Cloud"/>
 
-        <!-- ступица -->
+        <!-- hub -->
         <Grid x:Name="Orb" Width="56" Height="56" Canvas.Left="202" Canvas.Top="202"
               AllowDrop="True" Cursor="Hand" Background="Transparent">
             <Ellipse x:Name="HubBall" StrokeThickness="1">

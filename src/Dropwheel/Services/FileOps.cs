@@ -3,8 +3,8 @@ using Dropwheel.Models;
 
 namespace Dropwheel.Services;
 
-/// <summary>Копирование/перемещение через SHFileOperation: системный прогресс,
-/// конфликт-диалоги и отмена через Корзину (FOF_ALLOWUNDO) бесплатно.</summary>
+/// <summary>Copy/move via SHFileOperation: system progress UI, conflict dialogs
+/// and Recycle Bin undo (FOF_ALLOWUNDO) come for free.</summary>
 public static class FileOps
 {
     private const uint FO_MOVE = 0x0001, FO_COPY = 0x0002, FO_DELETE = 0x0003;
@@ -38,7 +38,7 @@ public static class FileOps
         return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
     }
 
-    /// <summary>Удаление в Корзину без подтверждения (для Undo после копирования).</summary>
+    /// <summary>Delete to Recycle Bin without confirmation (for Undo after a copy).</summary>
     public static bool Delete(IEnumerable<string> paths)
     {
         var op = new SHFILEOPSTRUCT

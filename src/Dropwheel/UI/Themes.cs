@@ -8,7 +8,7 @@ public record Theme(
     Color Rim, Color Spoke, Color Accent,
     Color HubBg, Color HubBorder,
     Color GroupBorder, Color SorterBorder,
-    Color LabelBg); // подложка подписи; A=0 — без подложки (тень)
+    Color LabelBg); // label backdrop; A=0 — no backdrop (shadow instead)
 
 public static class Themes
 {

@@ -2,8 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace Dropwheel.Services;
 
-/// <summary>Низкоуровневый хук мыши (WH_MOUSE_LL): позволяет раскрывать колесо,
-/// когда drag приближается к кружку, ещё до входа курсора в наше окно.</summary>
+/// <summary>Low-level mouse hook (WH_MOUSE_LL): lets the wheel open when a drag
+/// approaches the orb, before the cursor enters our window.</summary>
 public static class MouseHook
 {
     public delegate void MouseMoveHandler(int x, int y, bool leftDown);
@@ -27,7 +27,7 @@ public static class MouseHook
     private const int WM_MOUSEMOVE = 0x0200, WM_LBUTTONDOWN = 0x0201, WM_LBUTTONUP = 0x0202;
 
     private static IntPtr _hook = IntPtr.Zero;
-    private static HookProc? _proc; // держим ссылку, чтобы делегат не собрал GC
+    private static HookProc? _proc; // keep a reference so the delegate is not GC'd
     private static bool _leftDown;
 
     public static void Start()

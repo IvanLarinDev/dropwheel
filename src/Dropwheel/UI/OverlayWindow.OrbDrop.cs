@@ -7,8 +7,8 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    /// <summary>Бросок на кружок = добавить как цель. Если открыт уровень группы —
-    /// добавляем в неё; иначе в корень.</summary>
+    /// <summary>Dropping on the orb adds a target. If a group level is open,
+    /// the target goes into it; otherwise into the root.</summary>
     private void OnOrbDrop(object sender, DragEventArgs e)
     {
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
@@ -16,8 +16,8 @@ public partial class OverlayWindow
         e.Handled = true;
     }
 
-    /// <summary>Быстрый бросок на бабл группы (до срабатывания hover-раскрытия) =
-    /// добавить внутрь группы.</summary>
+    /// <summary>A quick drop on a group bubble (before hover-expand fires)
+    /// adds the target into the group.</summary>
     private void OnGroupDrop(TargetItem group, DragEventArgs e)
     {
         _groupHover?.Stop();

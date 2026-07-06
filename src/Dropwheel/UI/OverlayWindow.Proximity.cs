@@ -13,21 +13,21 @@ public partial class OverlayWindow
         UpdateOrbScreenPos();
         MouseHook.MouseMoved += OnGlobalMouse;
         Closed += (_, _) => MouseHook.Stop();
-        MouseHook.Start(); // хук ставится из UI-потока → колбэк тоже в нём
+        MouseHook.Start(); // hook is installed from the UI thread → callback runs there too
     }
 
     private void UpdateOrbScreenPos()
     {
         if (PresentationSource.FromVisual(this) is not { CompositionTarget: { } ct }) return;
-        var p = Orb.PointToScreen(new Point(23, 23)); // центр кружка, device px
+        var p = Orb.PointToScreen(new Point(23, 23)); // orb center, device px
         _orbSX = p.X; _orbSY = p.Y;
         double m = ct.TransformToDevice.M11;
-        _openR2  = 150 * m * 150 * m;  // радиус раскрытия
-        _closeR2 = 340 * m * 340 * m;  // радиус сворачивания
+        _openR2  = 150 * m * 150 * m;  // open radius
+        _closeR2 = 340 * m * 340 * m;  // close radius
     }
 
-    /// <summary>Зажатая ЛКМ + курсор рядом с кружком = вероятный drag →
-    /// раскрываем колесо заранее, до входа drag в наше окно.</summary>
+    /// <summary>Held LMB with the cursor near the orb means a likely drag →
+    /// open the wheel early, before the drag enters our window.</summary>
     private void OnGlobalMouse(int x, int y, bool leftDown)
     {
         if (_movingOrb) return;

@@ -17,7 +17,7 @@ public static class TargetStore
     {
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter() },
-        // OrbX/OrbY используют NaN как «не задано»
+        // OrbX/OrbY use NaN as "not set"
         NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
     };
 
@@ -31,7 +31,7 @@ public static class TargetStore
                 return;
             }
         }
-        catch { /* повреждённый конфиг — пересоздаём с дефолтами */ }
+        catch { /* corrupted config — recreate with defaults */ }
         Config = Defaults();
         Save();
     }
@@ -44,14 +44,14 @@ public static class TargetStore
 
     public static IEnumerable<TargetItem> Groups => Config.Targets.Where(t => t.IsGroup);
 
-    /// <summary>Убрать цель отовсюду (из корня и из всех групп).</summary>
+    /// <summary>Remove a target everywhere (from the root and all groups).</summary>
     public static void RemoveEverywhere(TargetItem item)
     {
         Config.Targets.Remove(item);
         foreach (var g in Groups) g.Children!.Remove(item);
     }
 
-    /// <summary>Переместить цель в группу (null = в корень).</summary>
+    /// <summary>Move a target into a group (null = root).</summary>
     public static void MoveToGroup(TargetItem item, TargetItem? group)
     {
         RemoveEverywhere(item);

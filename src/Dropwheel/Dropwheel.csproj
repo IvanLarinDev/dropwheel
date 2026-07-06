@@ -11,19 +11,19 @@
     <RootNamespace>Dropwheel</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>dropwheel.ico</ApplicationIcon>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <!-- run.cmd publish: один exe (framework-dependent, нужен .NET Desktop Runtime) -->
+    <!-- run.cmd publish: single exe (framework-dependent, requires .NET Desktop Runtime) -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
     <DebugType>none</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- WinForms нужен только для NotifyIcon/FolderBrowserDialog (через алиасы),
-         глобальный using конфликтует с WPF-типами -->
+    <!-- WinForms is needed only for NotifyIcon/FolderBrowserDialog (via aliases);
+         a global using would conflict with WPF types -->
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
   </ItemGroup>

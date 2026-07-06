@@ -6,7 +6,7 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    /// <summary>Плитка «←» — возврат из группы на корневой уровень.</summary>
+    /// <summary>"←" tile — return from a group to the root level.</summary>
     private FrameworkElement MakeBackBubble()
     {
         var th = Themes.Current;

@@ -14,7 +14,7 @@ public partial class OverlayWindow
     private void InitHotkeyAndFullscreen()
     {
         try { _hotkey = new HotkeyService(this, TargetStore.Config.Hotkey, OnHotkey); }
-        catch { /* хоткей занят другим приложением — работаем без него */ }
+        catch { /* hotkey taken by another app — run without it */ }
 
         _fsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _fsTimer.Tick += (_, _) =>
@@ -28,14 +28,14 @@ public partial class OverlayWindow
         Closed += (_, _) => { _hotkey?.Dispose(); _fsTimer?.Stop(); };
     }
 
-    /// <summary>Хоткей: раскрыть колесо у курсора; повторно — закрыть и вернуть кружок на место.</summary>
+    /// <summary>Hotkey: open the wheel at the cursor; press again to close and send the orb home.</summary>
     private void OnHotkey()
     {
-        if (!IsVisible) return; // спрятаны фуллскрином
+        if (!IsVisible) return; // hidden by fullscreen
         if (_open)
         {
             CloseCloud();
-            PlaceWindow(); // домой
+            PlaceWindow(); // back home
             return;
         }
         var c = WF.Cursor.Position; // device px

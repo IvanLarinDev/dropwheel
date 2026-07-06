@@ -24,7 +24,7 @@ public partial class TargetEditorWindow : Window
 
         if (t.IsGroup)
         {
-            // у группы нет пути/действия/родителя — прячем лишнее
+            // a group has no path/action/parent — hide the irrelevant fields
             GroupLabel.Visibility = GroupCombo.Visibility = Visibility.Collapsed;
             PathBox.IsEnabled = false;
             ActionBox.IsEnabled = false;

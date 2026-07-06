@@ -9,7 +9,7 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    /// <summary>Плитка Fluent Wheel: скруглённый квадрат 64px на ободе.</summary>
+    /// <summary>Fluent Wheel tile: 64px rounded square on the rim.</summary>
     private FrameworkElement MakeBubble(TargetItem t)
     {
         var th = Themes.Current;
@@ -51,8 +51,8 @@ public partial class OverlayWindow
         return WireBubble(t, badge, MakeLabel(t.Name), top, sq);
     }
 
-    /// <summary>Подпись плитки: в тёмных темах — текст с тенью,
-    /// в светлой — на пилюле-подложке, чтобы читалась на любых обоях.</summary>
+    /// <summary>Tile label: drop-shadowed text in dark themes, a pill background
+    /// in the light theme so it stays readable on any wallpaper.</summary>
     private static FrameworkElement MakeLabel(string text)
     {
         var th = Themes.Current;

@@ -12,12 +12,12 @@ public class TargetItem
     public DropAction Override { get; set; } = DropAction.Inherit;
     public bool Pinned { get; set; }
 
-    /// <summary>null — обычная цель; иначе это группа (одна степень вложенности).</summary>
+    /// <summary>null — regular target; otherwise a group (one nesting level).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<TargetItem>? Children { get; set; }
 
-    /// <summary>Правила сортировки: ключ — расширения через пробел («jpg png») или «*»,
-    /// значение — подпапка относительно Path или абсолютный путь. null — обычная цель.</summary>
+    /// <summary>Sort rules: key — space-separated extensions ("jpg png") or "*",
+    /// value — subfolder relative to Path or an absolute path. null — regular target.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, string>? SortRules { get; set; }
 

@@ -4,8 +4,8 @@ using System.Windows;
 
 namespace Dropwheel.Services;
 
-/// <summary>Приём «виртуальных» файлов (вложения Outlook, картинки из браузера):
-/// форматы CFSTR_FILEDESCRIPTORW + CFSTR_FILECONTENTS. Для них возможна только копия.</summary>
+/// <summary>Accepts "virtual" files (Outlook attachments, browser images):
+/// CFSTR_FILEDESCRIPTORW + CFSTR_FILECONTENTS formats. Copy is the only possible action.</summary>
 public static partial class VirtualFileService
 {
     private const string DescriptorFormat = "FileGroupDescriptorW";
@@ -14,7 +14,7 @@ public static partial class VirtualFileService
     public static bool HasVirtualFiles(IDataObject data)
         => data.GetDataPresent(DescriptorFormat) && data.GetDataPresent(ContentsFormat);
 
-    /// <summary>Сохраняет все виртуальные файлы в папку, возвращает пути созданных файлов.</summary>
+    /// <summary>Saves all virtual files into a folder, returns the created file paths.</summary>
     public static string[] Extract(IDataObject data, string destFolder)
     {
         var names = ReadNames(data);
@@ -29,13 +29,13 @@ public static partial class VirtualFileService
                 var path = UniquePath(destFolder, names[i]);
                 if (SaveContents(com, i, path)) saved.Add(path);
             }
-            catch { /* один битый элемент не должен валить весь бросок */ }
+            catch { /* one broken item must not fail the whole drop */ }
         }
         return saved.ToArray();
     }
 
-    // FILEGROUPDESCRIPTORW: UINT cItems; FILEDESCRIPTORW[cItems] (592 байта каждый,
-    // cFileName — WCHAR[260] со смещением 72).
+    // FILEGROUPDESCRIPTORW: UINT cItems; FILEDESCRIPTORW[cItems] (592 bytes each,
+    // cFileName is WCHAR[260] at offset 72).
     private static string[] ReadNames(IDataObject data)
     {
         if (data.GetData(DescriptorFormat) is not MemoryStream ms) return Array.Empty<string>();
