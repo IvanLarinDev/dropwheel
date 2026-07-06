@@ -88,6 +88,10 @@ Undo reverts the whole batch.
 
 ## Text drops
 
+<p align="center">
+  <img src="docs/media/dropwheel_anim_05.gif" width="240" alt="Dropping text creates a file">
+</p>
+
 Drag selected text from a browser, editor, or chat onto a folder tile and
 Dropwheel writes it to `text_YYYY-MM-DD_HH-mm-ss.txt` — or `.md` when the text
 looks like Markdown (headings, code fences, links). Dropped on a sorter, the new
