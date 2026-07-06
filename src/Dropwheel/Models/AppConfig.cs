@@ -20,4 +20,8 @@ public class AppConfig
     public string Theme { get; set; } = "Fluent";
 
     public List<TargetItem> Targets { get; set; } = new();
+
+    /// <summary>File-type presets for the rules editor. Seeded with built-in defaults on first
+    /// run, then user-editable. null (missing key) triggers reseeding on load.</summary>
+    public List<FilePreset>? Presets { get; set; }
 }

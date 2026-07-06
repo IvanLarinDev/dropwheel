@@ -9,6 +9,7 @@ public partial class PromptWindow : Window
     public PromptWindow(string title, string caption)
     {
         InitializeComponent();
+        Themes.ApplyWindow(this);
         Title = title;
         Caption.Text = caption;
         Loaded += (_, _) => Input.Focus();

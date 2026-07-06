@@ -41,6 +41,7 @@ public partial class OverlayWindow : Window
         settings.Click += (_, _) => OpenSettings();
         orbMenu.Items.Add(newGroup);
         orbMenu.Items.Add(settings);
+        Themes.ApplyMenu(orbMenu);
         Orb.ContextMenu = orbMenu;
 
         Root.MouseEnter += (_, _) => _closeTimer.Stop();

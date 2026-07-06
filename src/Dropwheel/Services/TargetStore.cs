@@ -28,6 +28,7 @@ public static class TargetStore
             if (File.Exists(FilePath))
             {
                 Config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), Opts) ?? new();
+                if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); Save(); }
                 return;
             }
         }
@@ -64,11 +65,15 @@ public static class TargetStore
     private static AppConfig Defaults()
     {
         static string P(Environment.SpecialFolder f) => Environment.GetFolderPath(f);
-        return new AppConfig { Targets = {
-            new() { Name = "Downloads", Path = Path.Combine(P(Environment.SpecialFolder.UserProfile), "Downloads"), Pinned = true },
-            new() { Name = "Documents", Path = P(Environment.SpecialFolder.MyDocuments), Pinned = true },
-            new() { Name = "Desktop",   Path = P(Environment.SpecialFolder.DesktopDirectory) },
-            new() { Name = "Pictures",  Path = P(Environment.SpecialFolder.MyPictures) },
-        }};
+        return new AppConfig
+        {
+            Presets = PresetService.Defaults(),
+            Targets = {
+                new() { Name = "Downloads", Path = Path.Combine(P(Environment.SpecialFolder.UserProfile), "Downloads"), Pinned = true },
+                new() { Name = "Documents", Path = P(Environment.SpecialFolder.MyDocuments), Pinned = true },
+                new() { Name = "Desktop",   Path = P(Environment.SpecialFolder.DesktopDirectory) },
+                new() { Name = "Pictures",  Path = P(Environment.SpecialFolder.MyPictures) },
+            },
+        };
     }
 }

@@ -15,6 +15,7 @@ public partial class TargetEditorWindow : Window
     public TargetEditorWindow(TargetItem t, TargetItem? preselectGroup = null)
     {
         InitializeComponent();
+        Themes.ApplyWindow(this);
         _target = t;
         _preselect = preselectGroup;
         NameBox.Text = t.Name;
@@ -28,6 +29,7 @@ public partial class TargetEditorWindow : Window
             GroupLabel.Visibility = GroupCombo.Visibility = Visibility.Collapsed;
             PathBox.IsEnabled = false;
             ActionBox.IsEnabled = false;
+            ConvertBtn.Visibility = Visibility.Collapsed;
         }
         else
         {
@@ -36,6 +38,13 @@ public partial class TargetEditorWindow : Window
             { _groupChoices.Add(g); GroupCombo.Items.Add(g.Name); }
             GroupCombo.SelectedIndex = Math.Max(0,
                 _groupChoices.IndexOf(TargetStore.FindParentGroup(_target) ?? _preselect));
+
+            SortMigration.Migrate(_target);
+            if (_target.Rules is { Count: > 0 })
+            {
+                _rules.AddRange(_target.Rules);
+                ShowRulesEditor();
+            }
         }
     }
 
@@ -47,12 +56,22 @@ public partial class TargetEditorWindow : Window
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
+        if (_rulesMode && !TryValidateRules(out var error))
+        {
+            MessageBox.Show(this, error, "Rules", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         _target.Name = NameBox.Text.Trim();
         if (!_target.IsGroup)
         {
             _target.Path = PathBox.Text.Trim();
             _target.Override = (DropAction)ActionBox.SelectedIndex;
             TargetStore.MoveToGroup(_target, _groupChoices[Math.Max(0, GroupCombo.SelectedIndex)]);
+            if (_rulesMode)
+            {
+                _target.Rules = _rules.Count > 0 ? _rules : null;
+                _target.SortRules = null;
+            }
         }
         _target.Pinned = PinBox.IsChecked == true;
         Close();

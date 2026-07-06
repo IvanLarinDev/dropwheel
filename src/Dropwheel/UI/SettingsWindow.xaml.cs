@@ -9,6 +9,7 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        Themes.ApplyWindow(this);
         var c = TargetStore.Config;
         foreach (var name in Themes.All.Keys) ThemeBox.Items.Add(name);
         ThemeBox.SelectedItem = Themes.All.ContainsKey(c.Theme) ? c.Theme : "Fluent";

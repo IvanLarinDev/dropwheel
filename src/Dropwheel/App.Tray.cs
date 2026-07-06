@@ -23,8 +23,55 @@ public partial class App
         menu.Items.Add("Open config folder", null, (_, _) => LaunchService.OpenConfigFolder());
         menu.Items.Add(new WF.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
+        StyleTrayMenu(menu);
         _tray.ContextMenuStrip = menu;
         _tray.DoubleClick += (_, _) => _overlay?.ToggleCloud();
+    }
+
+    /// <summary>WinForms tray menu ignores the WPF theme, so paint it from the palette by hand for
+    /// the dark themes. Applied once at startup; a theme change takes effect on next launch.</summary>
+    private static void StyleTrayMenu(WF.ContextMenuStrip menu)
+    {
+        var p = Dropwheel.UI.Palettes.Current;
+        if (!p.Dark) return;
+        menu.RenderMode = WF.ToolStripRenderMode.Professional;
+        menu.Renderer = new WF.ToolStripProfessionalRenderer(new DarkMenuColors(p)) { RoundedEdges = false };
+        menu.BackColor = ToSd(p.Surface);
+        menu.ForeColor = ToSd(p.Text);
+    }
+
+    private static SD.Color ToSd(System.Windows.Media.Color c) => SD.Color.FromArgb(c.R, c.G, c.B);
+
+    private static SD.Color Blend(System.Windows.Media.Color a, System.Windows.Media.Color b, double t) =>
+        SD.Color.FromArgb(
+            (int)(a.R + (b.R - a.R) * t),
+            (int)(a.G + (b.G - a.G) * t),
+            (int)(a.B + (b.B - a.B) * t));
+
+    private sealed class DarkMenuColors : WF.ProfessionalColorTable
+    {
+        private readonly SD.Color _bg, _hover, _line;
+
+        public DarkMenuColors(Dropwheel.UI.Palette p)
+        {
+            _bg = ToSd(p.Surface);
+            _hover = Blend(p.Surface, p.Accent, 0.30);
+            _line = ToSd(p.Border);
+        }
+
+        public override SD.Color ToolStripDropDownBackground => _bg;
+        public override SD.Color ImageMarginGradientBegin => _bg;
+        public override SD.Color ImageMarginGradientMiddle => _bg;
+        public override SD.Color ImageMarginGradientEnd => _bg;
+        public override SD.Color MenuBorder => _line;
+        public override SD.Color MenuItemBorder => _line;
+        public override SD.Color MenuItemSelected => _hover;
+        public override SD.Color MenuItemSelectedGradientBegin => _hover;
+        public override SD.Color MenuItemSelectedGradientEnd => _hover;
+        public override SD.Color CheckBackground => _hover;
+        public override SD.Color CheckSelectedBackground => _hover;
+        public override SD.Color SeparatorDark => _line;
+        public override SD.Color SeparatorLight => _bg;
     }
 
     private static SD.Icon LoadAppIcon()

@@ -34,6 +34,7 @@ public partial class OverlayWindow
     /// <summary>Apply changed settings without a restart.</summary>
     public void ApplySettings()
     {
+        if (Orb.ContextMenu is System.Windows.Controls.ContextMenu m) Themes.ApplyMenu(m);
         PaintHub();
         if (_open) BuildCloud();
         Orb.Opacity = TargetStore.Config.OrbOpacity;

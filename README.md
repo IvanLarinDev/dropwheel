@@ -26,7 +26,8 @@ Unzip anywhere and run `Dropwheel.exe`. Config lives in `%AppData%\Dropwheel\con
     dotnet run
 
 Requires the .NET 10 SDK (Windows). `run.cmd` at the repo root wraps the
-common loops: `run.cmd [run|build|publish|stop]`.
+common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
+`dotnet test` (xUnit, in `tests/Dropwheel.Tests`).
 
 ## Controls
 
@@ -45,29 +46,58 @@ common loops: `run.cmd [run|build|publish|stop]`.
 | Settings              | tray icon or orb context menu                      |
 
 The orb hides automatically in full-screen apps (games, presentations) and can
-fade out when idle (see Settings). Themes: Fluent, Dark, Light, Neon.
+fade out when idle (see Settings).
 
-## Sorter targets
+## Sorter targets & routing rules
 
-A target with `SortRules` distributes dropped files into subfolders
-(amber-bordered tile, ⇅ badge):
+![Routing rules editor](docs/media/routing-rules.gif)
+
+A **sorter** distributes dropped files into subfolders by rules (amber-bordered
+tile, ⇅ badge). Right-click a target and press **Convert to routing rules**, or
+start from a **Presets ▾** category (Images, Documents, Archives, …). Rules are
+an ordered list edited in a master–detail panel — the first rule whose
+conditions all match wins:
+
+- **Extension** — `png jpg webp` (space- or comma-separated, dots optional)
+- **Name contains** / **Name regex** — match against the file name
+- **Size (MB)** and **Age (days)** — with `>`, `<`, `≥`, `≤`
+- a rule with no conditions is a **catch-all**
+
+Each rule sends its matches to a subfolder (relative to the target `Path`) or an
+absolute folder. The **Test files** box previews which sample files land in the
+selected rule. Presets live in `config.json` under `Presets` and are yours to edit.
+
+![Type presets](docs/media/presets.gif)
+
+The legacy extension map still loads and is migrated to rules on first edit:
 
     { "Name": "Sort", "Path": "D:\\Sorted",
       "SortRules": { "jpg png webp": "Images", "pdf docx": "Docs", "*": "Other" } }
 
-Keys are space-separated extensions, `*` catches the rest. Values are
-subfolders relative to `Path` or absolute paths. Undo reverts the whole batch.
+Undo reverts the whole batch.
+
+## Themes
+
+![Themes](docs/media/themes.gif)
+
+Four themes — Fluent, Dark, Light, Neon — chosen in Settings. Each carries a full
+palette: the wheel, the target editor and settings windows, the orb context menu,
+and the tray menu all follow the theme (accent colour, surfaces, text). Group and
+sorter tile borders are tuned per theme.
 
 ## Project layout
 
     src/Dropwheel/
-      Models/    TargetItem, AppConfig
+      Models/    TargetItem, AppConfig, SortRule (conditions), FilePreset
       Services/  TargetStore (JSON config), FileOps (SHFileOperation),
-                 VirtualFileService, SortService, MouseHook, HotkeyService,
+                 VirtualFileService, SortService, SortMigration, FileMeta,
+                 PresetService, ShortcutResolver, MouseHook, HotkeyService,
                  LaunchService, IconService, StartupService, FullscreenDetector
       UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
-                 TargetEditorWindow, SettingsWindow, Themes
-    docs/        concept notes
+                 TargetEditorWindow (+ .Rules master-detail), SettingsWindow,
+                 Themes, Palette (per-theme widget colours), MenuTheme.xaml
+    tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta)
+    docs/media/  screenshots and gifs used by this README
 
 ## Known limitations
 

@@ -51,30 +51,21 @@ public partial class OverlayWindow
         return WireBubble(t, badge, MakeLabel(t.Name), top, sq);
     }
 
-    /// <summary>Tile label: drop-shadowed text in dark themes, a pill background
-    /// in the light theme so it stays readable on any wallpaper.</summary>
+    /// <summary>Tile label: light text with a dark shadow so it reads on the overlay's dark
+    /// backdrop. Themes whose in-tile text is dark (Light) get a light label instead — the dark
+    /// color is only right on the white tile, not under it. No pill.</summary>
     private static FrameworkElement MakeLabel(string text)
     {
         var th = Themes.Current;
-        var tb = new TextBlock
+        var color = Luminance(th.Label) < 0.5 ? Color.FromRgb(0xEC, 0xF1, 0xF7) : th.Label;
+        return new TextBlock
         {
-            Text = text, Foreground = new SolidColorBrush(th.Label), FontSize = 11.5,
-            TextAlignment = TextAlignment.Center, MaxWidth = 76,
-            TextTrimming = TextTrimming.CharacterEllipsis
-        };
-        if (th.LabelBg.A == 0)
-        {
-            tb.Effect = new DropShadowEffect { BlurRadius = 3, ShadowDepth = 1, Opacity = 0.8 };
-            return tb;
-        }
-        return new Border
-        {
-            Background = new SolidColorBrush(th.LabelBg),
-            CornerRadius = new CornerRadius(7),
-            Padding = new Thickness(7, 1, 7, 2),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Effect = new DropShadowEffect { BlurRadius = 6, ShadowDepth = 1, Opacity = 0.35 },
-            Child = tb
+            Text = text, Foreground = new SolidColorBrush(color), FontSize = 11.5,
+            TextAlignment = TextAlignment.Center, MaxWidth = 88,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.85 },
         };
     }
+
+    private static double Luminance(Color c) => (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
 }
