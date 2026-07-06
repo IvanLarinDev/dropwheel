@@ -21,12 +21,13 @@ public partial class OverlayWindow
     {
         bool real = e.Data.GetDataPresent(DataFormats.FileDrop);
         bool virt = !real && VirtualFileService.HasVirtualFiles(e.Data);
-        if ((!real && !virt) || !t.IsFolder)
+        bool text = !real && !virt && TextDropService.HasText(e.Data);
+        if ((!real && !virt && !text) || !t.IsFolder)
         { e.Effects = DragDropEffects.None; e.Handled = true; return; }
 
-        var act = virt ? DropAction.Copy : Resolve(t, e); // virtual files: copy only
+        var act = virt || text ? DropAction.Copy : Resolve(t, e); // virtual files and text: copy only
         e.Effects = act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
-        ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : act == DropAction.Move ? "➜" : "⧉";
+        ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : text ? "≡" : act == DropAction.Move ? "➜" : "⧉";
         badge.Background = act == DropAction.Move ? Brushes.Orange : Brushes.MediumSpringGreen;
         badge.Visibility = Visibility.Visible;
         e.Handled = true;
@@ -62,6 +63,18 @@ public partial class OverlayWindow
             ShowToast(saved.Length > 0
                 ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
                 : "Nothing to save", saved.Length > 0);
+        }
+        else if (TextDropService.HasText(e.Data))
+        {
+            var saved = TextDropService.SaveFrom(e.Data, t.Path, DateTime.Now);
+            if (saved is { } path)
+            {
+                if (t.IsSorter) SortSavedVirtuals(t, new[] { path });
+                else RememberOp(DropAction.Copy, new[] { path }, t.Path);
+            }
+            ShowToast(saved != null
+                ? $"≡ Saved text → {System.IO.Path.GetFileName(saved)}"
+                : "No text to save", saved != null);
         }
         CloseCloud();
         e.Handled = true;

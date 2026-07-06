@@ -1,15 +1,28 @@
 # Dropwheel
-<img width="460" height="460" alt="PixPin_2026-07-05_15-25-48" src="https://github.com/user-attachments/assets/becab6e4-a227-4759-875a-3cfd84b63fcb" />
 
+<p align="center">
+  <img src="docs/media/dropwheel.png" width="420" alt="Dropwheel wheel">
+</p>
 
 [![CI](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/IvanLarinDev/dropwheel)](https://github.com/IvanLarinDev/dropwheel/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Overlay launcher for Windows 10/11: a floating orb that expands into a radial
-**wheel** of targets (folders and apps). Drop files onto targets to copy or
-move them — the action is controlled by a global setting with per-target
-overrides. The wheel opens by itself when a drag approaches the orb.
+**wheel** of targets (folders and apps). Drop files to copy or move them, drop
+**text** from a browser or editor to save it as a file, or route files into
+subfolders with **sorter rules**. The wheel opens by itself when a drag
+approaches the orb.
+
+## In action
+
+<p align="center">
+  <img src="docs/media/dropwheel_anim_01.gif" width="220" alt="Dropwheel in action">
+  <img src="docs/media/dropwheel_anim_02.gif" width="220" alt="Dropwheel in action">
+  <br>
+  <img src="docs/media/dropwheel_anim_03.gif" width="220" alt="Dropwheel in action">
+  <img src="docs/media/dropwheel_anim_04.gif" width="220" alt="Dropwheel in action">
+</p>
 
 ## Install
 
@@ -35,6 +48,7 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 |-----------------------|----------------------------------------------------|
 | Open the wheel        | hover the orb (250 ms), click it, or drag a file near it |
 | Drop a file           | drag onto a target tile; badge shows ⧉ copy / ➜ move |
+| Drop text             | drag selected text onto a folder → saves `text_<date>.txt` (`.md` if it looks like Markdown) |
 | Force copy / move     | hold Ctrl / Shift while dropping                   |
 | Undo last drop        | click “Undo” in the toast (6 s)                    |
 | Edit a target         | right-click its tile                               |
@@ -49,8 +63,6 @@ The orb hides automatically in full-screen apps (games, presentations) and can
 fade out when idle (see Settings).
 
 ## Sorter targets & routing rules
-
-![Routing rules editor](docs/media/routing-rules.gif)
 
 A **sorter** distributes dropped files into subfolders by rules (amber-bordered
 tile, ⇅ badge). Right-click a target and press **Convert to routing rules**, or
@@ -67,8 +79,6 @@ Each rule sends its matches to a subfolder (relative to the target `Path`) or an
 absolute folder. The **Test files** box previews which sample files land in the
 selected rule. Presets live in `config.json` under `Presets` and are yours to edit.
 
-![Type presets](docs/media/presets.gif)
-
 The legacy extension map still loads and is migrated to rules on first edit:
 
     { "Name": "Sort", "Path": "D:\\Sorted",
@@ -76,24 +86,51 @@ The legacy extension map still loads and is migrated to rules on first edit:
 
 Undo reverts the whole batch.
 
+## Text drops
+
+Drag selected text from a browser, editor, or chat onto a folder tile and
+Dropwheel writes it to `text_YYYY-MM-DD_HH-mm-ss.txt` — or `.md` when the text
+looks like Markdown (headings, code fences, links). Dropped on a sorter, the new
+file is routed by the rules; Undo removes it.
+
 ## Themes
 
-![Themes](docs/media/themes.gif)
+Four themes — chosen in Settings. Each carries a full palette: the wheel, the
+target editor and settings windows, the orb context menu, and the tray menu all
+follow the theme (accent colour, surfaces, text); group and sorter tile borders
+are tuned per theme.
 
-Four themes — Fluent, Dark, Light, Neon — chosen in Settings. Each carries a full
-palette: the wheel, the target editor and settings windows, the orb context menu,
-and the tray menu all follow the theme (accent colour, surfaces, text). Group and
-sorter tile borders are tuned per theme.
+<p align="center">
+  <img src="docs/media/fluent.png" width="240" alt="Fluent theme">
+  <img src="docs/media/dark.png" width="240" alt="Dark theme">
+  <br>
+  <img src="docs/media/light.png" width="240" alt="Light theme">
+  <img src="docs/media/neon.png" width="240" alt="Neon theme">
+  <br>
+  <sub>Fluent · Dark · Light · Neon</sub>
+</p>
 
-## Gifs
-<img src="docs/media/dropwheel_anim_01.gif" width="200" alt="Описание"> <img src="docs/media/dropwheel_anim_02.gif" width="200" alt="Описание">
-<img src="docs/media/dropwheel_anim_03.gif" width="200" alt="Описание"> <img src="docs/media/dropwheel_anim_04.gif" width="200" alt="Описание">
+## Project layout
+
+    src/Dropwheel/
+      Models/    TargetItem, AppConfig, SortRule (conditions), FilePreset
+      Services/  TargetStore (JSON config), FileOps (SHFileOperation),
+                 VirtualFileService, TextDropService, SortService, SortMigration,
+                 FileMeta, PresetService, ShortcutResolver, MouseHook,
+                 HotkeyService, LaunchService, IconService, StartupService,
+                 FullscreenDetector
+      UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
+                 TargetEditorWindow (+ .Rules master-detail), SettingsWindow,
+                 Themes, Palette (per-theme widget colours), MenuTheme.xaml
+    tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta,
+                 TextDropService)
+    docs/media/  screenshots and gifs used by this README
 
 ## Known limitations
 
 - Dragging from elevated (admin) processes does not work — Windows UIPI.
-- Virtual files (Outlook attachments, browser drags) are always copied;
-  files renamed by the conflict dialog are not tracked by Undo.
+- Virtual files (Outlook attachments, browser drags) and dropped text are always
+  copied; files renamed by the conflict dialog are not tracked by Undo.
 - One orb (multi-monitor placement works; one wheel instance).
 
 ## License
