@@ -85,19 +85,9 @@ palette: the wheel, the target editor and settings windows, the orb context menu
 and the tray menu all follow the theme (accent colour, surfaces, text). Group and
 sorter tile borders are tuned per theme.
 
-## Project layout
-
-    src/Dropwheel/
-      Models/    TargetItem, AppConfig, SortRule (conditions), FilePreset
-      Services/  TargetStore (JSON config), FileOps (SHFileOperation),
-                 VirtualFileService, SortService, SortMigration, FileMeta,
-                 PresetService, ShortcutResolver, MouseHook, HotkeyService,
-                 LaunchService, IconService, StartupService, FullscreenDetector
-      UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
-                 TargetEditorWindow (+ .Rules master-detail), SettingsWindow,
-                 Themes, Palette (per-theme widget colours), MenuTheme.xaml
-    tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta)
-    docs/media/  screenshots and gifs used by this README
+## Gifs
+<img src="docs/media/dropwheel_anim_01.gif" width="200" alt="Описание"> <img src="docs/media/dropwheel_anim_02.gif" width="200" alt="Описание">
+<img src="docs/media/dropwheel_anim_03.gif" width="200" alt="Описание"> <img src="docs/media/dropwheel_anim_04.gif" width="200" alt="Описание">
 
 ## Known limitations
 
