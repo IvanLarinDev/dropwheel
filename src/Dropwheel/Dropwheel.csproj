@@ -11,7 +11,7 @@
     <RootNamespace>Dropwheel</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>dropwheel.ico</ApplicationIcon>
-    <Version>0.2.2</Version>
+    <Version>0.2.3</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -26,6 +26,13 @@
          a global using would conflict with WPF types -->
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Same file as ApplicationIcon above; embedding it as a WPF resource lets the tray
+         load the branded icon directly from the assembly, regardless of how the app is
+         launched (exe, published single-file, or `dotnet <dll>` under a debugger). -->
+    <Resource Include="dropwheel.ico" />
   </ItemGroup>
 
 </Project>

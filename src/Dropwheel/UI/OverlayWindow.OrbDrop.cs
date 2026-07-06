@@ -31,9 +31,13 @@ public partial class OverlayWindow
         var list = group?.Children ?? TargetStore.Config.Targets;
         foreach (var p in paths)
         {
+            // A dropped .lnk becomes a target for what it points at, not the shortcut file.
+            var target = ShortcutResolver.Resolve(p);
+            // Keep the shortcut's friendly label (e.g. "Visual Studio Code") over the raw target name.
             var name = IOPath.GetFileNameWithoutExtension(p);
-            if (string.IsNullOrEmpty(name)) name = p;
-            list.Add(new TargetItem { Name = name, Path = p });
+            if (string.IsNullOrEmpty(name)) name = IOPath.GetFileNameWithoutExtension(target);
+            if (string.IsNullOrEmpty(name)) name = target;
+            list.Add(new TargetItem { Name = name, Path = target });
         }
         TargetStore.Save();
         ShowToast(group == null

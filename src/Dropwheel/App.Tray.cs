@@ -29,6 +29,19 @@ public partial class App
 
     private static SD.Icon LoadAppIcon()
     {
+        // Preferred: the branded .ico embedded as a WPF resource. Reliable regardless of how
+        // the app is launched, and Icon(stream, size) picks the frame matching the tray size.
+        try
+        {
+            var uri = new Uri("pack://application:,,,/dropwheel.ico");
+            if (System.Windows.Application.GetResourceStream(uri) is { } res)
+            {
+                using var s = res.Stream;
+                return new SD.Icon(s, WF.SystemInformation.SmallIconSize);
+            }
+        }
+        catch { }
+        // Fallback: the running exe's associated icon (works for exe/published builds).
         try
         {
             if (Environment.ProcessPath is { } p && SD.Icon.ExtractAssociatedIcon(p) is { } i)
