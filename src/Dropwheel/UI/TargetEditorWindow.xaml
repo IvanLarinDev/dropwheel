@@ -7,6 +7,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0">
@@ -37,25 +38,20 @@
                         Padding="8,4" HorizontalAlignment="Left"/>
             </StackPanel>
 
-            <StackPanel x:Name="MasterPanel" Grid.Column="1" Width="210" Margin="16,0,0,0"
+            <StackPanel x:Name="MasterPanel" Grid.Column="1" Width="200" Margin="16,0,0,0"
                         Visibility="Collapsed">
                 <TextBlock Text="Routing rules" FontWeight="SemiBold"/>
                 <TextBlock Text="first match wins" FontSize="11" Foreground="Gray" Margin="0,1,0,6"/>
-                <ScrollViewer MaxHeight="230" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="MasterHost"/>
                 </ScrollViewer>
                 <DockPanel Margin="0,8,0,0">
                     <Button Content="Presets ▾" Click="OnPresetsClick" DockPanel.Dock="Right" Padding="8,2"/>
                     <Button Content="+ Rule" Click="OnAddRule" Padding="8,2" HorizontalAlignment="Left"/>
                 </DockPanel>
-                <TextBlock Text="Test files (drag files here or one path per line)" Margin="0,12,0,4"/>
-                <TextBox x:Name="PreviewInput" AcceptsReturn="True" Height="54"
-                         VerticalScrollBarVisibility="Auto" TextChanged="OnPreviewChanged"
-                         AllowDrop="True" PreviewDragOver="OnPreviewFilesDragOver"
-                         PreviewDrop="OnPreviewFilesDrop"/>
             </StackPanel>
 
-            <Border x:Name="DetailPanel" Grid.Column="2" Width="330" Margin="16,0,0,0"
+            <Border x:Name="DetailPanel" Grid.Column="2" Width="430" Margin="16,0,0,0"
                     Visibility="Collapsed" BorderBrush="#22000000" BorderThickness="1"
                     CornerRadius="6" Padding="10">
                 <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
@@ -64,7 +60,30 @@
             </Border>
         </Grid>
 
-        <DockPanel Grid.Row="1" Margin="0,14,0,0">
+        <Border x:Name="PreviewPanel" Grid.Row="1" Margin="0,16,0,0" Visibility="Collapsed"
+                BorderBrush="#22000000" BorderThickness="1" CornerRadius="6" Padding="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="320"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                    <TextBlock Text="Test files (drag files here or one path per line)" Margin="0,0,0,4"/>
+                    <TextBox x:Name="PreviewInput" AcceptsReturn="True" Height="96"
+                             VerticalScrollBarVisibility="Auto" TextChanged="OnPreviewChanged"
+                             AllowDrop="True" PreviewDragOver="OnPreviewFilesDragOver"
+                             PreviewDrop="OnPreviewFilesDrop"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Preview" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <ScrollViewer MaxHeight="130" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="MatchesHost"/>
+                    </ScrollViewer>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <DockPanel Grid.Row="2" Margin="0,14,0,0">
             <Button Content="Delete target" Click="OnDelete" DockPanel.Dock="Left"
                     Foreground="Firebrick" Padding="8,4"/>
             <Button Content="Save" Click="OnSave" Width="100" Padding="8,4"

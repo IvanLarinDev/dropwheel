@@ -15,6 +15,7 @@ public partial class TargetEditorWindow
     private int _selected = -1;
     private bool _rulesMode;
     private StackPanel? _matchesHost;
+    private TextBlock? _tokenHint;
 
     private static Brush SelectedBg => Palettes.Selection;
     private static Brush SelectedBar => Palettes.Accent;
@@ -37,6 +38,10 @@ public partial class TargetEditorWindow
         DetailPanel.Visibility = Visibility.Visible;
         DetailPanel.Background = Palettes.Surface;
         DetailPanel.BorderBrush = Palettes.Accent;
+        PreviewPanel.Visibility = Visibility.Visible;
+        PreviewPanel.Background = Palettes.Surface;
+        PreviewPanel.BorderBrush = Palettes.Accent;
+        _matchesHost = MatchesHost;
         ConvertBtn.Visibility = Visibility.Collapsed;
         if (_selected < 0 && _rules.Count > 0) _selected = 0;
         RebuildMaster();
@@ -122,10 +127,10 @@ public partial class TargetEditorWindow
     private void RebuildDetail()
     {
         DetailHost.Children.Clear();
-        _matchesHost = null;
         if (_selected < 0 || _selected >= _rules.Count)
         {
             DetailHost.Children.Add(Hint("Select or add a rule."));
+            RefreshMatches();
             return;
         }
         var rule = _rules[_selected];
@@ -141,15 +146,29 @@ public partial class TargetEditorWindow
         DetailHost.Children.Add(header);
 
         DetailHost.Children.Add(new TextBlock { Text = "Destination (subfolder or absolute)", FontSize = 11 });
-        var destRow = new DockPanel { Margin = new Thickness(0, 2, 0, 10) };
+        var destRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
         var browse = new Button { Content = "…", Width = 26, Margin = new Thickness(6, 0, 0, 0) };
         DockPanel.SetDock(browse, Dock.Right);
         browse.Click += (_, _) => BrowseDest(rule);
-        var destBox = new TextBox { Text = rule.Dest };
-        destBox.TextChanged += (_, _) => { rule.Dest = destBox.Text; RebuildMaster(); RefreshMatches(); };
+        var destBox = new TextBox
+        {
+            Text = rule.Dest,
+            ToolTip = "A subfolder (relative to the target Path) or an absolute path. "
+                    + "Use ${name} to insert a (?<name>…) group captured by a Name regex condition, "
+                    + "e.g. episodes\\${ep}\\${sq}\\${sh}.",
+        };
+        destBox.TextChanged += (_, _) => { rule.Dest = destBox.Text; RebuildMaster(); RebuildTokenHint(rule); RefreshMatches(); };
         destRow.Children.Add(browse);
         destRow.Children.Add(destBox);
         DetailHost.Children.Add(destRow);
+
+        _tokenHint = new TextBlock
+        {
+            FontSize = 11, Foreground = Palettes.TextMuted, TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 10),
+        };
+        DetailHost.Children.Add(_tokenHint);
+        RebuildTokenHint(rule);
 
         DetailHost.Children.Add(new TextBlock { Text = "Conditions (all must match)", FontSize = 11 });
         foreach (var c in rule.All)
@@ -178,13 +197,6 @@ public partial class TargetEditorWindow
         savePreset.Click += (_, _) => OnSaveAsPreset(rule);
         DetailHost.Children.Add(savePreset);
 
-        DetailHost.Children.Add(new Border
-        {
-            BorderBrush = Palettes.Border, BorderThickness = new Thickness(0, 1, 0, 0),
-            Margin = new Thickness(0, 10, 0, 6),
-        });
-        _matchesHost = new StackPanel();
-        DetailHost.Children.Add(_matchesHost);
         RefreshMatches();
     }
 
@@ -258,6 +270,37 @@ public partial class TargetEditorWindow
         return stack;
     }
 
+    /// <summary>Shows, under the Destination box, which ${name} tokens the rule can fill from its
+    /// Name regex groups — and flags any token in the path that has no matching group, since such a
+    /// file would silently fall back to the target root.</summary>
+    private void RebuildTokenHint(SortRule rule)
+    {
+        if (_tokenHint == null) return;
+        var used = SortService.TokensIn(rule.Dest);
+        var available = SortService.AvailableTokens(rule);
+        if (used.Count == 0 && available.Count == 0)
+        {
+            _tokenHint.Visibility = Visibility.Collapsed;
+            return;
+        }
+        _tokenHint.Visibility = Visibility.Visible;
+        var missing = used.Where(t => !available.Contains(t)).ToArray();
+        if (missing.Length > 0)
+        {
+            _tokenHint.Foreground = Brushes.Firebrick;
+            _tokenHint.Text = "No such group: " + string.Join(", ", missing.Select(t => "${" + t + "}"))
+                + " — add a (?<name>…) group in a Name regex condition, or the file goes to the root.";
+        }
+        else
+        {
+            _tokenHint.Foreground = Palettes.TextMuted;
+            _tokenHint.Text = available.Count > 0
+                ? "Tokens: " + string.Join(" ", available.OrderBy(t => t, StringComparer.Ordinal).Select(t => "${" + t + "}"))
+                : "";
+            _tokenHint.Visibility = _tokenHint.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
     // ── Preview (matches for the selected rule) ────────────────────────────
 
     private void OnPreviewChanged(object sender, TextChangedEventArgs e) => RefreshMatches();
@@ -323,10 +366,14 @@ public partial class TargetEditorWindow
             Text = $"Routes here: {here.Length} of {files.Length}", FontSize = 11, Foreground = Palettes.TextMuted,
             Margin = new Thickness(0, 0, 0, 2),
         });
+        bool showDest = _rules[_selected].Dest.Contains("${", StringComparison.Ordinal);
         foreach (var f in here)
             _matchesHost.Children.Add(new TextBlock
             {
-                Text = Path.GetFileName(f), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
+                Text = showDest
+                    ? $"{Path.GetFileName(f)}  →  {ResolvedDestLabel(_rules[_selected], Path.GetFileName(f))}"
+                    : Path.GetFileName(f),
+                FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
             });
         // Условия по размеру/возрасту в предпросмотре считаются нулём: тестовый ввод — это
         // имена без реальных файлов на диске. Предупреждаем, если такое условие есть в ЛЮБОМ
@@ -334,6 +381,14 @@ public partial class TargetEditorWindow
         if (_rules.Any(r => r.All.Any(c => c.Field is ConditionField.SizeMb or ConditionField.AgeDays)))
             _matchesHost.Children.Add(Hint(
                 "Size/age here are treated as 0 — test names are not real files, so these preview only by extension/name."));
+    }
+
+    /// <summary>The subfolder a matched file resolves to once its tokens are expanded, for the
+    /// preview. Unfilled tokens mean the file lands at the target root.</summary>
+    private static string ResolvedDestLabel(SortRule rule, string fileName)
+    {
+        var expanded = SortService.ExpandTemplate(rule, fileName, out bool ok);
+        return ok ? expanded : "(root — unfilled tokens)";
     }
 
     // ── Presets ────────────────────────────────────────────────────────────
@@ -481,6 +536,10 @@ public partial class TargetEditorWindow
                         System.Globalization.CultureInfo.InvariantCulture, out _))
                 { error = $"Rule {i + 1}: '{c.Value}' is not a number."; return false; }
             }
+            var available = SortService.AvailableTokens(_rules[i]);
+            foreach (var tok in SortService.TokensIn(_rules[i].Dest))
+                if (!available.Contains(tok))
+                { error = $"Rule {i + 1}: destination uses ${{{tok}}} but no Name regex has a (?<{tok}>…) group."; return false; }
         }
         error = "";
         return true;

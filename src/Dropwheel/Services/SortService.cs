@@ -29,7 +29,8 @@ public static class SortService
     private static string ResolveFolderV2(TargetItem t, string file)
     {
         int idx = MatchedRuleIndex(t.Rules!, file);
-        return idx < 0 ? t.Path : Combine(t.Path, t.Rules![idx].Dest);
+        if (idx < 0) return t.Path;
+        return ExpandDest(t.Rules![idx], Path.GetFileName(file), t.Path);
     }
 
     /// <summary>Index of the first rule that fully matches the file, or -1 for no match (file goes
@@ -65,6 +66,88 @@ public static class SortService
     private static string Combine(string root, string dest) =>
         string.IsNullOrWhiteSpace(dest) ? root
         : Path.IsPathRooted(dest) ? dest : Path.Combine(root, dest);
+
+    /// <summary>Matches a ${name} placeholder inside a Dest template.</summary>
+    private static readonly Regex TokenRx = new(@"\$\{(\w+)\}", RegexOptions.Compiled);
+
+    /// <summary>Resolves the folder for a matched file, expanding ${name} placeholders in the rule
+    /// Dest from its NameRegex groups. When any placeholder cannot be filled the file goes to the
+    /// sorter root instead of a half-built path.</summary>
+    private static string ExpandDest(SortRule rule, string fileName, string root)
+    {
+        if (!rule.Dest.Contains("${", StringComparison.Ordinal)) return Combine(root, rule.Dest);
+        var expanded = ExpandTemplate(rule, fileName, out bool ok);
+        return ok ? Combine(root, expanded) : root;
+    }
+
+    /// <summary>Substitutes ${name} tokens in the rule Dest with sanitized values captured by the
+    /// rule's NameRegex conditions against the file name. Sets ok=false when a token has no matching
+    /// group or the captured value is empty after sanitizing. Shared by the router and the editor
+    /// preview so both show the same resolved path.</summary>
+    public static string ExpandTemplate(SortRule rule, string fileName, out bool ok)
+    {
+        var groups = CollectGroups(rule, fileName);
+        bool allResolved = true;
+        var result = TokenRx.Replace(rule.Dest, m =>
+        {
+            if (groups.TryGetValue(m.Groups[1].Value, out var raw))
+            {
+                var clean = SanitizeSegment(raw);
+                if (clean.Length > 0) return clean;
+            }
+            allResolved = false;
+            return m.Value;
+        });
+        ok = allResolved;
+        return result;
+    }
+
+    /// <summary>Named-group captures from every NameRegex condition of the rule, matched against the
+    /// file name. Numeric group names are skipped; a later condition wins on a name clash.</summary>
+    private static Dictionary<string, string> CollectGroups(SortRule rule, string fileName)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var c in rule.All)
+        {
+            if (c.Field != ConditionField.NameRegex || Compiled(c.Value) is not { } rx) continue;
+            var m = rx.Match(fileName);
+            if (!m.Success) continue;
+            foreach (var name in rx.GetGroupNames())
+            {
+                if (int.TryParse(name, out _)) continue;
+                var g = m.Groups[name];
+                if (g.Success) map[name] = g.Value;
+            }
+        }
+        return map;
+    }
+
+    /// <summary>The distinct ${name} tokens a Dest template references.</summary>
+    public static IReadOnlyList<string> TokensIn(string dest) =>
+        TokenRx.Matches(dest).Select(m => m.Groups[1].Value).Distinct(StringComparer.Ordinal).ToList();
+
+    /// <summary>The named groups a rule's NameRegex conditions expose for token substitution. Used by
+    /// the editor to hint available tokens and to block a Dest that references a missing one.</summary>
+    public static IReadOnlyCollection<string> AvailableTokens(SortRule rule)
+    {
+        var set = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var c in rule.All)
+        {
+            if (c.Field != ConditionField.NameRegex || Compiled(c.Value) is not { } rx) continue;
+            foreach (var name in rx.GetGroupNames())
+                if (!int.TryParse(name, out _)) set.Add(name);
+        }
+        return set;
+    }
+
+    /// <summary>Strips characters illegal in a folder name (plus trailing dots and spaces that
+    /// Windows forbids) from a captured token so it can serve as a path segment.</summary>
+    private static string SanitizeSegment(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var chars = value.Where(ch => Array.IndexOf(invalid, ch) < 0).ToArray();
+        return new string(chars).Trim().TrimEnd('.', ' ');
+    }
 
     private static bool Match(RuleCondition c, FileMeta meta) => c.Field switch
     {

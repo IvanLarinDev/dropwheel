@@ -174,4 +174,86 @@ public sealed class SortServiceTests : IDisposable
         Assert.Equal(1, SortService.MatchedRuleIndex(rules, "b.mp4"));
         Assert.Equal(-1, SortService.MatchedRuleIndex(rules, "c.txt"));
     }
+
+    // ── Token paths from NameRegex groups ──────────────────────────────────
+
+    [Fact]
+    public void Named_groups_build_a_nested_destination()
+    {
+        var f = MakeFile("ep001_sq001_sh001_playblast_v001.mov");
+        var t = Sorter(_root, Rule("episodes\\${ep}\\${sq}\\${sh}",
+            ConditionField.NameRegex, CompareOp.Matches, @"(?<ep>ep\d+)_(?<sq>sq\d+)_(?<sh>sh\d+)"));
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[Path.Combine(_root, "episodes", "ep001", "sq001", "sh001")]);
+    }
+
+    [Fact]
+    public void Token_without_a_matching_group_sends_file_to_root()
+    {
+        // Правило совпало по группе ep, но в пути есть ${zzz}, которого нет — файл в корень.
+        var f = MakeFile("ep001_sq001.mov");
+        var t = Sorter(_root, Rule("episodes\\${ep}\\${zzz}",
+            ConditionField.NameRegex, CompareOp.Matches, @"(?<ep>ep\d+)"));
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[_root]);
+    }
+
+    [Fact]
+    public void Optional_group_that_captures_nothing_sends_file_to_root()
+    {
+        // Группа sh необязательна и не захватилась — путь не собрать, файл в корень.
+        var f = MakeFile("ep001_sq001.mov");
+        var t = Sorter(_root, Rule("episodes\\${ep}\\${sh}",
+            ConditionField.NameRegex, CompareOp.Matches, @"(?<ep>ep\d+)_sq\d+(?:_(?<sh>sh\d+))?"));
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[_root]);
+    }
+
+    [Fact]
+    public void Dest_without_placeholders_is_unchanged_by_the_token_engine()
+    {
+        // Регресс: обычный Dest со скобочными группами в условии, но без ${…}, ведёт себя как раньше.
+        var f = MakeFile("ep001_x.mov");
+        var t = Sorter(_root, Rule("Plain",
+            ConditionField.NameRegex, CompareOp.Matches, @"(?<ep>ep\d+)"));
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[Path.Combine(_root, "Plain")]);
+    }
+
+    [Fact]
+    public void ExpandTemplate_fills_groups_and_reports_success()
+    {
+        var rule = Rule("${ep}\\${sq}", ConditionField.NameRegex, CompareOp.Matches,
+            @"(?<ep>ep\d+)_(?<sq>sq\d+)");
+        var result = SortService.ExpandTemplate(rule, "ep001_sq002_x.mov", out bool ok);
+        Assert.True(ok);
+        Assert.Equal(Path.Combine("ep001", "sq002"), result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_strips_illegal_path_chars_from_a_captured_value()
+    {
+        // Захват содержит запрещённые в имени папки символы — они вычищаются.
+        var rule = Rule("${x}", ConditionField.NameRegex, CompareOp.Matches, @"(?<x>.+)");
+        var result = SortService.ExpandTemplate(rule, "a<b>c", out bool ok);
+        Assert.True(ok);
+        Assert.Equal("abc", result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_flags_a_token_it_cannot_fill()
+    {
+        var rule = Rule("${ep}\\${missing}", ConditionField.NameRegex, CompareOp.Matches, @"(?<ep>ep\d+)");
+        _ = SortService.ExpandTemplate(rule, "ep001_x.mov", out bool ok);
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public void AvailableTokens_lists_named_groups_and_TokensIn_lists_used_placeholders()
+    {
+        var rule = Rule("${ep}\\${sq}", ConditionField.NameRegex, CompareOp.Matches,
+            @"(?<ep>ep\d+)_(?<sq>sq\d+)");
+        Assert.Equal(new[] { "ep", "sq" }, SortService.AvailableTokens(rule).OrderBy(s => s));
+        Assert.Equal(new[] { "ep", "sq" }, SortService.TokensIn(rule.Dest).OrderBy(s => s));
+    }
 }

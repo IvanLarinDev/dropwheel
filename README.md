@@ -80,6 +80,15 @@ Each rule sends its matches to a subfolder (relative to the target `Path`) or an
 absolute folder. The **Test files** box previews which sample files land in the
 selected rule. Presets live in `config.json` under `Presets` and are yours to edit.
 
+**Token destinations** — a rule's destination can lift fields out of the file name
+with `${name}` placeholders. Add a **Name regex** condition with named groups, e.g.
+`(?<ep>ep\d+)_(?<sq>sq\d+)_(?<sh>sh\d+)`, and set the destination to
+`episodes\${ep}\${sq}\${sh}`; a file `ep001_sq001_sh001_playblast_v001.mov` then lands
+in `episodes\ep001\sq001\sh001\`. Tokens fill from the rule's own Name regex groups, so
+one pattern both matches and routes, and the editor lists the tokens a rule can fill
+right under the destination box. A file that matches the rule but leaves a token empty
+goes to the target root rather than into a half-built path.
+
 The legacy extension map still loads and is migrated to rules on first edit:
 
     { "Name": "Sort", "Path": "D:\\Sorted",
