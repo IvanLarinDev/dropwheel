@@ -14,7 +14,7 @@ public partial class OverlayWindow
         var panel = new StackPanel
         {
             Width = 76, Tag = t,
-            AllowDrop = t.IsFolder || t.IsGroup,
+            AllowDrop = t.IsFolder || t.IsGroup || LaunchService.IsRunTarget(t),
             Opacity = t.Exists ? 1.0 : 0.4,
             Background = Brushes.Transparent
         };
