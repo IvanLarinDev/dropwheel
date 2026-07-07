@@ -74,7 +74,11 @@ public partial class App
         public override SD.Color SeparatorLight => _bg;
     }
 
-    private static SD.Icon LoadAppIcon()
+    // Собственная иконка трея (её нативный хендл нужно освободить при выходе). Остаётся null,
+    // если используется общесистемная SystemIcons.Application — её трогать Dispose нельзя.
+    private SD.Icon? _appIcon;
+
+    private SD.Icon LoadAppIcon()
     {
         // Preferred: the branded .ico embedded as a WPF resource. Reliable regardless of how
         // the app is launched, and Icon(stream, size) picks the frame matching the tray size.
@@ -84,7 +88,7 @@ public partial class App
             if (System.Windows.Application.GetResourceStream(uri) is { } res)
             {
                 using var s = res.Stream;
-                return new SD.Icon(s, WF.SystemInformation.SmallIconSize);
+                return _appIcon = new SD.Icon(s, WF.SystemInformation.SmallIconSize);
             }
         }
         catch { }
@@ -92,7 +96,7 @@ public partial class App
         try
         {
             if (Environment.ProcessPath is { } p && SD.Icon.ExtractAssociatedIcon(p) is { } i)
-                return i;
+                return _appIcon = i;
         }
         catch { }
         return SD.SystemIcons.Application;
@@ -104,6 +108,7 @@ public partial class App
         // and saving on exit let a stale instance overwrite edits made
         // on disk or by another instance.
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
+        _appIcon?.Dispose(); // NotifyIcon.Dispose не освобождает переданную ему иконку
         Shutdown();
     }
 }

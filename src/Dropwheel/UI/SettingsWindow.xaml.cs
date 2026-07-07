@@ -37,7 +37,7 @@ public partial class SettingsWindow : Window
         }
         if (ThemeBox.SelectedItem is string theme) c.Theme = theme;
         c.GlobalAction = ActionBox.SelectedIndex == 1 ? DropAction.Move : DropAction.Copy;
-        if (int.TryParse(HoverBox.Text, out int hover)) c.HoverDelayMs = Math.Clamp(hover, 0, 2000);
+        if (int.TryParse(HoverBox.Text, out int hover)) c.HoverDelayMs = Math.Clamp(hover, 50, 2000);
         c.OrbOpacity = Math.Round(OpacitySlider.Value, 2);
         if (int.TryParse(IdleBox.Text, out int idle)) c.IdleFadeSeconds = Math.Clamp(idle, 0, 3600);
         if (hk.Length > 0) c.Hotkey = hk;

@@ -28,10 +28,12 @@ public static class FileOps
 
     public static bool Execute(IEnumerable<string> files, string destFolder, DropAction action)
     {
+        var list = files.ToArray();
+        if (list.Length == 0) return true; // нечего делать — не зовём SHFileOperation с пустым списком
         var op = new SHFILEOPSTRUCT
         {
             wFunc  = action == DropAction.Move ? FO_MOVE : FO_COPY,
-            pFrom  = string.Join("\0", files) + "\0\0",
+            pFrom  = string.Join("\0", list) + "\0\0",
             pTo    = destFolder + "\0\0",
             fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR,
         };
@@ -41,10 +43,12 @@ public static class FileOps
     /// <summary>Delete to Recycle Bin without confirmation (for Undo after a copy).</summary>
     public static bool Delete(IEnumerable<string> paths)
     {
+        var list = paths.ToArray();
+        if (list.Length == 0) return true;
         var op = new SHFILEOPSTRUCT
         {
             wFunc  = FO_DELETE,
-            pFrom  = string.Join("\0", paths) + "\0\0",
+            pFrom  = string.Join("\0", list) + "\0\0",
             pTo    = "\0\0",
             fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION,
         };

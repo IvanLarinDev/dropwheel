@@ -24,6 +24,7 @@ public static partial class VirtualFileService
         com.GetData(ref fmt, out STGMEDIUM med);
         try
         {
+            if (med.unionmember == IntPtr.Zero) return false; // источник не отдал носитель для этого индекса
             if (med.tymed == TYMED.TYMED_ISTREAM) { SaveIStream(med.unionmember, path); return true; }
             if (med.tymed == TYMED.TYMED_HGLOBAL) { SaveHGlobal(med.unionmember, path); return true; }
             return false;

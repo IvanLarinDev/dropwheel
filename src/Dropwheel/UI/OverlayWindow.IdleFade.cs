@@ -38,21 +38,14 @@ public partial class OverlayWindow
         PaintHub();
         if (_open) BuildCloud();
         Orb.Opacity = TargetStore.Config.OrbOpacity;
-        _hoverTimer.Interval = TimeSpan.FromMilliseconds(TargetStore.Config.HoverDelayMs);
+        _hoverTimer.Interval = HoverInterval();
         _dimmed = false;
         _idleTimer?.Stop();
         _idleTimer = null;
         InitIdleFade();
-        _hotkey?.Dispose();
-        _hotkey = null;
-        try { _hotkey = new HotkeyService(this, TargetStore.Config.Hotkey, OnHotkey); }
-        catch (Exception ex)
-        {
-            // Строка уже проверена в настройках, значит комбинацию занял другой процесс —
-            // сообщаем пользователю, а не молчим.
-            ErrorLog.Write($"Не удалось зарегистрировать хоткей «{TargetStore.Config.Hotkey}»", ex);
-            ShowToast($"Горячая клавиша {TargetStore.Config.Hotkey} занята другим приложением");
-        }
+        // Строка уже проверена в настройках на разбор, но занятость другим процессом
+        // проверяется только здесь: при неудаче остаётся прежняя рабочая комбинация.
+        ApplyHotkey(TargetStore.Config.Hotkey, notify: true);
     }
 
     public void OpenSettings()

@@ -12,7 +12,7 @@ public partial class OverlayWindow
     {
         UpdateOrbScreenPos();
         MouseHook.MouseMoved += OnGlobalMouse;
-        Closed += (_, _) => MouseHook.Stop();
+        Closed += (_, _) => { MouseHook.MouseMoved -= OnGlobalMouse; MouseHook.Stop(); };
         MouseHook.Start(); // hook is installed from the UI thread → callback runs there too
     }
 

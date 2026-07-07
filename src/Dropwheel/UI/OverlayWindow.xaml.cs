@@ -8,6 +8,11 @@ public partial class OverlayWindow : Window
 {
     private const double HalfSize = 230; // 460x460 window, orb centered
 
+    /// <summary>Интервал таймера наведения с защитой от нуля: нулевой интервал у DispatcherTimer
+    /// заставляет его тикать на каждом проходе диспетчера, поэтому держим разумный минимум.</summary>
+    private static TimeSpan HoverInterval() =>
+        TimeSpan.FromMilliseconds(Math.Max(50, TargetStore.Config.HoverDelayMs));
+
     private readonly DispatcherTimer _hoverTimer;
     private readonly DispatcherTimer _closeTimer;
     private readonly DispatcherTimer _toastTimer;
@@ -17,8 +22,7 @@ public partial class OverlayWindow : Window
     {
         InitializeComponent();
 
-        _hoverTimer = new DispatcherTimer
-        { Interval = TimeSpan.FromMilliseconds(TargetStore.Config.HoverDelayMs) };
+        _hoverTimer = new DispatcherTimer { Interval = HoverInterval() };
         _hoverTimer.Tick += (_, _) => { _hoverTimer.Stop(); OpenCloud(); };
 
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };

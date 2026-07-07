@@ -37,10 +37,14 @@ public static class TargetStore
         Save();
     }
 
+    /// <summary>Пишет через временный файл с последующим переименованием: если процесс убьют
+    /// в момент записи, целевой config.json останется прежним, а не станет полупустым.</summary>
     public static void Save()
     {
         Directory.CreateDirectory(Dir);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(Config, Opts));
+        var tmp = FilePath + ".tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(Config, Opts));
+        File.Move(tmp, FilePath, overwrite: true);
     }
 
     public static IEnumerable<TargetItem> Groups => Config.Targets.Where(t => t.IsGroup);

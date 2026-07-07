@@ -268,8 +268,12 @@ public partial class TargetEditorWindow
     {
         if (_matchesHost == null) return;
         _matchesHost.Children.Clear();
+        // Основной разделитель — перевод строки (поле подписано «one path per line»), но
+        // терпим и запятую с точкой-с-запятой при вставке списка. Пробел не разделитель:
+        // в путях и именах файлов пробелы законны.
         var files = (PreviewInput.Text ?? "")
-            .Split('\n').Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
+            .Split(new[] { '\n', '\r', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
         if (files.Length == 0)
         {
             _matchesHost.Children.Add(Hint("Paste file names into Test files to preview routing."));
@@ -290,8 +294,9 @@ public partial class TargetEditorWindow
                 Text = Path.GetFileName(f), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
             });
         // Условия по размеру/возрасту в предпросмотре считаются нулём: тестовый ввод — это
-        // имена без реальных файлов на диске. Предупреждаем, чтобы результат не сбивал с толку.
-        if (_rules[_selected].All.Any(c => c.Field is ConditionField.SizeMb or ConditionField.AgeDays))
+        // имена без реальных файлов на диске. Предупреждаем, если такое условие есть в ЛЮБОМ
+        // правиле — файл мог молча перехватить другое правило выше по приоритету, а не выбранное.
+        if (_rules.Any(r => r.All.Any(c => c.Field is ConditionField.SizeMb or ConditionField.AgeDays)))
             _matchesHost.Children.Add(Hint(
                 "Size/age here are treated as 0 — test names are not real files, so these preview only by extension/name."));
     }
