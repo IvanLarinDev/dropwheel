@@ -49,6 +49,7 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Open the wheel        | hover the orb (250 ms), click it, or drag a file near it |
 | Drop a file           | drag onto a target tile; badge shows ⧉ copy / ➜ move |
 | Drop text             | drag selected text onto a folder → saves `text_<date>.txt` (`.md` if it looks like Markdown) |
+| Open with an app      | drag files onto an .exe/.bat/.ps1/… target → runs it with them as arguments |
 | Force copy / move     | hold Ctrl / Shift while dropping                   |
 | Undo last drop        | click “Undo” in the toast (6 s)                    |
 | Edit a target         | right-click its tile                               |
@@ -96,6 +97,15 @@ Drag selected text from a browser, editor, or chat onto a folder tile and
 Dropwheel writes it to `text_YYYY-MM-DD_HH-mm-ss.txt` — or `.md` when the text
 looks like Markdown (headings, code fences, links). Dropped on a sorter, the new
 file is routed by the rules; Undo removes it.
+
+## Run targets (open with)
+
+If a target is an executable or script (`.exe`, `.com`, `.bat`, `.cmd`, `.ps1`,
+`.py`, `.pyw`, `.vbs`, `.wsf`, `.js`, `.jar`, or a `.lnk` to one), dropping files
+on its tile runs it with the dropped files as arguments — the Windows "open with"
+behaviour, shown with a ▶ badge. Scripts the shell would only open in an editor
+(`.ps1`, `.py`, `.jar`) are launched through their interpreter. This is a launch,
+not a file operation, so it isn't undoable.
 
 ## Themes
 
