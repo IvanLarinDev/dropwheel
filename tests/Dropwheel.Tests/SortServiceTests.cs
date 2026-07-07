@@ -148,4 +148,30 @@ public sealed class SortServiceTests : IDisposable
         var plan = SortService.Plan(t, new[] { jpg });
         Assert.Contains(jpg, plan[Path.Combine(_root, "Images")]);
     }
+
+    [Fact]
+    public void Invalid_regex_rule_does_not_throw_and_lets_file_fall_through()
+    {
+        var img = MakeFile("IMG_0001.jpg");
+        var t = Sorter(_root,
+            Rule("Broken", ConditionField.NameRegex, CompareOp.Matches, "([unclosed"),
+            Rule("Camera", ConditionField.NameRegex, CompareOp.Matches, "^IMG_"));
+        // Битое правило не должно ронять планирование и не должно ловить файл.
+        var plan = SortService.Plan(t, new[] { img });
+        Assert.Contains(img, plan[Path.Combine(_root, "Camera")]);
+    }
+
+    [Fact]
+    public void MatchedRuleIndex_distinguishes_rules_with_the_same_destination()
+    {
+        // Два правила с одинаковым Dest: индекс должен указывать на реально сработавшее правило.
+        var rules = new List<SortRule>
+        {
+            Rule("Media", ConditionField.Extension, CompareOp.In, "jpg"),
+            Rule("Media", ConditionField.Extension, CompareOp.In, "mp4"),
+        };
+        Assert.Equal(0, SortService.MatchedRuleIndex(rules, "a.jpg"));
+        Assert.Equal(1, SortService.MatchedRuleIndex(rules, "b.mp4"));
+        Assert.Equal(-1, SortService.MatchedRuleIndex(rules, "c.txt"));
+    }
 }

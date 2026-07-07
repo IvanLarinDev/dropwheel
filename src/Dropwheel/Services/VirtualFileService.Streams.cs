@@ -54,6 +54,11 @@ public static partial class VirtualFileService
         finally { Marshal.ReleaseComObject(stream); }
     }
 
+    /// <summary>Сохраняет содержимое из HGLOBAL. Внимание: GlobalSize возвращает размер выделенного
+    /// блока, который может быть округлён вверх относительно реальной длины данных, поэтому в файл
+    /// теоретически могут попасть лишние байты в конце. Достоверного поля «реальная длина» у HGLOBAL
+    /// для CFSTR_FILECONTENTS нет, а обрезать по нулям нельзя (легитимный бинарник тоже содержит нули).
+    /// На практике источники отдают файлы через ISTREAM (ветка выше), а эта — редкий фолбэк.</summary>
     private static void SaveHGlobal(IntPtr h, string path)
     {
         var p = GlobalLock(h);

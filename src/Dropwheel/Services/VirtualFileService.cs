@@ -34,16 +34,24 @@ public static partial class VirtualFileService
         return saved.ToArray();
     }
 
-    // FILEGROUPDESCRIPTORW: UINT cItems; FILEDESCRIPTORW[cItems] (592 bytes each,
-    // cFileName is WCHAR[260] at offset 72).
     private static string[] ReadNames(IDataObject data)
     {
         if (data.GetData(DescriptorFormat) is not MemoryStream ms) return Array.Empty<string>();
-        var buf = ms.ToArray();
+        return ParseDescriptorNames(ms.ToArray());
+    }
+
+    // FILEGROUPDESCRIPTORW: UINT cItems; FILEDESCRIPTORW[cItems] (592 bytes each,
+    // cFileName is WCHAR[260] at offset 72).
+    /// <summary>Extracts the file names from a raw FILEGROUPDESCRIPTORW buffer. Pure so it can be
+    /// tested directly. The item count comes from an external drag source, so an out-of-range value
+    /// (corrupt data) yields an empty result instead of throwing or over-allocating.</summary>
+    internal static string[] ParseDescriptorNames(byte[] buf)
+    {
         if (buf.Length < 4) return Array.Empty<string>();
         int count = BitConverter.ToInt32(buf, 0);
+        if (count <= 0 || count > 4096) return Array.Empty<string>();
         const int EntrySize = 592, NameOffset = 72, NameBytes = 520;
-        var names = new List<string>(count);
+        var names = new List<string>();
         for (int i = 0; i < count; i++)
         {
             int off = 4 + i * EntrySize + NameOffset;

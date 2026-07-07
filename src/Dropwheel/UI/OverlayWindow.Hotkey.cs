@@ -14,7 +14,11 @@ public partial class OverlayWindow
     private void InitHotkeyAndFullscreen()
     {
         try { _hotkey = new HotkeyService(this, TargetStore.Config.Hotkey, OnHotkey); }
-        catch { /* hotkey taken by another app — run without it */ }
+        catch (Exception ex)
+        {
+            // Занята другим приложением или испорчена в конфиге — работаем без неё, но оставляем след.
+            ErrorLog.Write($"Не удалось зарегистрировать хоткей «{TargetStore.Config.Hotkey}» при старте", ex);
+        }
 
         _fsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _fsTimer.Tick += (_, _) =>

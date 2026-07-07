@@ -28,11 +28,20 @@ public static class SortService
     /// list is a catch-all. No match → target root.</summary>
     private static string ResolveFolderV2(TargetItem t, string file)
     {
+        int idx = MatchedRuleIndex(t.Rules!, file);
+        return idx < 0 ? t.Path : Combine(t.Path, t.Rules![idx].Dest);
+    }
+
+    /// <summary>Index of the first rule that fully matches the file, or -1 for no match (file goes
+    /// to the sorter root). Shared by the real router and the editor preview so both agree exactly
+    /// on which rule catches a file — even when several rules share the same destination.</summary>
+    public static int MatchedRuleIndex(IReadOnlyList<SortRule> rules, string file)
+    {
         var meta = FileMeta.Read(file);
-        foreach (var rule in t.Rules!)
-            if (rule.All.All(c => Match(c, meta)))
-                return Combine(t.Path, rule.Dest);
-        return t.Path;
+        for (int i = 0; i < rules.Count; i++)
+            if (rules[i].All.All(c => Match(c, meta)))
+                return i;
+        return -1;
     }
 
     /// <summary>Legacy resolver: match by file extension, "*" is the fallback.</summary>
@@ -61,7 +70,7 @@ public static class SortService
     {
         ConditionField.Extension => MatchExtension(c.Value, meta.Ext),
         ConditionField.NameContains => meta.Name.Contains(c.Value, StringComparison.OrdinalIgnoreCase),
-        ConditionField.NameRegex => Compiled(c.Value).IsMatch(meta.Name),
+        ConditionField.NameRegex => Compiled(c.Value) is { } rx && rx.IsMatch(meta.Name),
         ConditionField.SizeMb => MatchNumber(c.Op, meta.SizeMb, c.Value),
         ConditionField.AgeDays => MatchNumber(c.Op, meta.AgeDays, c.Value),
         _ => false,
@@ -93,13 +102,25 @@ public static class SortService
 
     /// <summary>Regex cache keyed by pattern. Assumes single-threaded use (UI thread); switch to
     /// a concurrent map when the watch feature calls Plan off-thread.</summary>
-    private static readonly Dictionary<string, Regex> RegexCache = new();
+    private static readonly Dictionary<string, Regex?> RegexCache = new();
 
-    private static Regex Compiled(string pattern)
+    /// <summary>Compiled regex for the pattern, or null when the pattern is invalid. A broken
+    /// pattern (possible in a hand-edited config) must not crash a drop, so it is cached as null
+    /// and treated as "never matches"; the rule with it simply lets the file fall through.</summary>
+    private static Regex? Compiled(string pattern)
     {
-        if (!RegexCache.TryGetValue(pattern, out var rx))
-            RegexCache[pattern] = rx = new Regex(pattern,
+        if (RegexCache.TryGetValue(pattern, out var rx)) return rx;
+        try
+        {
+            rx = new Regex(pattern,
                 RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+        catch (ArgumentException ex) // invalid pattern (RegexParseException derives from this)
+        {
+            ErrorLog.Write($"Некорректное регулярное выражение в правиле: «{pattern}»", ex);
+            rx = null;
+        }
+        RegexCache[pattern] = rx;
         return rx;
     }
 }

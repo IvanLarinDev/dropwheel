@@ -10,7 +10,7 @@ public static class LaunchService
 
     /// <summary>The path a target really points at: a .lnk is resolved to its target (cached to
     /// avoid repeated COM calls during drag-over), anything else is returned unchanged.</summary>
-    private static string EffectivePath(string path)
+    public static string EffectivePath(string path)
     {
         if (!path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)) return path;
         if (LnkCache.TryGetValue(path, out var cached)) return cached;
@@ -18,6 +18,16 @@ public static class LaunchService
         LnkCache[path] = resolved;
         return resolved;
     }
+
+    /// <summary>Destination folder for a folder target: the target's real path, with a .lnk
+    /// resolved to the folder it points at. Used as the copy/move destination for a drop.</summary>
+    public static string DestPath(TargetItem t) => EffectivePath(t.Path);
+
+    /// <summary>Whether files can be dropped into this target as into a folder — true for a real
+    /// folder and for a .lnk that points at one (unlike TargetItem.IsFolder, which tests the raw
+    /// path and so misses shortcut-to-folder targets).</summary>
+    public static bool IsFolderTarget(TargetItem t) =>
+        !t.IsGroup && Directory.Exists(EffectivePath(t.Path));
 
     /// <summary>Whether dropping files on this target should run it with them as arguments —
     /// true for executable/script targets, including a .lnk that points at one.</summary>

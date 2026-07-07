@@ -32,7 +32,7 @@ public partial class OverlayWindow
             e.Handled = true;
             return;
         }
-        if ((!real && !virt && !text) || !t.IsFolder)
+        if ((!real && !virt && !text) || !LaunchService.IsFolderTarget(t))
         { e.Effects = DragDropEffects.None; e.Handled = true; return; }
 
         var act = virt || text ? DropAction.Copy : Resolve(t, e); // virtual files and text: copy only
@@ -46,13 +46,26 @@ public partial class OverlayWindow
     private void OnBubbleDrop(TargetItem t, Border badge, DragEventArgs e)
     {
         badge.Visibility = Visibility.Collapsed;
+        try { OnBubbleDropCore(t, e); }
+        catch (Exception ex)
+        {
+            ErrorLog.Write($"Ошибка при дропе на «{t.Name}»", ex);
+            ShowToast("Не удалось выполнить операцию");
+        }
+        CloseCloud();
+        e.Handled = true;
+    }
+
+    private void OnBubbleDropCore(TargetItem t, DragEventArgs e)
+    {
+        // Цель-ярлык (.lnk) на папку хранит путь самого ярлыка — разворачиваем его,
+        // чтобы файлы легли в целевую папку, а не рядом с .lnk.
+        var dest = LaunchService.DestPath(t);
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
         {
             if (t.IsSorter)
             {
                 DropSorted(t, files, Resolve(t, e));
-                CloseCloud();
-                e.Handled = true;
                 return;
             }
             if (LaunchService.IsRunTarget(t))
@@ -61,24 +74,22 @@ public partial class OverlayWindow
                 ShowToast(launched
                     ? $"▶ Opened {files.Length} item(s) with {t.Name}"
                     : "Could not launch");
-                CloseCloud();
-                e.Handled = true;
                 return;
             }
             var act = Resolve(t, e);
-            bool ok = FileOps.Execute(files, t.Path, act);
-            if (ok) RememberOp(act, files, t.Path);
+            bool ok = FileOps.Execute(files, dest, act);
+            if (ok) RememberOp(act, files, dest);
             ShowToast(ok
                 ? $"{(act == DropAction.Move ? "➜ Moved" : "⧉ Copied")}: {files.Length} item(s) → {t.Name}"
                 : "Operation was not completed", ok);
         }
         else if (VirtualFileService.HasVirtualFiles(e.Data))
         {
-            var saved = VirtualFileService.Extract(e.Data, t.Path);
+            var saved = VirtualFileService.Extract(e.Data, dest);
             if (saved.Length > 0)
             {
                 if (t.IsSorter) SortSavedVirtuals(t, saved);
-                else RememberOp(DropAction.Copy, saved, t.Path);
+                else RememberOp(DropAction.Copy, saved, dest);
             }
             ShowToast(saved.Length > 0
                 ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
@@ -86,17 +97,15 @@ public partial class OverlayWindow
         }
         else if (TextDropService.HasText(e.Data))
         {
-            var saved = TextDropService.SaveFrom(e.Data, t.Path, DateTime.Now);
+            var saved = TextDropService.SaveFrom(e.Data, dest, DateTime.Now);
             if (saved is { } path)
             {
                 if (t.IsSorter) SortSavedVirtuals(t, new[] { path });
-                else RememberOp(DropAction.Copy, new[] { path }, t.Path);
+                else RememberOp(DropAction.Copy, new[] { path }, dest);
             }
             ShowToast(saved != null
                 ? $"≡ Saved text → {System.IO.Path.GetFileName(saved)}"
                 : "No text to save", saved != null);
         }
-        CloseCloud();
-        e.Handled = true;
     }
 }

@@ -18,6 +18,16 @@ public partial class App : Application
         if (!isNew) { Shutdown(); return; }
         base.OnStartup(e);
 
+        // Страховочная сетка: приложение живёт в трее, и падение в обработчике
+        // drop/click/таймера не должно ронять весь процесс. Ошибку логируем,
+        // а не глотаем молча, и показываем короткий тост.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            ErrorLog.Write("Необработанное исключение", args.Exception);
+            _overlay?.NotifyError("Что-то пошло не так — подробности в error.log");
+            args.Handled = true;
+        };
+
         StartupService.RefreshPath();
         TargetStore.Load();
         _overlay = new OverlayWindow();

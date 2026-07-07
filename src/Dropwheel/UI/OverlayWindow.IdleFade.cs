@@ -46,7 +46,13 @@ public partial class OverlayWindow
         _hotkey?.Dispose();
         _hotkey = null;
         try { _hotkey = new HotkeyService(this, TargetStore.Config.Hotkey, OnHotkey); }
-        catch { /* hotkey taken */ }
+        catch (Exception ex)
+        {
+            // Строка уже проверена в настройках, значит комбинацию занял другой процесс —
+            // сообщаем пользователю, а не молчим.
+            ErrorLog.Write($"Не удалось зарегистрировать хоткей «{TargetStore.Config.Hotkey}»", ex);
+            ShowToast($"Горячая клавиша {TargetStore.Config.Hotkey} занята другим приложением");
+        }
     }
 
     public void OpenSettings()

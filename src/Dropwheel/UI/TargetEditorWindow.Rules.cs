@@ -276,13 +276,12 @@ public partial class TargetEditorWindow
             return;
         }
         if (_selected < 0 || _selected >= _rules.Count) return;
-        var temp = new TargetItem { Path = PathBox.Text.Trim(), Rules = _rules };
-        var plan = SortService.Plan(temp, files);
-        var dest = ResolveDest(temp.Path, _rules[_selected].Dest);
-        var here = plan.TryGetValue(dest, out var list) ? list : new List<string>();
+        // Считаем по номеру правила, а не по папке назначения: два правила с одинаковым
+        // Dest больше не приписывают друг другу файлы.
+        var here = files.Where(f => SortService.MatchedRuleIndex(_rules, f) == _selected).ToArray();
         _matchesHost.Children.Add(new TextBlock
         {
-            Text = $"Routes here: {here.Count} of {files.Length}", FontSize = 11, Foreground = Palettes.TextMuted,
+            Text = $"Routes here: {here.Length} of {files.Length}", FontSize = 11, Foreground = Palettes.TextMuted,
             Margin = new Thickness(0, 0, 0, 2),
         });
         foreach (var f in here)
@@ -290,11 +289,12 @@ public partial class TargetEditorWindow
             {
                 Text = Path.GetFileName(f), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
             });
+        // Условия по размеру/возрасту в предпросмотре считаются нулём: тестовый ввод — это
+        // имена без реальных файлов на диске. Предупреждаем, чтобы результат не сбивал с толку.
+        if (_rules[_selected].All.Any(c => c.Field is ConditionField.SizeMb or ConditionField.AgeDays))
+            _matchesHost.Children.Add(Hint(
+                "Size/age here are treated as 0 — test names are not real files, so these preview only by extension/name."));
     }
-
-    private static string ResolveDest(string root, string dest) =>
-        string.IsNullOrWhiteSpace(dest) ? root
-        : Path.IsPathRooted(dest) ? dest : Path.Combine(root, dest);
 
     // ── Presets ────────────────────────────────────────────────────────────
 
