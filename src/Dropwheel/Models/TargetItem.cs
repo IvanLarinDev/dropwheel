@@ -27,8 +27,20 @@ public class TargetItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<SortRule>? Rules { get; set; }
 
+    /// <summary>Extensions treated as "drop files to run it with them as arguments" targets.</summary>
+    public static readonly string[] ExeExtensions =
+        { ".exe", ".com", ".bat", ".cmd", ".ps1", ".py", ".pyw", ".vbs", ".wsf", ".js", ".jar" };
+
+    public static bool IsExeExtension(string path) =>
+        ExeExtensions.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant());
+
     [JsonIgnore] public bool IsGroup => Children != null;
     [JsonIgnore] public bool IsSorter => SortRules is { Count: > 0 } || Rules is { Count: > 0 };
     [JsonIgnore] public bool IsFolder => !IsGroup && Directory.Exists(Path);
+
+    /// <summary>An executable or script by its own extension. A .lnk that points at an executable
+    /// is handled by LaunchService.IsRunTarget, which resolves the shortcut first.</summary>
+    [JsonIgnore] public bool IsExecutable => !IsGroup && IsExeExtension(Path);
+
     [JsonIgnore] public bool Exists => IsGroup || IsFolder || File.Exists(Path);
 }

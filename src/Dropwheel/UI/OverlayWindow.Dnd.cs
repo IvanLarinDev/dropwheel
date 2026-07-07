@@ -22,6 +22,16 @@ public partial class OverlayWindow
         bool real = e.Data.GetDataPresent(DataFormats.FileDrop);
         bool virt = !real && VirtualFileService.HasVirtualFiles(e.Data);
         bool text = !real && !virt && TextDropService.HasText(e.Data);
+
+        if (real && LaunchService.IsRunTarget(t)) // drop files on an exe/script → run it (open with)
+        {
+            e.Effects = DragDropEffects.Link;
+            ((TextBlock)badge.Child).Text = "▶";
+            badge.Background = Brushes.CornflowerBlue;
+            badge.Visibility = Visibility.Visible;
+            e.Handled = true;
+            return;
+        }
         if ((!real && !virt && !text) || !t.IsFolder)
         { e.Effects = DragDropEffects.None; e.Handled = true; return; }
 
@@ -41,6 +51,16 @@ public partial class OverlayWindow
             if (t.IsSorter)
             {
                 DropSorted(t, files, Resolve(t, e));
+                CloseCloud();
+                e.Handled = true;
+                return;
+            }
+            if (LaunchService.IsRunTarget(t))
+            {
+                bool launched = LaunchService.LaunchWith(t, files);
+                ShowToast(launched
+                    ? $"▶ Opened {files.Length} item(s) with {t.Name}"
+                    : "Could not launch");
                 CloseCloud();
                 e.Handled = true;
                 return;
