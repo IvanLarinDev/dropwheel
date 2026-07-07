@@ -74,8 +74,8 @@ public partial class App
         public override SD.Color SeparatorLight => _bg;
     }
 
-    // Собственная иконка трея (её нативный хендл нужно освободить при выходе). Остаётся null,
-    // если используется общесистемная SystemIcons.Application — её трогать Dispose нельзя.
+    // The tray's own icon (its native handle must be freed on exit). Stays null when the shared
+    // SystemIcons.Application is used — that one must not be disposed.
     private SD.Icon? _appIcon;
 
     private SD.Icon LoadAppIcon()
@@ -107,8 +107,9 @@ public partial class App
         // No Save() here on purpose: config is written on every change,
         // and saving on exit let a stale instance overwrite edits made
         // on disk or by another instance.
+        _watcher?.Stop();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
-        _appIcon?.Dispose(); // NotifyIcon.Dispose не освобождает переданную ему иконку
+        _appIcon?.Dispose(); // NotifyIcon.Dispose does not free the icon handed to it
         Shutdown();
     }
 }

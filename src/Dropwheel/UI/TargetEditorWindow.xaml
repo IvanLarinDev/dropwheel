@@ -49,6 +49,9 @@
                     <Button Content="Presets ▾" Click="OnPresetsClick" DockPanel.Dock="Right" Padding="8,2"/>
                     <Button Content="+ Rule" Click="OnAddRule" Padding="8,2" HorizontalAlignment="Left"/>
                 </DockPanel>
+                <CheckBox x:Name="WatchBox" Content="Watch folder, auto-sort new files"
+                          Margin="0,14,0,0" TextBlock.LineHeight="16"
+                          ToolTip="A background watcher moves files that appear in this folder into subfolders by these rules. Auto-sort is not tracked by Undo — revert it from Explorer if needed."/>
             </StackPanel>
 
             <Border x:Name="DetailPanel" Grid.Column="2" Width="430" Margin="16,0,0,0"

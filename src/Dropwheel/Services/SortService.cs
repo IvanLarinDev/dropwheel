@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -183,9 +184,10 @@ public static class SortService
         };
     }
 
-    /// <summary>Regex cache keyed by pattern. Assumes single-threaded use (UI thread); switch to
-    /// a concurrent map when the watch feature calls Plan off-thread.</summary>
-    private static readonly Dictionary<string, Regex?> RegexCache = new();
+    /// <summary>Regex cache keyed by pattern. Thread-safe: the folder watcher calls Plan from
+    /// background threads, so this must not assume the UI thread. A race may compile the same pattern
+    /// twice, but the results are identical, so last-write-wins is harmless.</summary>
+    private static readonly ConcurrentDictionary<string, Regex?> RegexCache = new();
 
     /// <summary>Compiled regex for the pattern, or null when the pattern is invalid. A broken
     /// pattern (possible in a hand-edited config) must not crash a drop, so it is cached as null
@@ -200,7 +202,7 @@ public static class SortService
         }
         catch (ArgumentException ex) // invalid pattern (RegexParseException derives from this)
         {
-            ErrorLog.Write($"Некорректное регулярное выражение в правиле: «{pattern}»", ex);
+            ErrorLog.Write($"Invalid regular expression in rule: '{pattern}'", ex);
             rx = null;
         }
         RegexCache[pattern] = rx;

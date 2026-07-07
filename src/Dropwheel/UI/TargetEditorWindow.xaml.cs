@@ -77,6 +77,7 @@ public partial class TargetEditorWindow : Window
             {
                 _target.Rules = _rules.Count > 0 ? _rules : null;
                 _target.SortRules = null;
+                _target.Watch = WatchBox.IsChecked == true && _target.Rules != null;
             }
         }
         _target.Pinned = PinBox.IsChecked == true;

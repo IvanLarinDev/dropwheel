@@ -27,6 +27,11 @@ public class TargetItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<SortRule>? Rules { get; set; }
 
+    /// <summary>When true and this is a folder sorter, a background watcher auto-sorts files that
+    /// appear in Path by the same rules. Auto-sort moves files and is not tracked by Undo.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Watch { get; set; }
+
     /// <summary>Extensions treated as "drop files to run it with them as arguments" targets.</summary>
     public static readonly string[] ExeExtensions =
         { ".exe", ".com", ".bat", ".cmd", ".ps1", ".py", ".pyw", ".vbs", ".wsf", ".js", ".jar" };

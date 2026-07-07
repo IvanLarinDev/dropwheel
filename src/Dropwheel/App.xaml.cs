@@ -11,6 +11,7 @@ public partial class App : Application
     private static Mutex? _mutex;
     private WF.NotifyIcon? _tray;
     private OverlayWindow? _overlay;
+    private WatcherService? _watcher;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -18,13 +19,13 @@ public partial class App : Application
         if (!isNew) { Shutdown(); return; }
         base.OnStartup(e);
 
-        // Страховочная сетка: приложение живёт в трее, и падение в обработчике
-        // drop/click/таймера не должно ронять весь процесс. Ошибку логируем,
-        // а не глотаем молча, и показываем короткий тост.
+        // Safety net: the app lives in the tray, and a crash in a drop/click/timer handler must
+        // not take down the whole process. Log the error instead of swallowing it, and show a
+        // short toast.
         DispatcherUnhandledException += (_, args) =>
         {
-            ErrorLog.Write("Необработанное исключение", args.Exception);
-            _overlay?.NotifyError("Что-то пошло не так — подробности в error.log");
+            ErrorLog.Write("Unhandled exception", args.Exception);
+            _overlay?.NotifyError("Something went wrong — see error.log for details");
             args.Handled = true;
         };
 
@@ -33,5 +34,13 @@ public partial class App : Application
         _overlay = new OverlayWindow();
         _overlay.Show();
         InitTray();
+
+        _watcher = new WatcherService(Dispatcher, ShowSortedToast);
+        _watcher.Start();
     }
+
+    /// <summary>Unobtrusively reports that background auto-sort moved something. The toast coalesces
+    /// a burst of files into one notification (see WatcherService).</summary>
+    private void ShowSortedToast(int count) =>
+        _tray?.ShowBalloonTip(3000, "Dropwheel", $"Sorted {count} file(s)", WF.ToolTipIcon.Info);
 }

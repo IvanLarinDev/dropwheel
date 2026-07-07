@@ -8,7 +8,8 @@ namespace Dropwheel.Services;
 public static class FileOps
 {
     private const uint FO_MOVE = 0x0001, FO_COPY = 0x0002, FO_DELETE = 0x0003;
-    private const ushort FOF_ALLOWUNDO = 0x0040, FOF_NOCONFIRMMKDIR = 0x0200, FOF_NOCONFIRMATION = 0x0010;
+    private const ushort FOF_ALLOWUNDO = 0x0040, FOF_NOCONFIRMMKDIR = 0x0200, FOF_NOCONFIRMATION = 0x0010,
+        FOF_SILENT = 0x0004, FOF_NOERRORUI = 0x0400;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct SHFILEOPSTRUCT
@@ -26,16 +27,21 @@ public static class FileOps
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHFileOperation(ref SHFILEOPSTRUCT op);
 
-    public static bool Execute(IEnumerable<string> files, string destFolder, DropAction action)
+    /// <summary>Copy or move files into destFolder. When silent (used by the folder watcher for
+    /// auto-sort) the shell shows no progress window, no error UI and no conflict prompt — collisions
+    /// are auto-renamed — so background sorting never interrupts the user with dialogs.</summary>
+    public static bool Execute(IEnumerable<string> files, string destFolder, DropAction action, bool silent = false)
     {
         var list = files.ToArray();
-        if (list.Length == 0) return true; // нечего делать — не зовём SHFileOperation с пустым списком
+        if (list.Length == 0) return true; // nothing to do — don't call SHFileOperation with an empty list
+        ushort flags = FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR;
+        if (silent) flags |= (ushort)(FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION);
         var op = new SHFILEOPSTRUCT
         {
             wFunc  = action == DropAction.Move ? FO_MOVE : FO_COPY,
             pFrom  = string.Join("\0", list) + "\0\0",
             pTo    = destFolder + "\0\0",
-            fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR,
+            fFlags = flags,
         };
         return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
     }

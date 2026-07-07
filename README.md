@@ -89,6 +89,14 @@ one pattern both matches and routes, and the editor lists the tokens a rule can 
 right under the destination box. A file that matches the rule but leaves a token empty
 goes to the target root rather than into a half-built path.
 
+**Watch a folder** — a folder sorter can watch itself. Tick **Watch folder, auto-sort
+new files** in the rule editor and Dropwheel routes files that appear in the folder by
+the same rules, in the background. It waits for a file to finish copying before moving
+it, watches only the top level (files routed into subfolders don't re-trigger it), and
+leaves a file in place when no rule matches. A tray notification reports how many files
+were sorted. Auto-sort **moves** files and is **not** tracked by Undo — revert from
+Explorer if needed.
+
 The legacy extension map still loads and is migrated to rules on first edit:
 
     { "Name": "Sort", "Path": "D:\\Sorted",
@@ -139,14 +147,14 @@ are tuned per theme.
       Models/    TargetItem, AppConfig, SortRule (conditions), FilePreset
       Services/  TargetStore (JSON config), FileOps (SHFileOperation),
                  VirtualFileService, TextDropService, SortService, SortMigration,
-                 FileMeta, PresetService, ShortcutResolver, MouseHook,
-                 HotkeyService, LaunchService, IconService, StartupService,
-                 FullscreenDetector
+                 WatcherService (auto-sort watched folders), FileMeta, PresetService,
+                 ShortcutResolver, MouseHook, HotkeyService, LaunchService,
+                 IconService, StartupService, FullscreenDetector
       UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
                  TargetEditorWindow (+ .Rules master-detail), SettingsWindow,
                  Themes, Palette (per-theme widget colours), MenuTheme.xaml
     tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta,
-                 TextDropService)
+                 TextDropService, WatcherService, HotkeyService, VirtualFileService)
     docs/media/  screenshots and gifs used by this README
 
 ## Known limitations

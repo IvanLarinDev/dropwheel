@@ -9,6 +9,15 @@ public static class TargetStore
 {
     public static AppConfig Config { get; private set; } = new();
 
+    /// <summary>Raised after the config is written to disk. The folder watcher listens to this to
+    /// re-sync its FileSystemWatchers when targets or their Watch flag change.</summary>
+    public static event Action? Saved;
+
+    /// <summary>Every routable target, flattening one level of groups (groups themselves are not
+    /// targets). Used to find all sorters that opted into folder watching.</summary>
+    public static IEnumerable<TargetItem> AllTargets =>
+        Config.Targets.SelectMany(t => t.IsGroup ? (IEnumerable<TargetItem>)t.Children! : new[] { t });
+
     public static string Dir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Dropwheel");
     public static string FilePath => Path.Combine(Dir, "config.json");
@@ -37,14 +46,15 @@ public static class TargetStore
         Save();
     }
 
-    /// <summary>Пишет через временный файл с последующим переименованием: если процесс убьют
-    /// в момент записи, целевой config.json останется прежним, а не станет полупустым.</summary>
+    /// <summary>Writes via a temp file then renames it: if the process is killed mid-write, the
+    /// target config.json stays intact instead of becoming half-empty.</summary>
     public static void Save()
     {
         Directory.CreateDirectory(Dir);
         var tmp = FilePath + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(Config, Opts));
         File.Move(tmp, FilePath, overwrite: true);
+        Saved?.Invoke();
     }
 
     public static IEnumerable<TargetItem> Groups => Config.Targets.Where(t => t.IsGroup);

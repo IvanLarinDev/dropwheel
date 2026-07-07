@@ -42,6 +42,7 @@ public partial class TargetEditorWindow
         PreviewPanel.Background = Palettes.Surface;
         PreviewPanel.BorderBrush = Palettes.Accent;
         _matchesHost = MatchesHost;
+        WatchBox.IsChecked = _target.Watch;
         ConvertBtn.Visibility = Visibility.Collapsed;
         if (_selected < 0 && _rules.Count > 0) _selected = 0;
         RebuildMaster();
@@ -305,8 +306,8 @@ public partial class TargetEditorWindow
 
     private void OnPreviewChanged(object sender, TextChangedEventArgs e) => RefreshMatches();
 
-    /// <summary>Перетаскивание файлов на поле «Test files»: показываем курсор копирования только
-    /// для настоящих файлов, чтобы обычное перетаскивание текста внутри поля работало как раньше.</summary>
+    /// <summary>Dragging files onto the Test files box: show the copy cursor only for real files, so
+    /// ordinary text dragging inside the box keeps working as before.</summary>
     private void OnPreviewFilesDragOver(object sender, DragEventArgs e)
     {
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -316,8 +317,8 @@ public partial class TargetEditorWindow
         }
     }
 
-    /// <summary>Добавляет пути брошенных файлов в поле — по одному на строку, дописывая к тому,
-    /// что уже введено. Изменение текста само запускает пересчёт предпросмотра.</summary>
+    /// <summary>Appends the dropped file paths to the box — one per line, after whatever is already
+    /// there. The text change itself re-runs the preview.</summary>
     private void OnPreviewFilesDrop(object sender, DragEventArgs e)
     {
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
@@ -336,9 +337,9 @@ public partial class TargetEditorWindow
     {
         if (_matchesHost == null) return;
         _matchesHost.Children.Clear();
-        // Основной разделитель — перевод строки (поле подписано «one path per line»), но
-        // терпим и запятую с точкой-с-запятой при вставке списка. Пробел не разделитель:
-        // в путях и именах файлов пробелы законны.
+        // The primary separator is a newline (the box is labeled "one path per line"), but we also
+        // tolerate commas and semicolons when a list is pasted. A space is not a separator: spaces
+        // are legal in paths and file names.
         var files = (PreviewInput.Text ?? "")
             .Split(new[] { '\n', '\r', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
@@ -348,9 +349,9 @@ public partial class TargetEditorWindow
             return;
         }
         if (_selected < 0 || _selected >= _rules.Count) return;
-        // Правило без условий (catch-all) совпадает с любым файлом, поэтому всё, что стоит после
-        // первого такого правила, недостижимо. Показываем явное предупреждение — иначе «Routes
-        // here: 0 of N» у нижнего правила выглядит необъяснимо.
+        // A rule with no conditions (catch-all) matches every file, so anything after the first such
+        // rule is unreachable. Show an explicit warning — otherwise "Routes here: 0 of N" on a lower
+        // rule looks inexplicable.
         int firstCatchAll = -1;
         for (int i = 0; i < _rules.Count; i++)
             if (_rules[i].All.Count == 0) { firstCatchAll = i; break; }
@@ -358,8 +359,8 @@ public partial class TargetEditorWindow
             _matchesHost.Children.Add(Hint(
                 $"Unreachable: rule {firstCatchAll + 1} ({FriendlyDest(_rules[firstCatchAll].Dest)}) " +
                 "is a catch-all and takes every file first. Move it down or add conditions."));
-        // Считаем по номеру правила, а не по папке назначения: два правила с одинаковым
-        // Dest больше не приписывают друг другу файлы.
+        // Count by rule index, not by destination folder: two rules with the same Dest no longer
+        // attribute each other's files.
         var here = files.Where(f => SortService.MatchedRuleIndex(_rules, f) == _selected).ToArray();
         _matchesHost.Children.Add(new TextBlock
         {
@@ -375,9 +376,9 @@ public partial class TargetEditorWindow
                     : Path.GetFileName(f),
                 FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
             });
-        // Условия по размеру/возрасту в предпросмотре считаются нулём: тестовый ввод — это
-        // имена без реальных файлов на диске. Предупреждаем, если такое условие есть в ЛЮБОМ
-        // правиле — файл мог молча перехватить другое правило выше по приоритету, а не выбранное.
+        // Size/age conditions are treated as zero in the preview: the test input is names without
+        // real files on disk. Warn if any rule has such a condition — a file might have been silently
+        // caught by a higher-priority rule rather than the selected one.
         if (_rules.Any(r => r.All.Any(c => c.Field is ConditionField.SizeMb or ConditionField.AgeDays)))
             _matchesHost.Children.Add(Hint(
                 "Size/age here are treated as 0 — test names are not real files, so these preview only by extension/name."));
