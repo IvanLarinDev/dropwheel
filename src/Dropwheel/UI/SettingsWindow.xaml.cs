@@ -25,14 +25,14 @@ public partial class SettingsWindow : Window
     {
         var c = TargetStore.Config;
         var hk = HotkeyBox.Text.Trim();
-        // Пустое поле означает «оставить прежний хоткей»; непустой, но нераспознаваемый —
-        // ошибка ввода: не сохраняем и не затираем рабочую комбинацию в конфиге.
+        // An empty field means "keep the current hotkey"; a non-empty but unrecognized one is an
+        // input error: don't save and don't overwrite the working combo in config.
         if (hk.Length > 0 && !HotkeyService.IsValid(hk))
         {
             MessageBox.Show(this,
-                "Не удалось распознать сочетание клавиш.\n" +
-                "Пример правильного: Ctrl+Alt+Space. Нужны модификатор(ы) и одна клавиша.",
-                "Горячая клавиша", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "Could not recognize the key combination.\n" +
+                "A valid example: Ctrl+Alt+Space. It needs modifier(s) and one key.",
+                "Hotkey", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (ThemeBox.SelectedItem is string theme) c.Theme = theme;

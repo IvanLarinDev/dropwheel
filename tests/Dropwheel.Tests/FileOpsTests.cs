@@ -4,8 +4,8 @@ using Dropwheel.Services;
 
 namespace Dropwheel.Tests;
 
-/// <summary>Проверяет, что файловые операции на пустом списке не зовут SHFileOperation
-/// со странным пустым pFrom, а сразу отвечают успехом (делать нечего).</summary>
+/// <summary>Verifies that file operations on an empty list don't call SHFileOperation with a weird
+/// empty pFrom, but return success right away (nothing to do).</summary>
 public sealed class FileOpsTests
 {
     [Theory]

@@ -2,17 +2,17 @@ using System.IO;
 
 namespace Dropwheel.Services;
 
-/// <summary>Пишет ошибки в error.log рядом с config.json. Нужен, чтобы проблемы не
-/// пропадали молча: глобальный перехватчик, битые правила и неудачная регистрация
-/// горячей клавиши оставляют здесь след. Сам логер никогда не бросает исключений.</summary>
+/// <summary>Writes errors to error.log next to config.json. It exists so problems don't disappear
+/// silently: the global handler, broken rules and a failed hotkey registration all leave a trace
+/// here. The logger itself never throws.</summary>
 public static class ErrorLog
 {
     private static readonly object Gate = new();
 
     public static string FilePath => Path.Combine(TargetStore.Dir, "error.log");
 
-    /// <summary>Дописывает строку с меткой времени. Ошибки записи проглатываются
-    /// намеренно — логирование не должно рушить приложение.</summary>
+    /// <summary>Appends a timestamped line. Write failures are swallowed on purpose — logging must
+    /// not crash the app.</summary>
     public static void Write(string message, Exception? ex = null)
     {
         try
@@ -23,6 +23,6 @@ public static class ErrorLog
                 : $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {message}: {ex.GetType().Name}: {ex.Message}";
             lock (Gate) File.AppendAllText(FilePath, line + Environment.NewLine);
         }
-        catch { /* некуда писать — это не критично */ }
+        catch { /* nowhere to write — not critical */ }
     }
 }

@@ -156,7 +156,7 @@ public sealed class SortServiceTests : IDisposable
         var t = Sorter(_root,
             Rule("Broken", ConditionField.NameRegex, CompareOp.Matches, "([unclosed"),
             Rule("Camera", ConditionField.NameRegex, CompareOp.Matches, "^IMG_"));
-        // Битое правило не должно ронять планирование и не должно ловить файл.
+        // A broken rule must not crash planning and must not catch the file.
         var plan = SortService.Plan(t, new[] { img });
         Assert.Contains(img, plan[Path.Combine(_root, "Camera")]);
     }
@@ -164,7 +164,7 @@ public sealed class SortServiceTests : IDisposable
     [Fact]
     public void MatchedRuleIndex_distinguishes_rules_with_the_same_destination()
     {
-        // Два правила с одинаковым Dest: индекс должен указывать на реально сработавшее правило.
+        // Two rules with the same Dest: the index must point at the rule that actually matched.
         var rules = new List<SortRule>
         {
             Rule("Media", ConditionField.Extension, CompareOp.In, "jpg"),
@@ -190,7 +190,7 @@ public sealed class SortServiceTests : IDisposable
     [Fact]
     public void Token_without_a_matching_group_sends_file_to_root()
     {
-        // Правило совпало по группе ep, но в пути есть ${zzz}, которого нет — файл в корень.
+        // The rule matched on group ep, but the path has ${zzz}, which doesn't exist — file to root.
         var f = MakeFile("ep001_sq001.mov");
         var t = Sorter(_root, Rule("episodes\\${ep}\\${zzz}",
             ConditionField.NameRegex, CompareOp.Matches, @"(?<ep>ep\d+)"));
@@ -201,7 +201,7 @@ public sealed class SortServiceTests : IDisposable
     [Fact]
     public void Optional_group_that_captures_nothing_sends_file_to_root()
     {
-        // Группа sh необязательна и не захватилась — путь не собрать, файл в корень.
+        // Group sh is optional and didn't capture — the path can't be built, file goes to root.
         var f = MakeFile("ep001_sq001.mov");
         var t = Sorter(_root, Rule("episodes\\${ep}\\${sh}",
             ConditionField.NameRegex, CompareOp.Matches, @"(?<ep>ep\d+)_sq\d+(?:_(?<sh>sh\d+))?"));
@@ -212,7 +212,7 @@ public sealed class SortServiceTests : IDisposable
     [Fact]
     public void Dest_without_placeholders_is_unchanged_by_the_token_engine()
     {
-        // Регресс: обычный Dest со скобочными группами в условии, но без ${…}, ведёт себя как раньше.
+        // Regression: a plain Dest with capture groups in the condition but no ${…} behaves as before.
         var f = MakeFile("ep001_x.mov");
         var t = Sorter(_root, Rule("Plain",
             ConditionField.NameRegex, CompareOp.Matches, @"(?<ep>ep\d+)"));
@@ -233,7 +233,7 @@ public sealed class SortServiceTests : IDisposable
     [Fact]
     public void ExpandTemplate_strips_illegal_path_chars_from_a_captured_value()
     {
-        // Захват содержит запрещённые в имени папки символы — они вычищаются.
+        // The capture contains characters illegal in a folder name — they are stripped.
         var rule = Rule("${x}", ConditionField.NameRegex, CompareOp.Matches, @"(?<x>.+)");
         var result = SortService.ExpandTemplate(rule, "a<b>c", out bool ok);
         Assert.True(ok);

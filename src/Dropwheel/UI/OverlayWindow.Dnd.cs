@@ -49,8 +49,8 @@ public partial class OverlayWindow
         try { OnBubbleDropCore(t, e); }
         catch (Exception ex)
         {
-            ErrorLog.Write($"Ошибка при дропе на «{t.Name}»", ex);
-            ShowToast("Не удалось выполнить операцию");
+            ErrorLog.Write($"Error dropping onto '{t.Name}'", ex);
+            ShowToast("The operation could not be completed");
         }
         CloseCloud();
         e.Handled = true;
@@ -58,8 +58,8 @@ public partial class OverlayWindow
 
     private void OnBubbleDropCore(TargetItem t, DragEventArgs e)
     {
-        // Цель-ярлык (.lnk) на папку хранит путь самого ярлыка — разворачиваем его,
-        // чтобы файлы легли в целевую папку, а не рядом с .lnk.
+        // A shortcut target (.lnk) to a folder stores the shortcut's own path — resolve it so files
+        // land in the target folder, not next to the .lnk.
         var dest = LaunchService.DestPath(t);
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
         {

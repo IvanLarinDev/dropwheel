@@ -24,7 +24,7 @@ public static partial class VirtualFileService
         com.GetData(ref fmt, out STGMEDIUM med);
         try
         {
-            if (med.unionmember == IntPtr.Zero) return false; // источник не отдал носитель для этого индекса
+            if (med.unionmember == IntPtr.Zero) return false; // the source gave no medium for this index
             if (med.tymed == TYMED.TYMED_ISTREAM) { SaveIStream(med.unionmember, path); return true; }
             if (med.tymed == TYMED.TYMED_HGLOBAL) { SaveHGlobal(med.unionmember, path); return true; }
             return false;
@@ -55,11 +55,11 @@ public static partial class VirtualFileService
         finally { Marshal.ReleaseComObject(stream); }
     }
 
-    /// <summary>Сохраняет содержимое из HGLOBAL. Внимание: GlobalSize возвращает размер выделенного
-    /// блока, который может быть округлён вверх относительно реальной длины данных, поэтому в файл
-    /// теоретически могут попасть лишние байты в конце. Достоверного поля «реальная длина» у HGLOBAL
-    /// для CFSTR_FILECONTENTS нет, а обрезать по нулям нельзя (легитимный бинарник тоже содержит нули).
-    /// На практике источники отдают файлы через ISTREAM (ветка выше), а эта — редкий фолбэк.</summary>
+    /// <summary>Saves content from an HGLOBAL. Note: GlobalSize returns the allocated block size,
+    /// which may be rounded up beyond the real data length, so a few extra trailing bytes can end up
+    /// in the file. HGLOBAL for CFSTR_FILECONTENTS has no reliable "real length" field, and trimming
+    /// trailing zeros is wrong (a legitimate binary also contains zeros). In practice sources deliver
+    /// files via ISTREAM (the branch above); this is a rare fallback.</summary>
     private static void SaveHGlobal(IntPtr h, string path)
     {
         var p = GlobalLock(h);

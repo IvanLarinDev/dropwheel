@@ -60,11 +60,11 @@ public sealed class HotkeyService : IDisposable
     /// <summary>Whether the string is a hotkey the app can actually register.</summary>
     public static bool IsValid(string s) => TryParse(s, out _, out _);
 
-    /// <summary>Раскладка ЙЦУКЕН: одиночная кириллическая буква переводится в латинскую клавишу той
-    /// же физической позиции. Без этого пользователь на русской раскладке набирает в поле хоткея
-    /// визуально верную «С», а KeyConverter её не распознаёт и комбинация ошибочно считается битой.
-    /// Регистрируется всё равно виртуальная клавиша по позиции, поэтому нажатие сработает при любой
-    /// активной раскладке.</summary>
+    /// <summary>Russian (JCUKEN) layout: a single Cyrillic letter maps to the Latin key at the same
+    /// physical position. Without this a user on a Russian layout types a letter that looks right in
+    /// the hotkey field, but KeyConverter can't parse it and the combo is wrongly treated as broken.
+    /// The virtual key is registered by position anyway, so the shortcut fires under any active
+    /// layout. The map keys below are Cyrillic on purpose — that is the layout data.</summary>
     private static string NormalizeKeyName(string part)
     {
         if (part.Length != 1) return part;

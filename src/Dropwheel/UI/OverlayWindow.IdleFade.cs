@@ -43,8 +43,8 @@ public partial class OverlayWindow
         _idleTimer?.Stop();
         _idleTimer = null;
         InitIdleFade();
-        // Строка уже проверена в настройках на разбор, но занятость другим процессом
-        // проверяется только здесь: при неудаче остаётся прежняя рабочая комбинация.
+        // The string was already validated for parsing in settings, but being taken by another
+        // process is only checked here: on failure the previous working combo stays.
         ApplyHotkey(TargetStore.Config.Hotkey, notify: true);
     }
 

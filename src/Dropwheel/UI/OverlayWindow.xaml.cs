@@ -8,8 +8,8 @@ public partial class OverlayWindow : Window
 {
     private const double HalfSize = 230; // 460x460 window, orb centered
 
-    /// <summary>Интервал таймера наведения с защитой от нуля: нулевой интервал у DispatcherTimer
-    /// заставляет его тикать на каждом проходе диспетчера, поэтому держим разумный минимум.</summary>
+    /// <summary>Hover timer interval, guarded against zero: a zero interval makes DispatcherTimer
+    /// tick on every dispatcher pass, so we keep a sensible minimum.</summary>
     private static TimeSpan HoverInterval() =>
         TimeSpan.FromMilliseconds(Math.Max(50, TargetStore.Config.HoverDelayMs));
 

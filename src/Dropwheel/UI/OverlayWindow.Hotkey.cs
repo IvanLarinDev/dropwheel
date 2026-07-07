@@ -8,14 +8,14 @@ namespace Dropwheel.UI;
 public partial class OverlayWindow
 {
     private HotkeyService? _hotkey;
-    private string _hotkeyActive = ""; // последняя успешно зарегистрированная комбинация
+    private string _hotkeyActive = ""; // the last successfully registered combo
     private DispatcherTimer? _fsTimer;
     private bool _hiddenByFullscreen;
 
     private void InitHotkeyAndFullscreen()
     {
-        // При старте прежней рабочей комбинации ещё нет: если конфиг занят другим
-        // приложением, просто работаем без хоткея и молча оставляем след в логе.
+        // At startup there is no previous working combo yet: if the config is taken by another
+        // app, just run without a hotkey and quietly leave a trace in the log.
         ApplyHotkey(TargetStore.Config.Hotkey, notify: false);
 
         _fsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
@@ -51,10 +51,10 @@ public partial class OverlayWindow
         OpenCloud();
     }
 
-    /// <summary>Регистрирует горячую клавишу из конфига. Если комбинация занята другим процессом,
-    /// возвращается к последней рабочей комбинации и откатывает конфиг — чтобы неверный ввод в
-    /// настройках не оставил приложение вообще без хоткея. Сначала освобождаем старую регистрацию
-    /// (иначе тот же id занят), затем пробуем новую; при неудаче перерегистрируем прежнюю.</summary>
+    /// <summary>Registers the hotkey from config. If the combo is taken by another process, it falls
+    /// back to the last working combo and rolls the config back — so a wrong entry in settings doesn't
+    /// leave the app with no hotkey at all. First release the old registration (otherwise the same id
+    /// is in use), then try the new one; on failure re-register the previous one.</summary>
     private void ApplyHotkey(string hotkey, bool notify)
     {
         _hotkey?.Dispose();
@@ -67,7 +67,7 @@ public partial class OverlayWindow
         }
         catch (Exception ex)
         {
-            ErrorLog.Write($"Не удалось зарегистрировать хоткей «{hotkey}»", ex);
+            ErrorLog.Write($"Failed to register hotkey '{hotkey}'", ex);
         }
 
         bool rolledBack = _hotkeyActive.Length > 0 && _hotkeyActive != hotkey;
@@ -76,11 +76,11 @@ public partial class OverlayWindow
             TargetStore.Config.Hotkey = _hotkeyActive;
             TargetStore.Save();
             try { _hotkey = new HotkeyService(this, _hotkeyActive, OnHotkey); }
-            catch (Exception ex) { ErrorLog.Write($"Не удалось вернуть прежний хоткей «{_hotkeyActive}»", ex); }
+            catch (Exception ex) { ErrorLog.Write($"Failed to restore previous hotkey '{_hotkeyActive}'", ex); }
         }
         if (notify)
             ShowToast(rolledBack
-                ? $"Горячая клавиша {hotkey} занята — оставлена прежняя {_hotkeyActive}"
-                : $"Горячая клавиша {hotkey} занята другим приложением");
+                ? $"Hotkey {hotkey} is taken — kept the previous {_hotkeyActive}"
+                : $"Hotkey {hotkey} is taken by another app");
     }
 }

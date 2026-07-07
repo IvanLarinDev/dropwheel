@@ -2,9 +2,9 @@ using Dropwheel.Services;
 
 namespace Dropwheel.Tests;
 
-/// <summary>Проверяет разбор строки горячей клавиши: валидные комбинации распознаются,
-/// а мусор, пустая строка и «только модификаторы» отвергаются, чтобы опечатка в настройках
-/// не отключала хоткей молча.</summary>
+/// <summary>Verifies hotkey string parsing: valid combinations are recognized, while garbage, an
+/// empty string and "modifiers only" are rejected, so a typo in settings doesn't silently disable
+/// the hotkey.</summary>
 public sealed class HotkeyServiceTests
 {
     [Theory]
@@ -20,12 +20,13 @@ public sealed class HotkeyServiceTests
         Assert.NotEqual(0u, vk);
     }
 
-    // Русская раскладка ЙЦУКЕН: пользователь жмёт физическую клавишу и получает кириллическую
-    // букву, визуально совпадающую с латинской. Она должна распознаваться как та же клавиша.
+    // Russian JCUKEN layout: the user presses a physical key and gets a Cyrillic letter that looks
+    // like a Latin one. It must be recognized as the same key. The InlineData below is Cyrillic on
+    // purpose — that is the test input.
     [Theory]
-    [InlineData("Ctrl+Alt+С", "Ctrl+Alt+C")]   // С кириллическая → латинская C
-    [InlineData("Ctrl+Alt+В", "Ctrl+Alt+D")]   // В → D (по позиции на клавиатуре)
-    [InlineData("Win+Ф", "Win+A")]              // Ф → A
+    [InlineData("Ctrl+Alt+С", "Ctrl+Alt+C")]   // Cyrillic key at the C position -> Latin C
+    [InlineData("Ctrl+Alt+В", "Ctrl+Alt+D")]   // key at the D position -> D
+    [InlineData("Win+Ф", "Win+A")]              // key at the A position -> A
     public void Cyrillic_letters_map_to_the_same_physical_key(string cyrillic, string latin)
     {
         Assert.True(HotkeyService.TryParse(cyrillic, out uint m1, out uint v1));
@@ -37,9 +38,9 @@ public sealed class HotkeyServiceTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("Ctrl+Alt")]          // только модификаторы, без клавиши
-    [InlineData("Ctrl+Foo")]          // несуществующая клавиша
-    [InlineData("Ctrl+A+B")]          // две клавиши
+    [InlineData("Ctrl+Alt")]          // modifiers only, no key
+    [InlineData("Ctrl+Foo")]          // nonexistent key
+    [InlineData("Ctrl+A+B")]          // two keys
     [InlineData("+++")]
     public void Invalid_combinations_are_rejected(string hotkey)
     {

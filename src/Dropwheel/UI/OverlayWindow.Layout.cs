@@ -41,11 +41,11 @@ public partial class OverlayWindow
 
     public void ToggleCloud() { if (_open) CloseCloud(); else OpenCloud(); }
 
-    /// <summary>Показывает пользователю короткое сообщение об ошибке. Вызывается из
-    /// глобального перехватчика исключений; сам показ обёрнут, чтобы не зациклиться.</summary>
+    /// <summary>Shows the user a short error message. Called from the global exception handler; the
+    /// display itself is wrapped so it can't loop.</summary>
     public void NotifyError(string message)
     {
-        try { ShowToast(message); } catch { /* тост недоступен — уже залогировано */ }
+        try { ShowToast(message); } catch { /* toast unavailable — already logged */ }
     }
 
     private void ShowToast(string msg, bool canUndo = false)
