@@ -46,7 +46,7 @@ public sealed class HotkeyService : IDisposable
                     if (key != null) return false; // more than one non-modifier key
                     try
                     {
-                        if (new KeyConverter().ConvertFromInvariantString(part) is Key k) key = k;
+                        if (new KeyConverter().ConvertFromInvariantString(NormalizeKeyName(part)) is Key k) key = k;
                         else return false;
                     }
                     catch (Exception) { return false; } // KeyConverter rejects unknown names
@@ -59,6 +59,26 @@ public sealed class HotkeyService : IDisposable
 
     /// <summary>Whether the string is a hotkey the app can actually register.</summary>
     public static bool IsValid(string s) => TryParse(s, out _, out _);
+
+    /// <summary>Раскладка ЙЦУКЕН: одиночная кириллическая буква переводится в латинскую клавишу той
+    /// же физической позиции. Без этого пользователь на русской раскладке набирает в поле хоткея
+    /// визуально верную «С», а KeyConverter её не распознаёт и комбинация ошибочно считается битой.
+    /// Регистрируется всё равно виртуальная клавиша по позиции, поэтому нажатие сработает при любой
+    /// активной раскладке.</summary>
+    private static string NormalizeKeyName(string part)
+    {
+        if (part.Length != 1) return part;
+        return CyrillicToLatin.TryGetValue(char.ToLowerInvariant(part[0]), out var lat)
+            ? lat.ToString() : part;
+    }
+
+    private static readonly Dictionary<char, char> CyrillicToLatin = new()
+    {
+        ['й'] = 'q', ['ц'] = 'w', ['у'] = 'e', ['к'] = 'r', ['е'] = 't', ['н'] = 'y', ['г'] = 'u',
+        ['ш'] = 'i', ['щ'] = 'o', ['з'] = 'p', ['ф'] = 'a', ['ы'] = 's', ['в'] = 'd', ['а'] = 'f',
+        ['п'] = 'g', ['р'] = 'h', ['о'] = 'j', ['л'] = 'k', ['д'] = 'l', ['я'] = 'z', ['ч'] = 'x',
+        ['с'] = 'c', ['м'] = 'v', ['и'] = 'b', ['т'] = 'n', ['ь'] = 'm',
+    };
 
     private IntPtr Hook(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)
     {

@@ -280,6 +280,16 @@ public partial class TargetEditorWindow
             return;
         }
         if (_selected < 0 || _selected >= _rules.Count) return;
+        // Правило без условий (catch-all) совпадает с любым файлом, поэтому всё, что стоит после
+        // первого такого правила, недостижимо. Показываем явное предупреждение — иначе «Routes
+        // here: 0 of N» у нижнего правила выглядит необъяснимо.
+        int firstCatchAll = -1;
+        for (int i = 0; i < _rules.Count; i++)
+            if (_rules[i].All.Count == 0) { firstCatchAll = i; break; }
+        if (firstCatchAll >= 0 && _selected > firstCatchAll)
+            _matchesHost.Children.Add(Hint(
+                $"Unreachable: rule {firstCatchAll + 1} ({FriendlyDest(_rules[firstCatchAll].Dest)}) " +
+                "is a catch-all and takes every file first. Move it down or add conditions."));
         // Считаем по номеру правила, а не по папке назначения: два правила с одинаковым
         // Dest больше не приписывают друг другу файлы.
         var here = files.Where(f => SortService.MatchedRuleIndex(_rules, f) == _selected).ToArray();
