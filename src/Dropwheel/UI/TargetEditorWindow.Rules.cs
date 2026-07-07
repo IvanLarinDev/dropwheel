@@ -262,6 +262,31 @@ public partial class TargetEditorWindow
 
     private void OnPreviewChanged(object sender, TextChangedEventArgs e) => RefreshMatches();
 
+    /// <summary>Перетаскивание файлов на поле «Test files»: показываем курсор копирования только
+    /// для настоящих файлов, чтобы обычное перетаскивание текста внутри поля работало как раньше.</summary>
+    private void OnPreviewFilesDragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>Добавляет пути брошенных файлов в поле — по одному на строку, дописывая к тому,
+    /// что уже введено. Изменение текста само запускает пересчёт предпросмотра.</summary>
+    private void OnPreviewFilesDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+        var addition = string.Join(Environment.NewLine, paths);
+        var existing = PreviewInput.Text;
+        PreviewInput.Text = string.IsNullOrWhiteSpace(existing)
+            ? addition
+            : existing.TrimEnd('\r', '\n') + Environment.NewLine + addition;
+        PreviewInput.CaretIndex = PreviewInput.Text.Length;
+        e.Handled = true;
+    }
+
     /// <summary>Runs the real SortService against the test paths and lists which of them the
     /// selected rule actually receives, so the preview can never diverge from real routing.</summary>
     private void RefreshMatches()

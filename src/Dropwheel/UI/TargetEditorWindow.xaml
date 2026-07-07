@@ -48,9 +48,11 @@
                     <Button Content="Presets ▾" Click="OnPresetsClick" DockPanel.Dock="Right" Padding="8,2"/>
                     <Button Content="+ Rule" Click="OnAddRule" Padding="8,2" HorizontalAlignment="Left"/>
                 </DockPanel>
-                <TextBlock Text="Test files (one path per line)" Margin="0,12,0,4"/>
+                <TextBlock Text="Test files (drag files here or one path per line)" Margin="0,12,0,4"/>
                 <TextBox x:Name="PreviewInput" AcceptsReturn="True" Height="54"
-                         VerticalScrollBarVisibility="Auto" TextChanged="OnPreviewChanged"/>
+                         VerticalScrollBarVisibility="Auto" TextChanged="OnPreviewChanged"
+                         AllowDrop="True" PreviewDragOver="OnPreviewFilesDragOver"
+                         PreviewDrop="OnPreviewFilesDrop"/>
             </StackPanel>
 
             <Border x:Name="DetailPanel" Grid.Column="2" Width="330" Margin="16,0,0,0"
