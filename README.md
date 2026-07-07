@@ -137,6 +137,13 @@ are tuned per theme.
   copied; files renamed by the conflict dialog are not tracked by Undo.
 - One orb (multi-monitor placement works; one wheel instance).
 
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to
+propose changes, [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community
+expectations, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities
+privately. Bug reports and feature requests use the issue templates.
+
 ## License
 
 [MIT](LICENSE) © Ivan Larin

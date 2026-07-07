@@ -12,9 +12,9 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
@@ -33,7 +33,7 @@ jobs:
           Compress-Archive -Path dist-sc/* -DestinationPath "Dropwheel-${{ github.ref_name }}-win-x64-self-contained.zip"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: Dropwheel-*.zip
           generate_release_notes: true
