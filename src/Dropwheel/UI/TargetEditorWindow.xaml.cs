@@ -45,6 +45,12 @@ public partial class TargetEditorWindow : Window
                 _rules.AddRange(_target.Rules);
                 ShowRulesEditor();
             }
+            else
+            {
+                // Routing rules distribute files into subfolders, so they only apply to a
+                // folder target — not to an executable, a file, or a missing path.
+                ConvertBtn.Visibility = _target.IsFolder ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
     }
 
