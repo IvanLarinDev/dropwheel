@@ -170,6 +170,14 @@ public partial class TargetEditorWindow
         };
         DetailHost.Children.Add(addCond);
 
+        var savePreset = new Button
+        {
+            Content = "Save as preset…", Padding = new Thickness(6, 1, 6, 1),
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 0, 0),
+        };
+        savePreset.Click += (_, _) => OnSaveAsPreset(rule);
+        DetailHost.Children.Add(savePreset);
+
         DetailHost.Children.Add(new Border
         {
             BorderBrush = Palettes.Border, BorderThickness = new Thickness(0, 1, 0, 0),
@@ -332,6 +340,27 @@ public partial class TargetEditorWindow
         Dest = p.Dest,
         All = { new RuleCondition { Field = ConditionField.Extension, Op = CompareOp.In, Value = p.Extensions } },
     };
+
+    /// <summary>Saves the current rule as a named user preset in config. Presets are
+    /// extension-based, so the rule needs an Extension condition. Same name overwrites.</summary>
+    private void OnSaveAsPreset(SortRule rule)
+    {
+        var ext = rule.All.FirstOrDefault(c => c.Field == ConditionField.Extension)?.Value;
+        if (string.IsNullOrWhiteSpace(ext))
+        {
+            MessageBox.Show(this, "Presets are extension-based — add an Extension condition first.",
+                "Save as preset", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var prompt = new PromptWindow("Save as preset", "Preset name:") { Owner = this };
+        if (prompt.ShowDialog() != true) return;
+        var name = prompt.Value.Trim();
+        if (name.Length == 0) return;
+        var presets = TargetStore.Config.Presets ??= PresetService.Defaults();
+        presets.RemoveAll(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        presets.Add(PresetService.FromRule(name, rule)!);
+        TargetStore.Save();
+    }
 
     // ── Shared helpers ─────────────────────────────────────────────────────
 
