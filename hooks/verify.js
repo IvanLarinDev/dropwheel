@@ -16,6 +16,7 @@
 //     --changed  verify only stacks whose dir is touched in the branch diff (faster inner loop)
 //     --base     git ref to diff against for --changed (default: main; fallback master/origin/HEAD)
 //     --files    explicit comma-separated changed files (tests/CI; bypasses git)
+//     --check-harness-syntax  internal lightweight JS syntax check for harness files
 //   --changed fail-safe: if the diff can't be computed, verify ALL stacks (loud warn),
 //   never silently skip verification; empty diff = nothing to verify.
 //
@@ -35,9 +36,10 @@
 //          ИЛИ debug-аудит нашёл hard-находку.
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
-const { changedFiles, globToRe } = require(path.join(__dirname, "_lib.js"));
+const { workingTreeChangedFiles, globToRe } = require(path.join(__dirname, "_lib.js"));
 
 // Файл `file` лежит под каталогом стека `rel`? Корневой стек (rel ".") владеет всем
 // деревом → матчит любой изменённый файл; глубокий стек — только свой подкаталог.
@@ -108,7 +110,7 @@ function scanFileForDebug(abs, rel, soft) {
 // массово легитимны и дали бы шум. → { hard:[], soft:[], skipped:<причина>|null }.
 function debugAudit(root, opts, base, explicitFiles) {
   if (!opts.enabled) return { hard: [], soft: [], skipped: "отключён в harness.config.json" };
-  const cf = changedFiles(base || opts.base, root, explicitFiles);
+  const cf = workingTreeChangedFiles(base || opts.base, root, explicitFiles);
   if (cf.error) return { hard: [], soft: [], skipped: cf.error };
   const excludeRe = (opts.exclude || []).map(globToRe);
   const hard = [], soft = [];
@@ -128,6 +130,9 @@ const DEFAULT_STACKS = [
     { name: "test", run: "cargo test --all" },
   ] },
   { id: "dotnet", markers: ["*.sln", "*.csproj"], steps: [
+    // Existing C# repos often need a one-time formatting migration. Keep the
+    // default bootstrap gate warning-only; target repos can make this required
+    // by overriding verify.stacks after the format baseline lands.
     { name: "format", run: "dotnet format --verify-no-changes", optional: true },
     { name: "build", run: "dotnet build --nologo -warnaserror" },
     { name: "test", run: "dotnet test --nologo" },
@@ -147,10 +152,15 @@ const DEFAULT_STACKS = [
 
 const SKIP_DIRS = new Set([".git", "node_modules", "target", "bin", "obj", "dist", "build", ".venv", "venv", "__pycache__", ".next", ".idea", ".vscode"]);
 const MAX_DEPTH = 6;
+const DEFAULT_STEP_TIMEOUT_MS = 15 * 60 * 1000;
+const HARNESS_CHANGED = [
+  "hooks/", "lefthook.yml", "harness.config.json", ".gitleaks.toml", "cog.toml",
+  ".github/rulesets/", ".github/workflows/", "settings.example.json", "AGENTS.md",
+];
 
 // ---------- args ----------
 function parseArgs(argv) {
-  const a = { root: process.cwd(), stack: null, list: false, json: false, changed: false, base: "main", files: null };
+  const a = { root: process.cwd(), stack: null, list: false, json: false, changed: false, base: "main", files: null, checkHarnessSyntax: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--root") a.root = argv[++i];
     else if (argv[i] === "--stack") a.stack = argv[++i];
@@ -159,6 +169,7 @@ function parseArgs(argv) {
     else if (argv[i] === "--changed") a.changed = true;
     else if (argv[i] === "--base") a.base = argv[++i];
     else if (argv[i] === "--files") a.files = (argv[++i] || "").split(",").map((s) => s.trim()).filter(Boolean);
+    else if (argv[i] === "--check-harness-syntax") a.checkHarnessSyntax = true;
   }
   return a;
 }
@@ -174,6 +185,62 @@ function loadStacks(root) {
   } catch {
     return { stacks: DEFAULT_STACKS, failFast: true, explicit: false };
   }
+}
+
+function isHarnessChangedFile(file) {
+  const f = String(file || "").replace(/\\/g, "/");
+  return HARNESS_CHANGED.some((p) => p.endsWith("/") ? f.startsWith(p) : f === p);
+}
+
+function harnessTarget(root) {
+  const steps = [{ name: "syntax", run: "node hooks/verify.js --check-harness-syntax" }];
+  if (fs.existsSync(path.join(root, "hooks", "test.js"))) steps.push({ name: "self-test", run: "node test.js", cwdRel: "hooks" });
+  return { stack: { id: "harness", steps }, dir: root, rel: "." };
+}
+
+function maybeAddHarnessTarget(root, targets, files) {
+  if (!files.some(isHarnessChangedFile)) return targets;
+  if (!fs.existsSync(path.join(root, "hooks", "verify.js"))) return targets;
+  if (targets.some((t) => t.stack && t.stack.id === "harness")) return targets;
+  return targets.concat([harnessTarget(root)]);
+}
+
+function listHarnessJs(root) {
+  const out = [];
+  function walk(dir) {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.isFile() && e.name.endsWith(".js")) out.push(p);
+    }
+  }
+  walk(path.join(root, "hooks"));
+  for (const rel of ["install.js"]) {
+    const p = path.join(root, rel);
+    try { if (fs.statSync(p).isFile()) out.push(p); } catch {}
+  }
+  return out;
+}
+
+function checkHarnessSyntax(root) {
+  const files = listHarnessJs(root);
+  let failed = false;
+  for (const file of files) {
+    const r = spawnSync(process.execPath, ["--check", file], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 30 * 1000, killSignal: "SIGKILL" });
+    if (r.status !== 0 || r.error) {
+      failed = true;
+      const rel = path.relative(root, file) || file;
+      process.stderr.write(`syntax failed: ${rel}\n`);
+      if (r.stdout) process.stdout.write(r.stdout);
+      if (r.stderr) process.stderr.write(r.stderr);
+      if (r.error) process.stderr.write(String(r.error.message || r.error) + "\n");
+    }
+  }
+  if (!files.length) console.log("harness syntax: no JS files found");
+  else console.log(`harness syntax: checked ${files.length} JS file(s)`);
+  process.exit(failed ? 1 : 0);
 }
 
 // ---------- filename glob (within a directory) ----------
@@ -204,25 +271,88 @@ function detect(root, stacks) {
 }
 
 // ---------- run ----------
+function stepTimeoutMs(step) {
+  const raw = step.timeoutMs !== undefined ? step.timeoutMs : step.timeout;
+  if (raw === undefined) return DEFAULT_STEP_TIMEOUT_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_STEP_TIMEOUT_MS;
+}
+function stepCwd(step, cwd) {
+  if (!step.cwdRel) return cwd;
+  return path.resolve(cwd, step.cwdRel);
+}
 function runStep(step, cwd) {
-  const r = spawnSync(step.run, { cwd, shell: true, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  if (r.error) return { ok: false, code: -1, notFound: r.error.code === "ENOENT" };
-  return { ok: r.status === 0, code: r.status, stdout: String(r.stdout || ""), stderr: String(r.stderr || "") };
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "harness-verify-step-"));
+  const stdoutPath = path.join(dir, "stdout.log");
+  const stderrPath = path.join(dir, "stderr.log");
+  const outFd = fs.openSync(stdoutPath, "w");
+  const errFd = fs.openSync(stderrPath, "w");
+  let r;
+  try {
+    r = spawnSync(step.run, { cwd: stepCwd(step, cwd), shell: true, stdio: ["ignore", outFd, errFd], timeout: stepTimeoutMs(step), killSignal: "SIGKILL" });
+  } finally {
+    try { fs.closeSync(outFd); } catch {}
+    try { fs.closeSync(errFd); } catch {}
+  }
+  if (r.error) return { ok: false, code: -1, notFound: r.error.code === "ENOENT", timedOut: r.error.code === "ETIMEDOUT", stdoutPath, stderrPath, cleanup: () => cleanupStepOutput(dir) };
+  return { ok: r.status === 0, code: r.status, stdoutPath, stderrPath, cleanup: () => cleanupStepOutput(dir) };
 }
 function emitStepOutput(res) {
-  if (res.stdout) process.stdout.write(res.stdout);
-  if (res.stderr) process.stderr.write(res.stderr);
+  for (const [file, stream] of [[res.stdoutPath, process.stdout], [res.stderrPath, process.stderr]]) {
+    emitOutputFile(file, stream);
+  }
+}
+function emitOutputFile(file, stream) {
+  if (!file) return;
+  let fd;
+  try {
+    const st = fs.statSync(file);
+    if (!st.isFile() || st.size === 0) return;
+    fd = fs.openSync(file, "r");
+    const buf = Buffer.alloc(64 * 1024);
+    for (;;) {
+      const n = fs.readSync(fd, buf, 0, buf.length, null);
+      if (!n) break;
+      stream.write(buf.subarray(0, n));
+    }
+  } catch {
+  } finally {
+    if (fd !== undefined) try { fs.closeSync(fd); } catch {}
+  }
 }
 function diagnosticExcerpt(res, maxLines = 8) {
-  const text = [res.stderr, res.stdout].filter(Boolean).join("\n").trim();
+  const text = [res.stderrPath, res.stdoutPath].map((file) => readSmallOutputFile(file)).filter(Boolean).join("\n").trim();
   if (!text) return "";
   const lines = text.split(/\r?\n/).map((s) => s.trimEnd()).filter((s) => s.trim()).slice(0, maxLines);
   return lines.join("\n");
+}
+function readSmallOutputFile(file, maxBytes = 64 * 1024) {
+  if (!file) return "";
+  try {
+    const st = fs.statSync(file);
+    if (!st.isFile() || st.size === 0) return "";
+    if (st.size <= maxBytes) return fs.readFileSync(file, "utf8");
+    const start = Math.max(0, st.size - maxBytes);
+    const fd = fs.openSync(file, "r");
+    try {
+      const buf = Buffer.alloc(st.size - start);
+      fs.readSync(fd, buf, 0, buf.length, start);
+      return (start > 0 ? "[output truncated]\n" : "") + buf.toString("utf8");
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return "";
+  }
+}
+function cleanupStepOutput(dir) {
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
 }
 
 // ---------- main ----------
 (function main() {
   const a = parseArgs(process.argv.slice(2));
+  if (a.checkHarnessSyntax) checkHarnessSyntax(a.root);
   let { stacks, failFast, explicit } = loadStacks(a.root);
   if (a.stack) stacks = stacks.filter((s) => s.id === a.stack);
 
@@ -231,12 +361,14 @@ function diagnosticExcerpt(res, maxLines = 8) {
   // --changed: сузить до стеков, чьи каталоги затронуты в diff ветки. Fail-safe —
   // при ошибке diff проверяем ВСЕ стеки (громкий warn), а не молча пропускаем.
   if (a.changed) {
-    const cf = changedFiles(a.base, a.root, a.files);
+    const cf = workingTreeChangedFiles(a.base, a.root, a.files);
     if (cf.error) {
       console.error(`⚠️ verify --changed: ${cf.error} — фильтр не применён, проверяю все обнаруженные стеки. Задай базу: --base <ref>.`);
+      targets = maybeAddHarnessTarget(a.root, targets, ["hooks/verify.js"]);
     } else {
       const files = cf.files.map((f) => f.replace(/\\/g, "/"));
       targets = files.length ? targets.filter((t) => files.some((f) => fileUnder(t.rel, f))) : [];
+      targets = maybeAddHarnessTarget(a.root, targets, files);
     }
   }
 
@@ -283,34 +415,44 @@ function diagnosticExcerpt(res, maxLines = 8) {
       const label = `${t.stack.id}/${step.name} @ ${t.rel}`;
       console.log(`\n▶ ${label}: ${step.run}`);
       const res = runStep(step, t.dir);
-      if (res.ok) { emitStepOutput(res); summary.push(`✓ ${label}`); continue; }
-      if (res.notFound || res.code === 9009 || res.code === 127) {
-        if (step.optional) {
-          warnings.push(`${label}: optional tool not found — step skipped`);
-          summary.push(`⚠ ${label} (инструмент не найден — пропущено)`);
+      try {
+        if (res.ok) { emitStepOutput(res); summary.push(`✓ ${label}`); continue; }
+        if (res.timedOut) {
+          summary.push(`✗ ${label} (timeout after ${stepTimeoutMs(step)}ms)`);
+          emitStepOutput(res);
+          failed = `${label}: timeout after ${stepTimeoutMs(step)}ms`;
+          if (failFast) break outer; else continue;
+        }
+        if (res.notFound || res.code === 9009 || res.code === 127) {
+          if (step.optional) {
+            warnings.push(`${label}: optional tool not found — step skipped`);
+            summary.push(`⚠ ${label} (инструмент не найден — пропущено)`);
+            continue;
+          }
+          summary.push(`✗ ${label} (инструмент не найден)`);
+          emitStepOutput(res);
+          failed = `${label}: команда не найдена — установи инструмент или переопредели шаг в harness.config.json`;
+          if (failFast) break outer; else continue;
+        }
+        if (step.okCodes && step.okCodes[res.code] !== undefined) {
+          const detail = diagnosticExcerpt(res);
+          warnings.push(`${label}: exit ${res.code}: ${step.okCodes[res.code] || "допустимый код"}${detail ? "\n" + detail : ""}`);
+          summary.push(`⚠ ${label} (exit ${res.code}: ${step.okCodes[res.code] || "допустимый код"})`);
           continue;
         }
-        summary.push(`✗ ${label} (инструмент не найден)`);
+        if (step.optional) {
+          const detail = diagnosticExcerpt(res);
+          warnings.push(`${label}: optional step exited ${res.code}${detail ? "\n" + detail : "\n(no diagnostics captured)"}`);
+          summary.push(`⚠ ${label} (optional, exit ${res.code})`);
+          continue;
+        }
+        summary.push(`✗ ${label} (exit ${res.code})`);
         emitStepOutput(res);
-        failed = `${label}: команда не найдена — установи инструмент или переопредели шаг в harness.config.json`;
-        if (failFast) break outer; else continue;
+        failed = `${label}: exit ${res.code}`;
+        if (failFast) break outer;
+      } finally {
+        if (res.cleanup) res.cleanup();
       }
-      if (step.okCodes && step.okCodes[res.code] !== undefined) {
-        const detail = diagnosticExcerpt(res);
-        warnings.push(`${label}: exit ${res.code}: ${step.okCodes[res.code] || "допустимый код"}${detail ? "\n" + detail : ""}`);
-        summary.push(`⚠ ${label} (exit ${res.code}: ${step.okCodes[res.code] || "допустимый код"})`);
-        continue;
-      }
-      if (step.optional) {
-        const detail = diagnosticExcerpt(res);
-        warnings.push(`${label}: optional step exited ${res.code}${detail ? "\n" + detail : "\n(no diagnostics captured)"}`);
-        summary.push(`⚠ ${label} (optional, exit ${res.code})`);
-        continue;
-      }
-      summary.push(`✗ ${label} (exit ${res.code})`);
-      emitStepOutput(res);
-      failed = `${label}: exit ${res.code}`;
-      if (failFast) break outer;
     }
   }
 

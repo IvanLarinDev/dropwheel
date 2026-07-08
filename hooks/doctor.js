@@ -19,6 +19,36 @@ function git(args) { return execFileSync("git", args, { cwd: ROOT, encoding: "ut
 function gitSafe(args) { try { return git(args); } catch { return null; } }
 function inPath(bin) { try { execFileSync(process.platform === "win32" ? "where" : "which", [bin], { stdio: ["ignore", "pipe", "ignore"], timeout: 5000, killSignal: "SIGKILL" }); return true; } catch { return false; } }
 function tracked(rel) { return gitSafe(["ls-files", "--error-unmatch", rel]) !== null; }
+function readText(rel) { try { return fs.readFileSync(path.join(ROOT, rel), "utf8"); } catch { return ""; } }
+function checkTextFile(rel) {
+  const p = path.join(ROOT, rel);
+  let buf;
+  try { buf = fs.readFileSync(p); } catch { fail(rel + " отсутствует"); return; }
+  const text = buf.toString("utf8");
+  if (!Buffer.from(text, "utf8").equals(buf)) fail(rel + ": невалидный UTF-8 или обрезанный многобайтный символ");
+  else if (buf.includes(0)) fail(rel + " содержит NUL-байты");
+  else if (buf.includes(13)) fail(rel + ": CRLF/CR line endings (нужен LF)");
+  else ok(rel + ": LF, UTF-8, без NUL");
+}
+function workflowJobIds(rel) {
+  const text = readText(rel);
+  const lines = text.split(/\r?\n/);
+  const ids = [];
+  let inJobs = false;
+  for (const line of lines) {
+    if (/^jobs:\s*$/.test(line)) { inJobs = true; continue; }
+    if (inJobs && /^\S/.test(line) && !/^jobs:\s*$/.test(line)) break;
+    const m = inJobs && line.match(/^  ([A-Za-z0-9_-]+):\s*(?:#.*)?$/);
+    if (m) ids.push(m[1]);
+  }
+  return ids;
+}
+function rulesetRequiredChecks(rel) {
+  let ruleset = {};
+  try { ruleset = JSON.parse(readText(rel)); } catch { return []; }
+  const rsc = (ruleset.rules || []).find((r) => r.type === "required_status_checks");
+  return (((rsc || {}).parameters || {}).required_status_checks || []).map((c) => c.context).filter(Boolean);
+}
 
 // node / git
 ok("node " + process.version);
@@ -84,6 +114,7 @@ const requiredHarnessFiles = [
   "hooks/design-gate.js",
   "hooks/new-mockups.js",
   "hooks/doctor.js",
+  "hooks/apply-ruleset.js",
   "hooks/_lib.js",
   "hooks/branch-guard.js",
   "hooks/no-coauthor.js",
@@ -96,6 +127,7 @@ const requiredHarnessFiles = [
   ".gitleaks.toml",
   "AGENTS.md",
   "settings.example.json",
+  ".github/rulesets/main.json",
 ];
 const missingHarness = [];
 const untrackedHarness = [];
@@ -113,16 +145,20 @@ if (missingHarness.length || untrackedHarness.length) {
   ok("harness bootstrap files present and tracked");
 }
 
-// config files present, LF, no NUL
-for (const f of ["lefthook.yml", "cog.toml", ".gitleaks.toml"]) {
-  const p = path.join(ROOT, f);
-  let buf;
-  try { buf = fs.readFileSync(p); } catch { fail(f + " отсутствует"); continue; }
-  const nl = buf.indexOf(10);
-  if (buf.includes(0)) fail(f + " содержит NUL-байты");
-  else if (buf.slice(0, nl >= 0 ? nl : buf.length).includes(13)) fail(f + ": CRLF (нужен LF)");
-  else ok(f + ": LF, без NUL");
-}
+// Critical harness files must be portable across Windows/macOS/Linux checkouts.
+const textCritical = requiredHarnessFiles.concat([
+  ".gitattributes",
+  ".gitignore",
+  "README.md",
+  "CLAUDE.md",
+  "BACKLOG.md",
+  ".github/workflows/ci.yml",
+  ".github/CODEOWNERS",
+  ".github/dependabot.yml",
+  "install.cmd",
+  "install.sh",
+]).filter((f, i, a) => a.indexOf(f) === i && fs.existsSync(path.join(ROOT, f)));
+for (const f of textCritical) checkTextFile(f);
 
 // harness.config.json valid JSON
 const cfgPath = path.join(ROOT, "harness.config.json");
@@ -137,6 +173,16 @@ if (fs.existsSync(cogPath)) {
   /from_latest_tag\s*=\s*true/.test(cog) ? ok("cog.toml: from_latest_tag=true") : fail("cog.toml: нужен from_latest_tag=true для release bump от последнего v* tag");
   /ignore_merge_commits\s*=\s*true/.test(cog) ? ok("cog.toml: ignore_merge_commits=true") : fail("cog.toml: нужен ignore_merge_commits=true");
   /tag_prefix\s*=\s*"v"/.test(cog) ? ok("cog.toml: tag_prefix=\"v\"") : fail("cog.toml: нужен tag_prefix=\"v\"");
+}
+
+const workflowPath = ".github/workflows/ci.yml";
+const rulesetPath = ".github/rulesets/main.json";
+if (fs.existsSync(path.join(ROOT, workflowPath)) && fs.existsSync(path.join(ROOT, rulesetPath))) {
+  const jobs = workflowJobIds(workflowPath);
+  const required = rulesetRequiredChecks(rulesetPath);
+  const missing = required.filter((ctx) => !jobs.includes(ctx));
+  if (missing.length) fail(`ruleset required check(s) not published by CI workflow: ${missing.join(", ")} (jobs: ${jobs.join(", ") || "none"})`);
+  else if (required.length) ok("ruleset required checks match CI workflow job ids");
 }
 
 // report

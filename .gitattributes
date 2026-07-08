@@ -12,6 +12,11 @@ install.js    text eol=lf
 *.yml   text eol=lf
 *.yaml  text eol=lf
 *.json  text eol=lf
+*.md    text eol=lf
+*.cmd   text eol=lf
+.gitignore    text eol=lf
+.gitattributes text eol=lf
+.github/CODEOWNERS text eol=lf
 
 # Default: normalize text, let git decide line endings on checkout for the rest.
 * text=auto
