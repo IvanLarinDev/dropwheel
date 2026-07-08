@@ -17,4 +17,31 @@ public sealed class FileOpsTests
     [Fact]
     public void Delete_with_no_paths_is_a_noop_success() =>
         Assert.True(FileOps.Delete(Array.Empty<string>()));
+
+    [Fact]
+    public void Destination_collision_detects_existing_file_with_same_name()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dw_collision_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var source = Path.Combine(Path.GetTempPath(), "report.txt");
+            File.WriteAllText(Path.Combine(root, "report.txt"), "existing");
+
+            Assert.True(FileOps.HasDestinationCollision(new[] { source }, root));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void Destination_collision_ignores_non_colliding_names()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dw_collision_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            Assert.False(FileOps.HasDestinationCollision(new[] { @"C:\drop\new.txt" }, root));
+        }
+        finally { Directory.Delete(root, true); }
+    }
 }

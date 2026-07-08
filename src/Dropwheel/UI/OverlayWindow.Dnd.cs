@@ -77,8 +77,9 @@ public partial class OverlayWindow
                 return;
             }
             var act = Resolve(t, e);
+            bool hadCollision = FileOps.HasDestinationCollision(files, dest);
             bool ok = FileOps.Execute(files, dest, act);
-            if (ok) RememberOp(act, files, dest);
+            if (ok) RememberOpIfUnambiguous(act, files, dest, hadCollision);
             ShowToast(ok
                 ? $"{(act == DropAction.Move ? "➜ Moved" : "⧉ Copied")}: {files.Length} item(s) → {t.Name}"
                 : "Operation was not completed", ok);
@@ -89,7 +90,7 @@ public partial class OverlayWindow
             if (saved.Length > 0)
             {
                 if (t.IsSorter) SortSavedVirtuals(t, saved);
-                else RememberOp(DropAction.Copy, saved, dest);
+                else RememberOpIfUnambiguous(DropAction.Copy, saved, dest, hadCollision: false);
             }
             ShowToast(saved.Length > 0
                 ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
@@ -101,7 +102,7 @@ public partial class OverlayWindow
             if (saved is { } path)
             {
                 if (t.IsSorter) SortSavedVirtuals(t, new[] { path });
-                else RememberOp(DropAction.Copy, new[] { path }, dest);
+                else RememberOpIfUnambiguous(DropAction.Copy, new[] { path }, dest, hadCollision: false);
             }
             ShowToast(saved != null
                 ? $"≡ Saved text → {System.IO.Path.GetFileName(saved)}"

@@ -9,6 +9,8 @@ namespace Dropwheel.Services;
 /// <summary>Distributes files according to a sorter target's rules.</summary>
 public static class SortService
 {
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(250);
+
     /// <summary>Returns a plan: destination folder → files. Uses the rich Rules engine when
     /// the target has Rules, otherwise the legacy SortRules. With no match and no catch-all
     /// a file goes to the target root (t.Path).</summary>
@@ -111,7 +113,7 @@ public static class SortService
         foreach (var c in rule.All)
         {
             if (c.Field != ConditionField.NameRegex || Compiled(c.Value) is not { } rx) continue;
-            var m = rx.Match(fileName);
+            if (!TryMatch(rx, fileName, c.Value, out var m)) continue;
             if (!m.Success) continue;
             foreach (var name in rx.GetGroupNames())
             {
@@ -154,7 +156,7 @@ public static class SortService
     {
         ConditionField.Extension => MatchExtension(c.Value, meta.Ext),
         ConditionField.NameContains => meta.Name.Contains(c.Value, StringComparison.OrdinalIgnoreCase),
-        ConditionField.NameRegex => Compiled(c.Value) is { } rx && rx.IsMatch(meta.Name),
+        ConditionField.NameRegex => Compiled(c.Value) is { } rx && IsMatch(rx, meta.Name, c.Value),
         ConditionField.SizeMb => MatchNumber(c.Op, meta.SizeMb, c.Value),
         ConditionField.AgeDays => MatchNumber(c.Op, meta.AgeDays, c.Value),
         _ => false,
@@ -198,7 +200,8 @@ public static class SortService
         try
         {
             rx = new Regex(pattern,
-                RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                RegexTimeout);
         }
         catch (ArgumentException ex) // invalid pattern (RegexParseException derives from this)
         {
@@ -207,5 +210,30 @@ public static class SortService
         }
         RegexCache[pattern] = rx;
         return rx;
+    }
+
+    private static bool IsMatch(Regex rx, string input, string pattern)
+    {
+        try { return rx.IsMatch(input); }
+        catch (RegexMatchTimeoutException ex)
+        {
+            ErrorLog.Write($"Regular expression timed out in rule: '{pattern}'", ex);
+            return false;
+        }
+    }
+
+    private static bool TryMatch(Regex rx, string input, string pattern, out System.Text.RegularExpressions.Match match)
+    {
+        try
+        {
+            match = rx.Match(input);
+            return true;
+        }
+        catch (RegexMatchTimeoutException ex)
+        {
+            ErrorLog.Write($"Regular expression timed out in rule: '{pattern}'", ex);
+            match = System.Text.RegularExpressions.Match.Empty;
+            return false;
+        }
     }
 }

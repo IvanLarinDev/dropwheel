@@ -11,11 +11,17 @@ public partial class OverlayWindow
     // One drop operation may consist of several moves (sorter).
     private readonly List<(DropAction Act, string[] Sources, string Dest)> _lastOps = new();
 
-    private void RememberOp(DropAction act, string[] sources, string dest)
-    { _lastOps.Clear(); _lastOps.Add((act, sources, dest)); }
+    private void RememberOpIfUnambiguous(DropAction act, string[] sources, string dest, bool hadCollision)
+    {
+        _lastOps.Clear();
+        if (!hadCollision) _lastOps.Add((act, sources, dest));
+    }
 
-    private void RememberOps(IEnumerable<(DropAction, string[], string)> ops)
-    { _lastOps.Clear(); _lastOps.AddRange(ops); }
+    private void RememberOpsIfUnambiguous(IEnumerable<(DropAction Act, string[] Sources, string Dest, bool HadCollision)> ops)
+    {
+        _lastOps.Clear();
+        _lastOps.AddRange(ops.Where(op => !op.HadCollision).Select(op => (op.Act, op.Sources, op.Dest)));
+    }
 
     private void OnUndoClick(object sender, MouseButtonEventArgs e)
     {

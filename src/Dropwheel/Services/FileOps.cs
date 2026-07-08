@@ -1,3 +1,4 @@
+using System.IO;
 using System.Runtime.InteropServices;
 using Dropwheel.Models;
 
@@ -9,7 +10,7 @@ public static class FileOps
 {
     private const uint FO_MOVE = 0x0001, FO_COPY = 0x0002, FO_DELETE = 0x0003;
     private const ushort FOF_ALLOWUNDO = 0x0040, FOF_NOCONFIRMMKDIR = 0x0200, FOF_NOCONFIRMATION = 0x0010,
-        FOF_SILENT = 0x0004, FOF_NOERRORUI = 0x0400;
+        FOF_SILENT = 0x0004, FOF_RENAMEONCOLLISION = 0x0008, FOF_NOERRORUI = 0x0400;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct SHFILEOPSTRUCT
@@ -35,15 +36,27 @@ public static class FileOps
         var list = files.ToArray();
         if (list.Length == 0) return true; // nothing to do — don't call SHFileOperation with an empty list
         ushort flags = FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR;
-        if (silent) flags |= (ushort)(FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION);
+        if (silent) flags |= (ushort)(FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION | FOF_RENAMEONCOLLISION);
         var op = new SHFILEOPSTRUCT
         {
-            wFunc  = action == DropAction.Move ? FO_MOVE : FO_COPY,
-            pFrom  = string.Join("\0", list) + "\0\0",
-            pTo    = destFolder + "\0\0",
+            wFunc = action == DropAction.Move ? FO_MOVE : FO_COPY,
+            pFrom = string.Join("\0", list) + "\0\0",
+            pTo = destFolder + "\0\0",
             fFlags = flags,
         };
         return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
+    }
+
+    public static bool HasDestinationCollision(IEnumerable<string> sources, string destFolder)
+    {
+        foreach (var source in sources)
+        {
+            var name = Path.GetFileName(source);
+            if (string.IsNullOrEmpty(name)) continue;
+            var dest = Path.Combine(destFolder, name);
+            if (File.Exists(dest) || Directory.Exists(dest)) return true;
+        }
+        return false;
     }
 
     /// <summary>Delete to Recycle Bin without confirmation (for Undo after a copy).</summary>
@@ -53,9 +66,9 @@ public static class FileOps
         if (list.Length == 0) return true;
         var op = new SHFILEOPSTRUCT
         {
-            wFunc  = FO_DELETE,
-            pFrom  = string.Join("\0", list) + "\0\0",
-            pTo    = "\0\0",
+            wFunc = FO_DELETE,
+            pFrom = string.Join("\0", list) + "\0\0",
+            pTo = "\0\0",
             fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION,
         };
         return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;

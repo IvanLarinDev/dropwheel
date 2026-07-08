@@ -14,6 +14,7 @@ public static partial class VirtualFileService
 
     private static bool SaveContents(IComData com, int index, string path)
     {
+        var tmp = TempPathFor(path);
         var fmt = new FORMATETC
         {
             cfFormat = (short)System.Windows.DataFormats.GetDataFormat(ContentsFormat).Id,
@@ -25,14 +26,24 @@ public static partial class VirtualFileService
         try
         {
             if (med.unionmember == IntPtr.Zero) return false; // the source gave no medium for this index
-            if (med.tymed == TYMED.TYMED_ISTREAM) { SaveIStream(med.unionmember, path); return true; }
-            if (med.tymed == TYMED.TYMED_HGLOBAL) { SaveHGlobal(med.unionmember, path); return true; }
-            return false;
+            var saved = med.tymed switch
+            {
+                TYMED.TYMED_ISTREAM => SaveIStream(med.unionmember, tmp),
+                TYMED.TYMED_HGLOBAL => SaveHGlobal(med.unionmember, tmp),
+                _ => false,
+            };
+            if (!saved) return false;
+            File.Move(tmp, path);
+            return true;
         }
-        finally { ReleaseStgMedium(ref med); }
+        finally
+        {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+            ReleaseStgMedium(ref med);
+        }
     }
 
-    private static void SaveIStream(IntPtr punk, string path)
+    private static bool SaveIStream(IntPtr punk, string path)
     {
         var stream = (IStream)Marshal.GetObjectForIUnknown(punk);
         try
@@ -51,6 +62,7 @@ public static partial class VirtualFileService
                 }
             }
             finally { Marshal.FreeHGlobal(pRead); }
+            return true;
         }
         finally { Marshal.ReleaseComObject(stream); }
     }
@@ -60,22 +72,27 @@ public static partial class VirtualFileService
     /// in the file. HGLOBAL for CFSTR_FILECONTENTS has no reliable "real length" field, and trimming
     /// trailing zeros is wrong (a legitimate binary also contains zeros). In practice sources deliver
     /// files via ISTREAM (the branch above); this is a rare fallback.</summary>
-    private static void SaveHGlobal(IntPtr h, string path)
+    private static bool SaveHGlobal(IntPtr h, string path)
     {
         var p = GlobalLock(h);
-        if (p == IntPtr.Zero) return;
+        if (p == IntPtr.Zero) return false;
         try
         {
             var buf = new byte[(long)GlobalSize(h)];
             Marshal.Copy(p, buf, 0, buf.Length);
             File.WriteAllBytes(path, buf);
+            return true;
         }
         finally { GlobalUnlock(h); }
     }
 
+    internal static string TempPathFor(string path) =>
+        Path.Combine(Path.GetDirectoryName(path) ?? "", $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+
     private static string UniquePath(string folder, string name)
     {
         name = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
+        if (string.IsNullOrWhiteSpace(name)) name = "file";
         var path = Path.Combine(folder, name);
         if (!File.Exists(path) && !Directory.Exists(path)) return path;
         string stem = Path.GetFileNameWithoutExtension(name), ext = Path.GetExtension(name);
