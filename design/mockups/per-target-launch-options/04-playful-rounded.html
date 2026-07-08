@@ -1,0 +1,26 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Per-target launch options - Preset cards</title>
+<style>
+  :root{--bg:#eef5f8;--panel:#fff;--line:#c9d7df;--text:#17232b;--muted:#607584;--accent:#0f766e;--soft:#ecfdf5}
+  *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);display:grid;place-items:center;color:var(--text);font:13px "Segoe UI",system-ui,sans-serif}.win{width:720px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 56px rgba(31,55,70,.2);overflow:hidden}
+  header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center}h1{font-size:16px;margin:0}.pill{margin-left:auto;background:#ccfbf1;color:#115e59;border-radius:999px;padding:4px 9px}
+  main{padding:16px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}.card{border:1px solid var(--line);border-radius:7px;padding:10px;background:#fbfdfe}.card.active{border-color:var(--accent);background:var(--soft)}.card b{display:block;margin-bottom:4px}.card span{color:var(--muted);font-size:12px}
+  label{display:block;color:var(--muted);font-size:12px;margin:0 0 5px}input{width:100%;height:32px;border:1px solid var(--line);border-radius:6px;padding:0 9px;font:12px Consolas,monospace}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}.preview{margin-top:12px;background:var(--soft);border-left:3px solid var(--accent);padding:10px;font-family:Consolas,monospace}
+  footer{border-top:1px solid var(--line);padding:12px 16px;display:flex;justify-content:flex-end;gap:8px;background:#f8fbfc}button{height:30px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:0 12px}.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+<section class="win">
+  <header><h1>Edit run target</h1><span class="pill">Custom launch</span></header>
+  <main>
+    <label>Path</label><input value="C:\Tools\publish.py">
+    <div class="cards">
+      <div class="card"><b>Normal</b><span>Run target with files</span></div>
+      <div class="card active"><b>Custom args</b><span>Same target, extra flags</span></div>
+      <div class="card"><b>Wrapper</b><span>Run another program</span></div>
+    </div>
+    <div class="grid"><div><label>Program</label><input value="C:\Python312\python.exe"></div><div><label>Working directory</label><input value="{targetDir}"></div></div>
+    <label>Arguments</label><input value='"{target}" --env staging --open-report {files}'>
+    <div class="preview">C:\Python312\python.exe "C:\Tools\publish.py" --env staging --open-report "C:\Drop\build.zip"</div>
+  </main>
+  <footer><button>Reset</button><button>Cancel</button><button class="primary">Save</button></footer>
+</section>

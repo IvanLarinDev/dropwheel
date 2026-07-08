@@ -32,7 +32,7 @@ public static class LaunchService
     /// <summary>Whether dropping files on this target should run it with them as arguments —
     /// true for executable/script targets, including a .lnk that points at one.</summary>
     public static bool IsRunTarget(TargetItem t) =>
-        !t.IsGroup && IsRunExtension(EffectivePath(t.Path));
+        !t.IsGroup && TargetItem.IsExeExtension(EffectivePath(t.Path));
 
     public static void Launch(TargetItem t)
     {
@@ -56,8 +56,7 @@ public static class LaunchService
     public static bool LaunchWith(TargetItem t, IReadOnlyList<string> files)
     {
         var exe = EffectivePath(t.Path);
-        var psi = BuildStartInfo(exe, files, TargetStore.Config.LaunchCommands);
-        psi.WorkingDirectory = Path.GetDirectoryName(exe) ?? "";
+        var psi = BuildStartInfo(exe, files, t.Launch);
         try { Process.Start(psi); return true; }
         catch (Exception ex) { ErrorLog.Write($"Could not launch '{exe}' with dropped files", ex); return false; }
     }
@@ -65,38 +64,37 @@ public static class LaunchService
     public static void OpenConfigFolder() =>
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{TargetStore.Dir}\""));
 
-    internal static ProcessStartInfo BuildStartInfo(
-        string exe, IReadOnlyList<string> files, IReadOnlyList<LaunchCommand>? commands)
+    internal static ProcessStartInfo BuildStartInfo(string exe, IReadOnlyList<string> files, LaunchOptions? custom)
     {
         var args = BuildArgs(files);
-        var command = FindCommand(Path.GetExtension(exe), commands);
-        if (command == null)
-            return new ProcessStartInfo(exe) { Arguments = args, UseShellExecute = true };
-
-        return new ProcessStartInfo(command.FileName, ExpandArgs(command.Arguments, exe, args));
+        var targetDir = Path.GetDirectoryName(exe) ?? "";
+        var psi = custom == null
+            ? DefaultStartInfo(exe, args)
+            : new ProcessStartInfo(
+                ExpandTemplate(custom.FileName, exe, args, targetDir),
+                ExpandTemplate(custom.Arguments, exe, args, targetDir))
+            { UseShellExecute = true };
+        psi.WorkingDirectory = custom == null
+            ? targetDir
+            : ExpandTemplate(custom.WorkingDirectory, exe, args, targetDir);
+        return psi;
     }
 
-    private static bool IsRunExtension(string path) =>
-        TargetItem.IsExeExtension(path) || FindCommand(Path.GetExtension(path), TargetStore.Config.LaunchCommands) != null;
-
-    private static LaunchCommand? FindCommand(string extension, IReadOnlyList<LaunchCommand>? commands)
+    private static ProcessStartInfo DefaultStartInfo(string exe, string files)
     {
-        var ext = NormalizeExt(extension);
-        if (ext.Length == 0 || commands == null) return null;
-        return commands.FirstOrDefault(c =>
-            !string.IsNullOrWhiteSpace(c.FileName)
-            && c.Extensions.Any(e => string.Equals(NormalizeExt(e), ext, StringComparison.OrdinalIgnoreCase)));
+        return Path.GetExtension(exe).ToLowerInvariant() switch
+        {
+            ".ps1" => new ProcessStartInfo("powershell.exe",
+                $"-NoProfile -ExecutionPolicy Bypass -File \"{exe}\" {files}"),
+            ".py" or ".pyw" => new ProcessStartInfo("py", $"\"{exe}\" {files}"),
+            ".jar" => new ProcessStartInfo("java", $"-jar \"{exe}\" {files}"),
+            _ => new ProcessStartInfo(exe) { Arguments = files, UseShellExecute = true },
+        };
     }
 
-    private static string NormalizeExt(string extension)
-    {
-        var ext = extension.Trim();
-        if (ext.Length == 0) return "";
-        return ext.StartsWith('.') ? ext.ToLowerInvariant() : "." + ext.ToLowerInvariant();
-    }
-
-    private static string ExpandArgs(string template, string target, string files) =>
+    internal static string ExpandTemplate(string template, string target, string files, string targetDir) =>
         template.Replace("{target}", target, StringComparison.Ordinal)
+                .Replace("{targetDir}", targetDir, StringComparison.Ordinal)
                 .Replace("{files}", files, StringComparison.Ordinal)
                 .Trim();
 }

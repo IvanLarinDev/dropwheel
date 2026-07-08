@@ -32,6 +32,11 @@ public class TargetItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Watch { get; set; }
 
+    /// <summary>Custom command for this executable/script target. null means built-in default
+    /// launch behavior. Tokens: {target}, {targetDir}, {files}.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LaunchOptions? Launch { get; set; }
+
     /// <summary>Extensions treated as "drop files to run it with them as arguments" targets.</summary>
     public static readonly string[] ExeExtensions =
         { ".exe", ".com", ".bat", ".cmd", ".ps1", ".py", ".pyw", ".vbs", ".wsf", ".js", ".jar" };
@@ -48,4 +53,18 @@ public class TargetItem
     [JsonIgnore] public bool IsExecutable => !IsGroup && IsExeExtension(Path);
 
     [JsonIgnore] public bool Exists => IsGroup || IsFolder || File.Exists(Path);
+}
+
+public sealed class LaunchOptions
+{
+    public string FileName { get; set; } = "{target}";
+    public string Arguments { get; set; } = "{files}";
+    public string WorkingDirectory { get; set; } = "{targetDir}";
+
+    public LaunchOptions Clone() => new()
+    {
+        FileName = FileName,
+        Arguments = Arguments,
+        WorkingDirectory = WorkingDirectory,
+    };
 }

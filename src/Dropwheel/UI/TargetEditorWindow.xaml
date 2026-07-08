@@ -23,7 +23,7 @@
                 <TextBlock Text="Path (folder or .exe)"/>
                 <DockPanel Margin="0,4,0,10">
                     <Button Content="…" Width="28" DockPanel.Dock="Right" Margin="6,0,0,0" Click="OnBrowse"/>
-                    <TextBox x:Name="PathBox"/>
+                    <TextBox x:Name="PathBox" TextChanged="OnLaunchEditChanged"/>
                 </DockPanel>
                 <TextBlock Text="Action on file drop"/>
                 <ComboBox x:Name="ActionBox" Margin="0,4,0,10">
@@ -31,6 +31,35 @@
                     <ComboBoxItem Content="Always copy"/>
                     <ComboBoxItem Content="Always move"/>
                 </ComboBox>
+                <Expander x:Name="LaunchPanel" Header="Launch options for this target"
+                          Margin="0,0,0,10" Visibility="Collapsed">
+                    <StackPanel Margin="0,8,0,0">
+                        <ComboBox x:Name="LaunchModeBox" Margin="0,0,0,8"
+                                  SelectionChanged="OnLaunchModeChanged">
+                            <ComboBoxItem Content="Default launch"/>
+                            <ComboBoxItem Content="Custom launch"/>
+                        </ComboBox>
+                        <TextBlock Text="Program" FontSize="11"/>
+                        <TextBox x:Name="LaunchProgramBox" Margin="0,3,0,8"
+                                 TextChanged="OnLaunchEditChanged"/>
+                        <TextBlock Text="Arguments" FontSize="11"/>
+                        <TextBox x:Name="LaunchArgsBox" Margin="0,3,0,8"
+                                 TextChanged="OnLaunchEditChanged"/>
+                        <TextBlock Text="Working directory" FontSize="11"/>
+                        <TextBox x:Name="LaunchWorkDirBox" Margin="0,3,0,8"
+                                 TextChanged="OnLaunchEditChanged"/>
+                        <TextBlock Text="{}{target}   {targetDir}   {files}"
+                                   FontFamily="Consolas" FontSize="11" Foreground="Gray"
+                                   Margin="0,0,0,8"/>
+                        <Border x:Name="LaunchPreviewPanel" BorderBrush="#22000000"
+                                BorderThickness="1" CornerRadius="5" Padding="8">
+                            <TextBlock x:Name="LaunchPreviewText" FontFamily="Consolas"
+                                       FontSize="11" TextWrapping="Wrap"/>
+                        </Border>
+                        <TextBlock x:Name="LaunchStatusText" FontSize="11" Foreground="Gray"
+                                   TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Expander>
                 <TextBlock x:Name="GroupLabel" Text="Group"/>
                 <ComboBox x:Name="GroupCombo" Margin="0,4,0,10"/>
                 <CheckBox x:Name="PinBox" Content="Pin closer to center" Margin="0,0,0,10"/>

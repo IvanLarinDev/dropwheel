@@ -22,6 +22,7 @@ public partial class TargetEditorWindow : Window
         PathBox.Text = t.Path;
         ActionBox.SelectedIndex = (int)t.Override;
         PinBox.IsChecked = t.Pinned;
+        LoadLaunchOptions(t.Launch);
 
         if (t.IsGroup)
         {
@@ -72,6 +73,7 @@ public partial class TargetEditorWindow : Window
         {
             _target.Path = PathBox.Text.Trim();
             _target.Override = (DropAction)ActionBox.SelectedIndex;
+            if (!TrySaveLaunchOptions()) return;
             TargetStore.MoveToGroup(_target, _groupChoices[Math.Max(0, GroupCombo.SelectedIndex)]);
             if (_rulesMode)
             {
@@ -88,5 +90,85 @@ public partial class TargetEditorWindow : Window
     {
         TargetStore.RemoveEverywhere(_target);
         Close();
+    }
+
+    private void LoadLaunchOptions(LaunchOptions? options)
+    {
+        LaunchModeBox.SelectedIndex = options == null ? 0 : 1;
+        LaunchProgramBox.Text = options?.FileName ?? "{target}";
+        LaunchArgsBox.Text = options?.Arguments ?? DefaultLaunchArguments(PathBox.Text);
+        LaunchWorkDirBox.Text = options?.WorkingDirectory ?? "{targetDir}";
+        RefreshLaunchOptions();
+    }
+
+    private void OnLaunchModeChanged(object sender, SelectionChangedEventArgs e) => RefreshLaunchOptions();
+
+    private void OnLaunchEditChanged(object sender, TextChangedEventArgs e) => RefreshLaunchOptions();
+
+    private void RefreshLaunchOptions()
+    {
+        if (!IsLaunchPath(PathBox.Text))
+        {
+            LaunchPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        LaunchPanel.Visibility = Visibility.Visible;
+        var custom = LaunchModeBox.SelectedIndex == 1;
+        LaunchProgramBox.IsEnabled = LaunchArgsBox.IsEnabled = LaunchWorkDirBox.IsEnabled = custom;
+        var path = string.IsNullOrWhiteSpace(PathBox.Text) ? @"C:\Tools\target.bat" : PathBox.Text.Trim();
+        var options = custom ? CurrentLaunchOptions() : null;
+        var psi = LaunchService.BuildStartInfo(path, new[] { @"C:\Drop\a.txt", @"C:\Drop\b b.txt" }, options);
+        LaunchPreviewText.Text = string.IsNullOrWhiteSpace(psi.Arguments)
+            ? psi.FileName
+            : $"{psi.FileName} {psi.Arguments}";
+        LaunchStatusText.Text = custom
+            ? "Custom launch applies only to this target."
+            : "Default launch: Dropwheel runs this target with dropped files.";
+    }
+
+    private static bool IsLaunchPath(string path) => TargetItem.IsExeExtension(path);
+
+    private static string DefaultLaunchArguments(string path)
+    {
+        var ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
+        return ext switch
+        {
+            ".ps1" => "-NoProfile -ExecutionPolicy Bypass -File \"{target}\" {files}",
+            ".py" or ".pyw" => "\"{target}\" {files}",
+            ".jar" => "-jar \"{target}\" {files}",
+            _ => "{files}",
+        };
+    }
+
+    private LaunchOptions CurrentLaunchOptions() => new()
+    {
+        FileName = LaunchProgramBox.Text.Trim(),
+        Arguments = LaunchArgsBox.Text.Trim(),
+        WorkingDirectory = LaunchWorkDirBox.Text.Trim(),
+    };
+
+    private bool TrySaveLaunchOptions()
+    {
+        if (!IsLaunchPath(_target.Path))
+        {
+            _target.Launch = null;
+            return true;
+        }
+        if (LaunchModeBox.SelectedIndex != 1)
+        {
+            _target.Launch = null;
+            return true;
+        }
+
+        var options = CurrentLaunchOptions();
+        if (string.IsNullOrWhiteSpace(options.FileName))
+        {
+            MessageBox.Show(this, "Program is required for custom launch.",
+                "Launch options", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        _target.Launch = options;
+        return true;
     }
 }

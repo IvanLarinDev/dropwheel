@@ -37,7 +37,7 @@ public static class TargetStore
             try
             {
                 Config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), Opts) ?? new();
-                if (SeedMissingConfigDefaults()) Save();
+                if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); Save(); }
                 return;
             }
             catch (JsonException) { /* corrupted config — recreate with defaults */ }
@@ -92,7 +92,6 @@ public static class TargetStore
         return new AppConfig
         {
             Presets = PresetService.Defaults(),
-            LaunchCommands = DefaultLaunchCommands(),
             Targets = {
                 new() { Name = "Downloads", Path = Path.Combine(P(Environment.SpecialFolder.UserProfile), "Downloads"), Pinned = true },
                 new() { Name = "Documents", Path = P(Environment.SpecialFolder.MyDocuments), Pinned = true },
@@ -102,41 +101,4 @@ public static class TargetStore
         };
     }
 
-    private static bool SeedMissingConfigDefaults()
-    {
-        var changed = false;
-        if (Config.Presets == null)
-        {
-            Config.Presets = PresetService.Defaults();
-            changed = true;
-        }
-        if (Config.LaunchCommands == null)
-        {
-            Config.LaunchCommands = DefaultLaunchCommands();
-            changed = true;
-        }
-        return changed;
-    }
-
-    public static List<LaunchCommand> DefaultLaunchCommands() => new()
-    {
-        new()
-        {
-            Extensions = { ".ps1" },
-            FileName = "powershell.exe",
-            Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"{target}\" {files}",
-        },
-        new()
-        {
-            Extensions = { ".py", ".pyw" },
-            FileName = "py",
-            Arguments = "\"{target}\" {files}",
-        },
-        new()
-        {
-            Extensions = { ".jar" },
-            FileName = "java",
-            Arguments = "-jar \"{target}\" {files}",
-        },
-    };
 }
