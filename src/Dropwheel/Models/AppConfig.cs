@@ -24,4 +24,15 @@ public class AppConfig
     /// <summary>File-type presets for the rules editor. Seeded with built-in defaults on first
     /// run, then user-editable. null (missing key) triggers reseeding on load.</summary>
     public List<FilePreset>? Presets { get; set; }
+
+    /// <summary>User-editable launch commands for script-like targets. Missing key triggers
+    /// reseeding on load; an empty list means "use only shell execution".</summary>
+    public List<LaunchCommand>? LaunchCommands { get; set; }
+}
+
+public sealed class LaunchCommand
+{
+    public List<string> Extensions { get; set; } = new();
+    public string FileName { get; set; } = "";
+    public string Arguments { get; set; } = "";
 }

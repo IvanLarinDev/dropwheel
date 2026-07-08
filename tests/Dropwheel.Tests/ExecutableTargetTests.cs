@@ -43,4 +43,60 @@ public sealed class ExecutableTargetTests
     {
         Assert.Equal("", LaunchService.BuildArgs(Array.Empty<string>()));
     }
+
+    [Fact]
+    public void Default_launch_commands_include_script_interpreters()
+    {
+        var commands = TargetStore.DefaultLaunchCommands();
+        Assert.Contains(commands, c => c.Extensions.Contains(".ps1") && c.FileName == "powershell.exe");
+        Assert.Contains(commands, c => c.Extensions.Contains(".py") && c.FileName == "py");
+        Assert.Contains(commands, c => c.Extensions.Contains(".jar") && c.FileName == "java");
+    }
+
+    [Fact]
+    public void BuildStartInfo_uses_configured_command_for_matching_extension()
+    {
+        var psi = LaunchService.BuildStartInfo(
+            @"C:\scripts\tool.foo",
+            new[] { @"C:\drop\a.txt", @"C:\drop\b b.txt" },
+            new[]
+            {
+                new LaunchCommand
+                {
+                    Extensions = { "foo" },
+                    FileName = "runner.exe",
+                    Arguments = "--script \"{target}\" -- {files}",
+                },
+            });
+
+        Assert.Equal("runner.exe", psi.FileName);
+        Assert.Equal("--script \"C:\\scripts\\tool.foo\" -- \"C:\\drop\\a.txt\" \"C:\\drop\\b b.txt\"", psi.Arguments);
+        Assert.False(psi.UseShellExecute);
+    }
+
+    [Fact]
+    public void BuildStartInfo_falls_back_to_shell_execution_without_command()
+    {
+        var psi = LaunchService.BuildStartInfo(@"C:\tools\app.exe", new[] { @"C:\drop\a.txt" }, Array.Empty<LaunchCommand>());
+        Assert.Equal(@"C:\tools\app.exe", psi.FileName);
+        Assert.Equal("\"C:\\drop\\a.txt\"", psi.Arguments);
+        Assert.True(psi.UseShellExecute);
+    }
+
+    [Fact]
+    public void SortRule_clone_is_deep()
+    {
+        var original = new SortRule
+        {
+            Dest = "Images",
+            All = { new RuleCondition { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } },
+        };
+
+        var clone = original.Clone();
+        clone.Dest = "Edited";
+        clone.All[0].Value = "png";
+
+        Assert.Equal("Images", original.Dest);
+        Assert.Equal("jpg", original.All[0].Value);
+    }
 }

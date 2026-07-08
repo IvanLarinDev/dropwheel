@@ -32,7 +32,7 @@ public static class LaunchService
     /// <summary>Whether dropping files on this target should run it with them as arguments —
     /// true for executable/script targets, including a .lnk that points at one.</summary>
     public static bool IsRunTarget(TargetItem t) =>
-        !t.IsGroup && TargetItem.IsExeExtension(EffectivePath(t.Path));
+        !t.IsGroup && IsRunExtension(EffectivePath(t.Path));
 
     public static void Launch(TargetItem t)
     {
@@ -43,7 +43,7 @@ public static class LaunchService
             else
                 Process.Start(new ProcessStartInfo(t.Path) { UseShellExecute = true });
         }
-        catch { /* target may no longer exist — ignore */ }
+        catch (Exception ex) { ErrorLog.Write($"Could not launch target '{t.Name}' at '{t.Path}'", ex); }
     }
 
     /// <summary>Quotes each dropped path and joins them for use as command-line arguments.</summary>
@@ -56,20 +56,47 @@ public static class LaunchService
     public static bool LaunchWith(TargetItem t, IReadOnlyList<string> files)
     {
         var exe = EffectivePath(t.Path);
-        var args = BuildArgs(files);
-        var psi = Path.GetExtension(exe).ToLowerInvariant() switch
-        {
-            ".ps1" => new ProcessStartInfo("powershell.exe",
-                $"-NoProfile -ExecutionPolicy Bypass -File \"{exe}\" {args}"),
-            ".py" or ".pyw" => new ProcessStartInfo("py", $"\"{exe}\" {args}"),
-            ".jar" => new ProcessStartInfo("java", $"-jar \"{exe}\" {args}"),
-            _ => new ProcessStartInfo(exe) { Arguments = args, UseShellExecute = true },
-        };
+        var psi = BuildStartInfo(exe, files, TargetStore.Config.LaunchCommands);
         psi.WorkingDirectory = Path.GetDirectoryName(exe) ?? "";
         try { Process.Start(psi); return true; }
-        catch { return false; }
+        catch (Exception ex) { ErrorLog.Write($"Could not launch '{exe}' with dropped files", ex); return false; }
     }
 
     public static void OpenConfigFolder() =>
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{TargetStore.Dir}\""));
+
+    internal static ProcessStartInfo BuildStartInfo(
+        string exe, IReadOnlyList<string> files, IReadOnlyList<LaunchCommand>? commands)
+    {
+        var args = BuildArgs(files);
+        var command = FindCommand(Path.GetExtension(exe), commands);
+        if (command == null)
+            return new ProcessStartInfo(exe) { Arguments = args, UseShellExecute = true };
+
+        return new ProcessStartInfo(command.FileName, ExpandArgs(command.Arguments, exe, args));
+    }
+
+    private static bool IsRunExtension(string path) =>
+        TargetItem.IsExeExtension(path) || FindCommand(Path.GetExtension(path), TargetStore.Config.LaunchCommands) != null;
+
+    private static LaunchCommand? FindCommand(string extension, IReadOnlyList<LaunchCommand>? commands)
+    {
+        var ext = NormalizeExt(extension);
+        if (ext.Length == 0 || commands == null) return null;
+        return commands.FirstOrDefault(c =>
+            !string.IsNullOrWhiteSpace(c.FileName)
+            && c.Extensions.Any(e => string.Equals(NormalizeExt(e), ext, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static string NormalizeExt(string extension)
+    {
+        var ext = extension.Trim();
+        if (ext.Length == 0) return "";
+        return ext.StartsWith('.') ? ext.ToLowerInvariant() : "." + ext.ToLowerInvariant();
+    }
+
+    private static string ExpandArgs(string template, string target, string files) =>
+        template.Replace("{target}", target, StringComparison.Ordinal)
+                .Replace("{files}", files, StringComparison.Ordinal)
+                .Trim();
 }

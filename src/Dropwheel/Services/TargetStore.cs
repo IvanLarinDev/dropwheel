@@ -32,16 +32,18 @@ public static class TargetStore
 
     public static void Load()
     {
-        try
+        if (File.Exists(FilePath))
         {
-            if (File.Exists(FilePath))
+            try
             {
                 Config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), Opts) ?? new();
-                if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); Save(); }
+                if (SeedMissingConfigDefaults()) Save();
                 return;
             }
+            catch (JsonException) { /* corrupted config — recreate with defaults */ }
+            catch (IOException) { /* unreadable config — recreate with defaults */ }
+            catch (UnauthorizedAccessException) { /* unreadable config — recreate with defaults */ }
         }
-        catch { /* corrupted config — recreate with defaults */ }
         Config = Defaults();
         Save();
     }
@@ -50,11 +52,19 @@ public static class TargetStore
     /// target config.json stays intact instead of becoming half-empty.</summary>
     public static void Save()
     {
-        Directory.CreateDirectory(Dir);
-        var tmp = FilePath + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(Config, Opts));
-        File.Move(tmp, FilePath, overwrite: true);
-        Saved?.Invoke();
+        try
+        {
+            Directory.CreateDirectory(Dir);
+            var tmp = FilePath + ".tmp";
+            File.WriteAllText(tmp, JsonSerializer.Serialize(Config, Opts));
+            File.Move(tmp, FilePath, overwrite: true);
+            Saved?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Failed to save settings", ex);
+            throw new InvalidOperationException("Could not save settings. See error.log for details.", ex);
+        }
     }
 
     public static IEnumerable<TargetItem> Groups => Config.Targets.Where(t => t.IsGroup);
@@ -82,6 +92,7 @@ public static class TargetStore
         return new AppConfig
         {
             Presets = PresetService.Defaults(),
+            LaunchCommands = DefaultLaunchCommands(),
             Targets = {
                 new() { Name = "Downloads", Path = Path.Combine(P(Environment.SpecialFolder.UserProfile), "Downloads"), Pinned = true },
                 new() { Name = "Documents", Path = P(Environment.SpecialFolder.MyDocuments), Pinned = true },
@@ -90,4 +101,42 @@ public static class TargetStore
             },
         };
     }
+
+    private static bool SeedMissingConfigDefaults()
+    {
+        var changed = false;
+        if (Config.Presets == null)
+        {
+            Config.Presets = PresetService.Defaults();
+            changed = true;
+        }
+        if (Config.LaunchCommands == null)
+        {
+            Config.LaunchCommands = DefaultLaunchCommands();
+            changed = true;
+        }
+        return changed;
+    }
+
+    public static List<LaunchCommand> DefaultLaunchCommands() => new()
+    {
+        new()
+        {
+            Extensions = { ".ps1" },
+            FileName = "powershell.exe",
+            Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"{target}\" {files}",
+        },
+        new()
+        {
+            Extensions = { ".py", ".pyw" },
+            FileName = "py",
+            Arguments = "\"{target}\" {files}",
+        },
+        new()
+        {
+            Extensions = { ".jar" },
+            FileName = "java",
+            Arguments = "-jar \"{target}\" {files}",
+        },
+    };
 }
