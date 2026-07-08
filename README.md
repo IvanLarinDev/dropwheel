@@ -67,6 +67,10 @@ fade out when idle (see Settings).
 
 Use these names when describing the wheel in issues, docs, or UI changes:
 
+<p align="center">
+  <img src="docs/media/interface-names.png" width="720" alt="Annotated Dropwheel interface names">
+</p>
+
 | Name | Meaning |
 |------|---------|
 | **Orb** | The small floating Dropwheel button that sits on the desktop when the wheel is closed. |
