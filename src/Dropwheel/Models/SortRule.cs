@@ -14,6 +14,13 @@ public sealed class RuleCondition
     public ConditionField Field { get; set; }
     public CompareOp Op { get; set; }
     public string Value { get; set; } = "";
+
+    public RuleCondition Clone() => new()
+    {
+        Field = Field,
+        Op = Op,
+        Value = Value,
+    };
 }
 
 /// <summary>A routing rule: send a file to Dest when all conditions match.
@@ -23,4 +30,10 @@ public sealed class SortRule
 {
     public string Dest { get; set; } = "";
     public List<RuleCondition> All { get; set; } = new();
+
+    public SortRule Clone() => new()
+    {
+        Dest = Dest,
+        All = All.Select(c => c.Clone()).ToList(),
+    };
 }

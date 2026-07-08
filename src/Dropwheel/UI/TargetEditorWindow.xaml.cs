@@ -42,7 +42,7 @@ public partial class TargetEditorWindow : Window
             SortMigration.Migrate(_target);
             if (_target.Rules is { Count: > 0 })
             {
-                _rules.AddRange(_target.Rules);
+                _rules.AddRange(_target.Rules.Select(r => r.Clone()));
                 ShowRulesEditor();
             }
             else
@@ -75,7 +75,7 @@ public partial class TargetEditorWindow : Window
             TargetStore.MoveToGroup(_target, _groupChoices[Math.Max(0, GroupCombo.SelectedIndex)]);
             if (_rulesMode)
             {
-                _target.Rules = _rules.Count > 0 ? _rules : null;
+                _target.Rules = _rules.Count > 0 ? _rules.Select(r => r.Clone()).ToList() : null;
                 _target.SortRules = null;
                 _target.Watch = WatchBox.IsChecked == true && _target.Rules != null;
             }
