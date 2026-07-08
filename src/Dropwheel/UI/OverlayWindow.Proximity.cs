@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using Dropwheel.Services;
 
 namespace Dropwheel.UI;
@@ -34,7 +35,7 @@ public partial class OverlayWindow
         double dx = x - _orbSX, dy = y - _orbSY, d2 = dx * dx + dy * dy;
         WakeIdle(d2);
         if (!leftDown) { _proximityOpened = false; return; }
-        if (!_open && d2 < _openR2)
+        if (!_open && d2 < _openR2 && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
         { _proximityOpened = true; OpenCloud(); }
         else if (_open && _proximityOpened && d2 > _closeR2)
         { _proximityOpened = false; CloseCloud(); }

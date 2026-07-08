@@ -6,6 +6,36 @@
     <StackPanel Margin="16">
         <TextBlock Text="Theme"/>
         <ComboBox x:Name="ThemeBox" Margin="0,4,0,10"/>
+        <TextBlock Text="Open animation"/>
+        <Grid Margin="0,4,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="82"/>
+            </Grid.ColumnDefinitions>
+            <ComboBox x:Name="OpenAnimationBox" Grid.Column="0" Margin="0,0,10,0"/>
+            <Border Grid.Column="1" BorderBrush="#465365" BorderThickness="1" Background="#131A25"
+                    Height="31">
+                <Canvas>
+                    <Ellipse Width="7" Height="7" Fill="#6ED7FF" Canvas.Left="37" Canvas.Top="12"/>
+                    <Ellipse Width="6" Height="6" Fill="#CC6ED7FF" Canvas.Left="20" Canvas.Top="6"/>
+                    <Ellipse Width="6" Height="6" Fill="#CC6ED7FF" Canvas.Left="54" Canvas.Top="6"/>
+                    <Ellipse Width="5" Height="5" Fill="#8C6ED7FF" Canvas.Left="12" Canvas.Top="21"/>
+                    <Ellipse Width="5" Height="5" Fill="#8C6ED7FF" Canvas.Left="62" Canvas.Top="21"/>
+                </Canvas>
+            </Border>
+        </Grid>
+        <TextBlock Text="Animation speed"/>
+        <Grid Margin="0,4,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="48"/>
+            </Grid.ColumnDefinitions>
+            <Slider x:Name="OpenAnimationSpeedSlider" Grid.Column="0" Minimum="0.5" Maximum="2"
+                    TickFrequency="0.25" IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                    Margin="0,0,10,0"/>
+            <TextBlock x:Name="OpenAnimationSpeedText" Grid.Column="1" VerticalAlignment="Center"
+                       TextAlignment="Right"/>
+        </Grid>
         <TextBlock Text="Default drop action"/>
         <ComboBox x:Name="ActionBox" Margin="0,4,0,10">
             <ComboBoxItem Content="Copy"/>

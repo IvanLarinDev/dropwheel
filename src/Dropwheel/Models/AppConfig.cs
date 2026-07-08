@@ -19,6 +19,12 @@ public class AppConfig
     /// <summary>UI theme: Fluent, Dark, Light, Neon.</summary>
     public string Theme { get; set; } = "Fluent";
 
+    /// <summary>How target tiles animate when the wheel opens.</summary>
+    public OpenAnimation OpenAnimation { get; set; } = OpenAnimation.Pop;
+
+    /// <summary>Multiplier for wheel open animation speed. 1.0 = normal.</summary>
+    public double OpenAnimationSpeed { get; set; } = 1.0;
+
     public List<TargetItem> Targets { get; set; } = new();
 
     /// <summary>File-type presets for the rules editor. Seeded with built-in defaults on first

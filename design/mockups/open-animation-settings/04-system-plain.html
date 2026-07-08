@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Open animation setting - System plain</title>
+<style>
+  :root { font-family: "Segoe UI", Arial, sans-serif; color: #20242a; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #dfe3e8; }
+  .window { width: 340px; background: #f7f7f7; border: 1px solid #9fa6ae; box-shadow: 0 18px 46px #2c344033; }
+  .title { background: #ffffff; padding: 10px 14px; border-bottom: 1px solid #d0d5dc; font-size: 13px; }
+  .body { padding: 16px; }
+  .group { border: 1px solid #c3c8cf; padding: 12px; margin-bottom: 13px; background: #fff; }
+  .group-title { margin: -20px 0 8px -4px; background: #fff; display: inline-block; padding: 0 4px; font-size: 12px; color: #48515d; }
+  label { display: block; font-size: 12px; margin-bottom: 4px; }
+  select, input { width: 100%; box-sizing: border-box; height: 28px; border: 1px solid #9da8b5; background: white; padding: 0 7px; }
+  .field { margin-bottom: 10px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .note { font-size: 11px; color: #5d6875; line-height: 1.35; margin-top: -2px; }
+  button { height: 30px; min-width: 88px; border: 1px solid #7f8791; background: #f3f3f3; }
+  button.primary { background: #176fc1; color: white; border-color: #176fc1; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; }
+</style>
+</head>
+<body>
+  <section class="window">
+    <div class="title">Settings - Dropwheel</div>
+    <div class="body">
+      <div class="group">
+        <div class="group-title">Appearance</div>
+        <div class="field"><label>Theme</label><select><option>Fluent</option></select></div>
+        <div class="field"><label>Open animation</label><select><option>Clock sweep</option><option>Pop</option><option>Radial burst</option><option>Magnetic settle</option></select></div>
+        <div class="note">Used when the wheel opens from hover, click, hotkey, or drag proximity.</div>
+      </div>
+      <div class="group">
+        <div class="group-title">Behavior</div>
+        <div class="field two">
+          <div><label>Hover delay, ms</label><input value="250"></div>
+          <div><label>Idle fade, sec</label><input value="0"></div>
+        </div>
+        <div class="field"><label>Global hotkey</label><input value="Ctrl+Alt+Space"></div>
+      </div>
+      <div class="actions"><button>Cancel</button><button class="primary">Save</button></div>
+    </div>
+  </section>
+</body>
+</html>
