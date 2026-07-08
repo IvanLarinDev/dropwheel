@@ -64,7 +64,8 @@ function explainedIntentionalDirty(text) {
   const mentionsDirty = /dirty tree|uncommitted|незакоммич|некоммич|рабоч(ем|ее) дерев|оставш/.test(s);
   const intentional = /intentional|intentionally|намеренн|осознанн|не трогал|не трогала|оставил|оставила|оставлены/.test(s);
   const reportsLoop = /verify|проверен|проверено|self-review|diff|commit|коммит|report|отч[её]т/.test(s);
-  return mentionsDirty && intentional && reportsLoop;
+  const reviewOnly = /review-only|только review|только ревью|повторн(ый|ое) review|повторн(ый|ое) ревью|изменения я не правил|изменения не правил|не коммитил|commit\/pr не делал|коммит не делал/.test(s);
+  return (mentionsDirty && intentional && reportsLoop) || (reviewOnly && reportsLoop);
 }
 function isHarnessOrLocalStatus(line) {
   const p = line.replace(/\\/g, "/").replace(/^\S\S\s+/, "");
@@ -115,7 +116,7 @@ function isHarnessOrLocalStatus(line) {
     "  4. VERIFY (node hooks/verify.js + git diff review) -> 5. COMMIT на feature-ветке -> 6. REPORT.\n" +
     "Коммит не всегда нужен: можно явно отчитаться, почему изменения остаются uncommitted.\n" +
     harnessNote +
-    "git status:\n" + shown;
+    "git status (первые строки):\n" + shown;
   try { process.stdout.write(JSON.stringify({ decision: "block", reason }) + "\n"); } catch {}
   process.stderr.write(reason + "\n");
   process.exit(0);

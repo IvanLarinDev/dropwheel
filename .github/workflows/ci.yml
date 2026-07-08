@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  verify:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5

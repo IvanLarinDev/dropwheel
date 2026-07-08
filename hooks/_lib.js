@@ -153,14 +153,15 @@ function interpreterProtectedHint(rawCmd, protectedList) {
   return null;
 }
 
-// ---------- changed files (branch diff) ----------
+// ---------- changed files (branch/worktree diff) ----------
 // Изменённые файлы ветки относительно базы. Возвращает {files, base} при успешном
 // diff (пусть даже ПУСТОМ) или {error} если ни одна база не доступна — это РАЗНЫЕ
 // исходы: пустой diff = «изменений нет», ошибка = «не смогли проверить». Молчаливый
 // fail-open при ошибке означал бы, что в репо без ожидаемой базы гейт/фильтр просто
 // никогда не работает. explicitFiles (тесты/CI) возвращается как есть, без git.
-// Общий источник для design-gate.js (гейт) и verify.js (--changed фильтр стеков).
-function changedFiles(base, root, explicitFiles) {
+// По умолчанию это branch-only контракт для CI/design-gate. Локальный verify может
+// явно добавить dirty/staged/untracked файлы через includeDirty.
+function changedFiles(base, root, explicitFiles, opts = {}) {
   if (explicitFiles) return { files: explicitFiles };
   const remoteFirst = /^origin\//.test(String(base || ""));
   const fallbacks = remoteFirst
@@ -171,11 +172,53 @@ function changedFiles(base, root, explicitFiles) {
     for (const args of [["diff", "--name-only", `${b}...HEAD`], ["diff", "--name-only", b]]) {
       try {
         const out = execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000, killSignal: "SIGKILL" });
-        return { files: out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean), base: b };
+        const branchFiles = parseFiles(out);
+        return { files: opts.includeDirty ? mergeFiles(branchFiles, dirtyFiles(root)) : branchFiles, base: b };
       } catch {}
     }
   }
   return { error: `git diff не удался ни для одной базы (${bases.join(", ")})` };
+}
+
+function workingTreeChangedFiles(base, root, explicitFiles) {
+  return changedFiles(base, root, explicitFiles, { includeDirty: true });
+}
+
+function parseFiles(out) {
+  return String(out || "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+}
+
+function gitFiles(root, args) {
+  try {
+    return parseFiles(execFileSync("git", args, {
+      cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+      timeout: 5000, killSignal: "SIGKILL",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function dirtyFiles(root) {
+  return mergeFiles(
+    gitFiles(root, ["diff", "--name-only"]),
+    gitFiles(root, ["diff", "--name-only", "--cached"]),
+    gitFiles(root, ["ls-files", "--others", "--exclude-standard"])
+  );
+}
+
+function mergeFiles(...lists) {
+  const out = [];
+  const seen = new Set();
+  for (const list of lists) {
+    for (const f of list || []) {
+      const rel = String(f).replace(/\\/g, "/");
+      if (!rel || seen.has(rel)) continue;
+      seen.add(rel);
+      out.push(rel);
+    }
+  }
+  return out;
 }
 
 module.exports = {
@@ -183,5 +226,5 @@ module.exports = {
   globToRe, loadConfig, normRel, isProtectedPath,
   isProtectedShellWrite, isLintConfigShellWrite, isLintConfigPath,
   interpreterProtectedHint,
-  changedFiles,
+  changedFiles, workingTreeChangedFiles,
 };
