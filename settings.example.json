@@ -1,0 +1,27 @@
+{
+  "_comment": [
+    "Reference wiring for the agent-adapter layer (Claude Code hooks schema).",
+    "Any runtime that can run a command before a tool call and honor its exit code",
+    "can wire the same scripts: exit 2 = block, exit 0 = allow,",
+    "stdout {\"additionalContext\":\"...\"} = non-blocking note.",
+    "The git layer is NOT wired here — install it once with `lefthook install`.",
+    "Copy the `hooks` block into .claude/settings.json (project) to activate."
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|Read",
+        "hooks": [
+          { "type": "command", "command": "node hooks/agent/guard.js" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node hooks/agent/stop-reminder.js" }
+        ]
+      }
+    ]
+  }
+}

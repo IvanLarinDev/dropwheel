@@ -1,0 +1,35 @@
+{
+  "_comment": "Versioned GitHub branch ruleset — the REAL enforcement layer (server-side, cannot be skipped by `git ... --no-verify` or by editing local hooks). Apply with: node hooks/apply-ruleset.js. NOTE: private repos need GitHub Pro/Team/Enterprise for rulesets; on Free make the repo public or upgrade (BACKLOG P0-0). require_code_owner_review is FALSE on purpose: a solo maintainer cannot approve their own PR — enabling it would deadlock main. integration_id 15368 pins the required check to GitHub Actions: without it ANYONE with write access can satisfy the check by posting a fake commit status named 'verify' via the API.",
+  "name": "protect-main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/main", "refs/heads/master"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          { "context": "verify", "integration_id": 15368 }
+        ]
+      }
+    }
+  ]
+}

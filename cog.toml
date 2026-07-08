@@ -1,0 +1,23 @@
+# cog.toml - Cocogitto config: Conventional Commits + SemVer + CHANGELOG.
+# Cocogitto owns commit format, versioning, and changelog generation. The
+# no-coauthorship policy lives in lefthook.yml because Cocogitto does not provide it.
+#
+#   cog verify --file <msg>   # single message, used by lefthook commit-msg
+#   cog check                 # range of commits, useful as a CI backstop
+#   cog bump --auto           # next SemVer from commits -> tag + CHANGELOG
+
+# Release bump must start from the latest v* tag. Without this, a clean release
+# worktree can ignore real release history and compute a bogus 0.1.0-style bump.
+from_latest_tag = true
+ignore_merge_commits = true
+tag_prefix = "v"
+branch_whitelist = ["main", "master", "feat/**", "fix/**", "docs/**", "hotfix/**", "chore/**", "refactor/**"]
+
+[changelog]
+path = "CHANGELOG.md"
+remote = "github.com"
+authors = []
+
+# Extra non-default type used by repos with this history.
+[commit_types]
+improvement = { changelog_title = "Improvements" }

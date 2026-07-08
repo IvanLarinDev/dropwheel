@@ -1,0 +1,43 @@
+# lefthook.yml - battle-tested git-hook runner.
+# Install once, fires for any agent or human that runs git in this repo:
+#     lefthook install
+#
+# Enforcement is delegated to standard tools:
+#   - gitleaks: secret scanning
+#   - cocogitto: Conventional Commits + release
+# The harness keeps its own value here: verify.js, design-gate.js, and small Node
+# wrappers for policies that must be Windows-safe.
+#
+# IMPORTANT: local hooks are hygiene, not enforcement. The real gate is the server
+# ruleset (.github/rulesets/main.json).
+#
+# Escape hatch for a release/hotfix commit that legitimately lands on main:
+#     HARNESS_ALLOW_MAIN=1 git commit ...
+# Skip all hooks once (human choice; the agent-layer guard blocks agents doing this):
+#     LEFTHOOK=0 git ...
+
+commit-msg:
+  commands:
+    conventional:
+      run: cog verify --file '{1}'
+    no-coauthor:
+      # Keep this in Node, not a multi-line shell snippet: lefthook wraps shell
+      # commands as sh -c "..." on Windows, so quoted echo/grep lines break parsing.
+      run: node hooks/no-coauthor.js '{1}'
+
+pre-commit:
+  parallel: true
+  commands:
+    secrets:
+      run: gitleaks git --staged --redact --no-banner -c .gitleaks.toml
+    branch-guard:
+      # Commits belong on feature branches. main advances via merged PRs.
+      # Keep this in Node for Windows-safe parsing.
+      run: node hooks/branch-guard.js
+
+pre-push:
+  commands:
+    verify:
+      run: node hooks/verify.js
+    design-gate:
+      run: node hooks/design-gate.js --base origin/main
