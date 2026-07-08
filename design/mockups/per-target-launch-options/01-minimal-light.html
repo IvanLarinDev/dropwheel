@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Per-target launch options - Inline compact</title>
+<style>
+  :root{--bg:#f6f7f9;--panel:#fff;--line:#d8dde6;--text:#17202a;--muted:#667085;--accent:#2563eb;--warn:#b45309}
+  *{box-sizing:border-box} body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--text);font:13px "Segoe UI",system-ui,sans-serif}
+  .win{width:620px;background:var(--panel);border:1px solid var(--line);box-shadow:0 18px 58px rgba(15,23,42,.16)}
+  header{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center} h1{font-size:15px;margin:0}.type{margin-left:auto;color:var(--muted)}
+  main{padding:16px}.row{margin-bottom:12px} label{display:block;margin-bottom:4px;color:#475467;font-size:12px}
+  input,select{width:100%;height:30px;border:1px solid var(--line);border-radius:6px;padding:0 8px;font:12px Consolas,monospace;background:#fff}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.launch{border:1px solid var(--line);padding:12px;margin-top:14px;background:#fbfcfd}
+  .bar{display:flex;align-items:center;margin-bottom:10px}.bar b{font-size:13px}.bar select{width:160px;margin-left:auto;font-family:"Segoe UI",system-ui}
+  .tokens{display:flex;gap:10px;color:var(--muted);font-size:12px;margin:4px 0 10px}.token{font-family:Consolas,monospace;background:#eef4ff;color:#1d4ed8;padding:2px 6px;border-radius:999px}
+  .preview{border-left:3px solid var(--accent);background:#eff6ff;padding:9px;font-family:Consolas,monospace;font-size:12px;line-height:1.4}.warn{color:var(--warn);margin-top:8px;font-size:12px}
+  footer{border-top:1px solid var(--line);padding:12px 16px;display:flex;justify-content:flex-end;gap:8px}button{height:30px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:0 12px}.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+<section class="win">
+  <header><h1>Edit target</h1><span class="type">run target: resize.bat</span></header>
+  <main>
+    <div class="row"><label>Name</label><input value="Resize images"></div>
+    <div class="row"><label>Path</label><input value="C:\Tools\resize.bat"></div>
+    <div class="grid"><div><label>Drop action</label><select><option>Run with files</option></select></div><div><label>Group</label><select><option>Root</option></select></div></div>
+    <section class="launch">
+      <div class="bar"><b>Launch options</b><select><option>Custom</option><option>Default</option></select></div>
+      <div class="row"><label>Program</label><input value="{target}"></div>
+      <div class="row"><label>Arguments</label><input value="/fast /max-width 1920 {files}"></div>
+      <div class="tokens"><span class="token">{target}</span><span class="token">{targetDir}</span><span class="token">{files}</span></div>
+      <div class="preview">C:\Tools\resize.bat /fast /max-width 1920 "C:\Drop\a.png" "C:\Drop\b.png"</div>
+      <div class="warn">Custom options apply only to this target.</div>
+    </section>
+  </main>
+  <footer><button>Cancel</button><button class="primary">Save</button></footer>
+</section>

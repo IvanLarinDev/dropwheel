@@ -45,39 +45,40 @@ public sealed class ExecutableTargetTests
     }
 
     [Fact]
-    public void Default_launch_commands_include_script_interpreters()
+    public void Default_launch_uses_script_interpreters()
     {
-        var commands = TargetStore.DefaultLaunchCommands();
-        Assert.Contains(commands, c => c.Extensions.Contains(".ps1") && c.FileName == "powershell.exe");
-        Assert.Contains(commands, c => c.Extensions.Contains(".py") && c.FileName == "py");
-        Assert.Contains(commands, c => c.Extensions.Contains(".jar") && c.FileName == "java");
+        var ps = LaunchService.BuildStartInfo(@"C:\scripts\tool.ps1", new[] { @"C:\drop\a.txt" }, null);
+        var py = LaunchService.BuildStartInfo(@"C:\scripts\tool.py", new[] { @"C:\drop\a.txt" }, null);
+        var jar = LaunchService.BuildStartInfo(@"C:\scripts\tool.jar", new[] { @"C:\drop\a.txt" }, null);
+
+        Assert.Equal("powershell.exe", ps.FileName);
+        Assert.Equal("py", py.FileName);
+        Assert.Equal("java", jar.FileName);
     }
 
     [Fact]
-    public void BuildStartInfo_uses_configured_command_for_matching_extension()
+    public void BuildStartInfo_uses_custom_launch_options_for_one_target()
     {
         var psi = LaunchService.BuildStartInfo(
-            @"C:\scripts\tool.foo",
+            @"C:\scripts\tool.bat",
             new[] { @"C:\drop\a.txt", @"C:\drop\b b.txt" },
-            new[]
+            new LaunchOptions
             {
-                new LaunchCommand
-                {
-                    Extensions = { "foo" },
-                    FileName = "runner.exe",
-                    Arguments = "--script \"{target}\" -- {files}",
-                },
+                FileName = "runner.exe",
+                Arguments = "--script \"{target}\" --dir \"{targetDir}\" -- {files}",
+                WorkingDirectory = "{targetDir}",
             });
 
         Assert.Equal("runner.exe", psi.FileName);
-        Assert.Equal("--script \"C:\\scripts\\tool.foo\" -- \"C:\\drop\\a.txt\" \"C:\\drop\\b b.txt\"", psi.Arguments);
-        Assert.False(psi.UseShellExecute);
+        Assert.Equal("--script \"C:\\scripts\\tool.bat\" --dir \"C:\\scripts\" -- \"C:\\drop\\a.txt\" \"C:\\drop\\b b.txt\"", psi.Arguments);
+        Assert.Equal(@"C:\scripts", psi.WorkingDirectory);
+        Assert.True(psi.UseShellExecute);
     }
 
     [Fact]
-    public void BuildStartInfo_falls_back_to_shell_execution_without_command()
+    public void BuildStartInfo_falls_back_to_shell_execution_without_custom_options()
     {
-        var psi = LaunchService.BuildStartInfo(@"C:\tools\app.exe", new[] { @"C:\drop\a.txt" }, Array.Empty<LaunchCommand>());
+        var psi = LaunchService.BuildStartInfo(@"C:\tools\app.exe", new[] { @"C:\drop\a.txt" }, null);
         Assert.Equal(@"C:\tools\app.exe", psi.FileName);
         Assert.Equal("\"C:\\drop\\a.txt\"", psi.Arguments);
         Assert.True(psi.UseShellExecute);

@@ -1,6 +1,6 @@
-# Mockups — launch-commands-editor
+# Mockups — per-target-launch-options
 
-DESIGN-стадия для GUI-фичи «launch-commands-editor». Правило: >=4 стилистически разных
+DESIGN-стадия для GUI-фичи «per-target-launch-options». Правило: >=4 стилистически разных
 мокапа + approval **до** написания GUI-кода (BACKLOG P1-5).
 
 ## Варианты
