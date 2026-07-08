@@ -32,6 +32,7 @@ public static class TargetStore
 
     public static void Load()
     {
+        bool shouldBackup = false;
         if (File.Exists(FilePath))
         {
             try
@@ -40,12 +41,32 @@ public static class TargetStore
                 if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); Save(); }
                 return;
             }
-            catch (JsonException) { /* corrupted config — recreate with defaults */ }
-            catch (IOException) { /* unreadable config — recreate with defaults */ }
-            catch (UnauthorizedAccessException) { /* unreadable config — recreate with defaults */ }
+            catch (JsonException ex) { ErrorLog.Write("Config is corrupted; backing it up and recreating defaults", ex); shouldBackup = true; }
+            catch (IOException ex) { ErrorLog.Write("Config is unreadable; backing it up and recreating defaults", ex); shouldBackup = true; }
+            catch (UnauthorizedAccessException ex) { ErrorLog.Write("Config is unreadable; backing it up and recreating defaults", ex); shouldBackup = true; }
         }
+        if (shouldBackup) BackupBadConfig(DateTime.Now);
         Config = Defaults();
         Save();
+    }
+
+    internal static string BackupPath(DateTime now)
+    {
+        var stamp = now.ToString("yyyyMMdd_HHmmss");
+        return Path.Combine(Dir, $"config.bad.{stamp}.json");
+    }
+
+    private static void BackupBadConfig(DateTime now)
+    {
+        try
+        {
+            if (!File.Exists(FilePath)) return;
+            var backup = BackupPath(now);
+            for (int i = 2; File.Exists(backup); i++)
+                backup = Path.Combine(Dir, $"config.bad.{now:yyyyMMdd_HHmmss}.{i}.json");
+            File.Copy(FilePath, backup);
+        }
+        catch (Exception ex) { ErrorLog.Write("Failed to back up bad config", ex); }
     }
 
     /// <summary>Writes via a temp file then renames it: if the process is killed mid-write, the
@@ -100,5 +121,4 @@ public static class TargetStore
             },
         };
     }
-
 }

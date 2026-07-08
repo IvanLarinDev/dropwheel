@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -159,6 +160,23 @@ public sealed class SortServiceTests : IDisposable
         // A broken rule must not crash planning and must not catch the file.
         var plan = SortService.Plan(t, new[] { img });
         Assert.Contains(img, plan[Path.Combine(_root, "Camera")]);
+    }
+
+    [Fact]
+    public void Catastrophic_regex_times_out_and_later_rules_can_match()
+    {
+        var file = new string('a', 5000) + "!_marker.txt";
+        var rules = new List<SortRule>
+        {
+            Rule("Bad", ConditionField.NameRegex, CompareOp.Matches, "^(a+)+$"),
+            Rule("Fallback", ConditionField.NameContains, CompareOp.Contains, "marker"),
+        };
+
+        var sw = Stopwatch.StartNew();
+        var idx = SortService.MatchedRuleIndex(rules, file);
+
+        Assert.Equal(1, idx);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5));
     }
 
     [Fact]

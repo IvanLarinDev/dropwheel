@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using Dropwheel.Services;
 
@@ -47,5 +48,16 @@ public sealed class VirtualFileServiceTests
     public void Truncated_buffer_yields_empty()
     {
         Assert.Empty(VirtualFileService.ParseDescriptorNames(new byte[] { 1, 0 }));
+    }
+
+    [Fact]
+    public void Temp_path_for_virtual_file_stays_next_to_destination_and_is_hidden_tmp()
+    {
+        var dest = Path.Combine(Path.GetTempPath(), "invoice.pdf");
+        var tmp = VirtualFileService.TempPathFor(dest);
+
+        Assert.Equal(Path.GetDirectoryName(dest), Path.GetDirectoryName(tmp));
+        Assert.StartsWith(".invoice.pdf.", Path.GetFileName(tmp));
+        Assert.EndsWith(".tmp", tmp);
     }
 }
