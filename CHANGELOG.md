@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.10.0 - 2026-07-08
+
+### Features
+
+- Add selectable wheel open animations with a compact Settings control.
+- Add animation speed control for target reveal motion.
+
+### Fixes
+
+- Keep targets closed when Alt is already held to drag the orb.
+
 ## v0.9.0 - 2026-07-08
 
 ### Features
