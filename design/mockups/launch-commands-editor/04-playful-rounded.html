@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Launch commands editor - Validation first</title>
+<style>
+  :root { --bg:#eef5f8; --panel:#fff; --line:#c7d7df; --text:#17232b; --muted:#5d7280; --accent:#0f766e; --rose:#be123c; --amber:#b45309; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font:13px "Segoe UI", system-ui, sans-serif; display:grid; place-items:center; }
+  .window { width:800px; background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 18px 56px rgba(31,55,70,.2); }
+  header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; }
+  h1 { margin:0; font-size:16px; }
+  .pill { margin-left:auto; border:1px solid #99f6e4; background:#ccfbf1; color:#115e59; padding:4px 9px; border-radius:999px; font-size:12px; }
+  main { padding:14px; display:grid; grid-template-columns:1fr 280px; gap:14px; }
+  .list { border:1px solid var(--line); border-radius:7px; overflow:hidden; }
+  .item { display:grid; grid-template-columns:100px 1fr 78px; gap:10px; padding:10px; border-bottom:1px solid var(--line); align-items:center; }
+  .item:last-child { border-bottom:0; }
+  .tag { font-family:Consolas, monospace; background:#f1f5f9; border:1px solid #dbe3ec; border-radius:5px; padding:5px 7px; }
+  .muted { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .state { font-weight:600; text-align:right; }
+  .ok { color:var(--accent); }
+  .warn { color:var(--amber); }
+  .bad { color:var(--rose); }
+  .panel { border:1px solid var(--line); border-radius:7px; padding:12px; background:#fbfdfe; }
+  .panel h2 { margin:0 0 10px; font-size:13px; }
+  .problem { border-left:3px solid var(--rose); padding:8px; background:#fff1f2; margin-bottom:8px; }
+  .preview { border-left:3px solid var(--accent); padding:8px; background:#ecfdf5; font-family:Consolas, monospace; font-size:12px; line-height:1.45; }
+  footer { border-top:1px solid var(--line); padding:12px 14px; display:flex; justify-content:flex-end; gap:8px; background:#f8fbfc; }
+  button { height:30px; border:1px solid var(--line); background:#fff; border-radius:6px; padding:0 12px; font:inherit; }
+  .primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+</style>
+<section class="window">
+  <header><h1>Launch commands</h1><span class="pill">Live validation</span></header>
+  <main>
+    <section class="list">
+      <div class="item"><div class="tag">.ps1</div><div><b>powershell.exe</b><div class="muted">-NoProfile -ExecutionPolicy Bypass -File "{target}" {files}</div></div><div class="state warn">Review</div></div>
+      <div class="item"><div class="tag">.py .pyw</div><div><b>py</b><div class="muted">"{target}" {files}</div></div><div class="state ok">Ready</div></div>
+      <div class="item"><div class="tag">.jar</div><div><b>java</b><div class="muted">-jar "{target}" {files}</div></div><div class="state ok">Ready</div></div>
+      <div class="item"><div class="tag">.foo</div><div><b>runner.exe</b><div class="muted">--script "{target}" -- {files}</div></div><div class="state bad">Missing</div></div>
+    </section>
+    <aside class="panel">
+      <h2>Selected command</h2>
+      <div class="problem"><b>runner.exe not found</b><br>Use an absolute path or install it into PATH.</div>
+      <div class="preview">runner.exe --script "C:\Tools\tool.foo" -- "C:\Drop\a.txt"</div>
+    </aside>
+  </main>
+  <footer><button>Add</button><button>Duplicate</button><button>Delete</button><button class="primary">Apply</button></footer>
+</section>

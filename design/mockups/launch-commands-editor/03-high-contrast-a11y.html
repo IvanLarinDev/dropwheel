@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Launch commands editor - Guided presets</title>
+<style>
+  :root { --bg:#000; --panel:#fff; --text:#000; --line:#000; --accent:#ffd800; --blue:#0047ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:#111; color:var(--text); font:15px "Segoe UI", system-ui, sans-serif; display:grid; place-items:center; }
+  .window { width:760px; background:var(--panel); border:3px solid var(--line); }
+  header { padding:14px 16px; border-bottom:3px solid var(--line); display:flex; align-items:center; gap:12px; }
+  h1 { margin:0; font-size:18px; }
+  main { padding:16px; display:grid; grid-template-columns:230px 1fr; gap:16px; }
+  .preset { border:3px solid var(--line); padding:12px; margin-bottom:10px; min-height:72px; }
+  .preset.selected { background:var(--accent); }
+  .preset b { display:block; margin-bottom:5px; }
+  label { display:block; font-weight:700; margin:0 0 6px; }
+  input { width:100%; height:38px; border:3px solid var(--line); padding:0 8px; font:14px Consolas, monospace; margin-bottom:13px; }
+  .tokens { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0 14px; }
+  .token { border:3px solid var(--line); padding:8px; background:#f3f3f3; font-family:Consolas, monospace; }
+  .check { border:3px solid var(--line); padding:10px; background:#eaffea; margin-bottom:12px; }
+  footer { padding:14px 16px; border-top:3px solid var(--line); display:flex; justify-content:flex-end; gap:10px; }
+  button { height:38px; border:3px solid var(--line); background:#fff; color:#000; padding:0 14px; font:700 14px "Segoe UI"; }
+  button.primary { background:var(--blue); color:#fff; }
+</style>
+<section class="window">
+  <header><h1>Configure launch commands</h1></header>
+  <main>
+    <aside>
+      <div class="preset selected"><b>1. Choose preset</b>PowerShell, Python, Java, or custom</div>
+      <div class="preset"><b>2. Fill command</b>Program and arguments</div>
+      <div class="preset"><b>3. Test</b>Preview exact process line</div>
+    </aside>
+    <section>
+      <label>Command name</label><input value="PowerShell script">
+      <label>Extensions</label><input value=".ps1">
+      <label>Program</label><input value="powershell.exe">
+      <label>Arguments</label><input value='-NoProfile -ExecutionPolicy Bypass -File "{target}" {files}'>
+      <label>Available tokens</label>
+      <div class="tokens"><div class="token">{target}</div><div class="token">{files}</div></div>
+      <div class="check">Program found in PATH. Arguments include both required tokens.</div>
+    </section>
+  </main>
+  <footer><button>Back</button><button>Next</button><button class="primary">Save command</button></footer>
+</section>

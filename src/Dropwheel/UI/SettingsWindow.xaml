@@ -20,6 +20,9 @@
         <TextBox x:Name="IdleBox" Margin="0,4,0,10"/>
         <TextBlock Text="Global hotkey (e.g. Ctrl+Alt+Space)"/>
         <TextBox x:Name="HotkeyBox" Margin="0,4,0,10"/>
+        <TextBlock Text="Run targets"/>
+        <Button Content="Launch commands..." Padding="8,4" Margin="0,4,0,10"
+                HorizontalAlignment="Stretch" Click="OnLaunchCommands"/>
         <CheckBox x:Name="AutostartBox" Content="Start with Windows" Margin="0,4,0,14"/>
         <Button Content="Save" Width="100" Padding="8,4"
                 HorizontalAlignment="Right" Click="OnSave"/>

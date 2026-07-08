@@ -1,0 +1,50 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Launch commands editor - Master detail</title>
+<style>
+  :root { --bg:#15191f; --panel:#1f252d; --panel2:#252d37; --line:#394452; --text:#eef2f6; --muted:#a8b3c2; --accent:#7cc7ff; --warn:#fdb022; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:#0f1318; color:var(--text); font:13px "Segoe UI", system-ui, sans-serif; display:grid; place-items:center; }
+  .window { width:820px; height:520px; background:var(--panel); border:1px solid var(--line); box-shadow:0 22px 70px rgba(0,0,0,.42); display:grid; grid-template-rows:46px 1fr 54px; }
+  header, footer { display:flex; align-items:center; padding:0 14px; border-bottom:1px solid var(--line); }
+  footer { border-top:1px solid var(--line); border-bottom:0; justify-content:flex-end; gap:8px; }
+  h1 { font-size:15px; margin:0; }
+  main { display:grid; grid-template-columns:240px 1fr; min-height:0; }
+  aside { border-right:1px solid var(--line); padding:10px; background:#1a2028; }
+  .row { padding:10px; border:1px solid transparent; border-radius:7px; margin-bottom:7px; }
+  .row.active { background:var(--panel2); border-color:#526275; }
+  .row b { display:block; font-size:13px; }
+  .row span { color:var(--muted); font-size:12px; }
+  .detail { padding:18px; }
+  label { display:block; color:var(--muted); font-size:12px; margin:0 0 5px; }
+  input { width:100%; height:32px; background:#11161d; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:0 9px; font:12px Consolas, monospace; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+  .full { margin-bottom:14px; }
+  .preview { background:#10151b; border:1px solid var(--line); border-radius:7px; padding:12px; color:var(--muted); font-family:Consolas, monospace; line-height:1.5; }
+  .warn { margin-top:12px; border-left:3px solid var(--warn); padding:8px 10px; background:#2c2718; color:#ffe6a3; }
+  button { height:30px; border-radius:6px; border:1px solid var(--line); background:#202833; color:var(--text); padding:0 12px; font:inherit; }
+  .primary { background:var(--accent); border-color:var(--accent); color:#06131d; }
+</style>
+<section class="window">
+  <header><h1>Launch commands</h1></header>
+  <main>
+    <aside>
+      <div class="row active"><b>PowerShell script</b><span>.ps1 - powershell.exe</span></div>
+      <div class="row"><b>Python script</b><span>.py, .pyw - py</span></div>
+      <div class="row"><b>Java archive</b><span>.jar - java</span></div>
+      <div class="row"><b>Custom runner</b><span>.foo - runner.exe</span></div>
+      <button style="width:100%">Add command</button>
+    </aside>
+    <section class="detail">
+      <div class="grid">
+        <div><label>Extensions</label><input value=".ps1"></div>
+        <div><label>Program</label><input value="powershell.exe"></div>
+      </div>
+      <div class="full"><label>Arguments</label><input value='-NoProfile -ExecutionPolicy Bypass -File "{target}" {files}'></div>
+      <label>Preview</label>
+      <div class="preview">powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Tools\resize.ps1" "C:\Drop\a.png" "C:\Drop\b.png"</div>
+      <div class="warn">ExecutionPolicy Bypass is enabled for this command. Keep it only for scripts you intentionally run.</div>
+    </section>
+  </main>
+  <footer><button>Restore defaults</button><button>Cancel</button><button class="primary">Apply</button></footer>
+</section>

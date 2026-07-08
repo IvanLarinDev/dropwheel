@@ -21,6 +21,12 @@ public partial class SettingsWindow : Window
         AutostartBox.IsChecked = StartupService.IsEnabled;
     }
 
+    private void OnLaunchCommands(object sender, RoutedEventArgs e)
+    {
+        var window = new LaunchCommandsWindow { Owner = this };
+        window.ShowDialog();
+    }
+
     private void OnSave(object sender, RoutedEventArgs e)
     {
         var c = TargetStore.Config;
