@@ -1,0 +1,34 @@
+{
+  "ui": {
+    "globs": [
+      "**/*.ui",
+      "**/*.qml",
+      "**/*.slint",
+      "**/ui/**",
+      "**/views/**",
+      "**/widgets/**"
+    ],
+    "mockups": {
+      "dir": "design/mockups",
+      "min": 4,
+      "mockupExtensions": [
+        ".html",
+        ".svg",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".pdf"
+      ],
+      "approvalFile": "APPROVED"
+    }
+  },
+  "debugAudit": {
+    "enabled": true,
+    "base": "main",
+    "soft": false,
+    "exclude": [
+      "hooks/**"
+    ]
+  }
+}
