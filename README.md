@@ -63,6 +63,30 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 The orb hides automatically in full-screen apps (games, presentations) and can
 fade out when idle (see Settings).
 
+## Interface names
+
+Use these names when describing the wheel in issues, docs, or UI changes:
+
+<p align="center">
+  <img src="docs/media/interface-names.png" width="720" alt="Annotated Dropwheel interface names">
+</p>
+
+| Name | Meaning |
+|------|---------|
+| **Orb** | The small floating Dropwheel button that sits on the desktop when the wheel is closed. |
+| **Wheel** | The expanded radial overlay that opens around the orb. |
+| **Hub** | The center of the open wheel; dropping on it follows the same add-target behavior as dropping on the orb. |
+| **Rim** | The outer circular band that target tiles sit around. |
+| **Spokes** | The radial guide lines from the hub to each tile. |
+| **Target tile** | A square drop destination on the rim, such as Downloads, Documents, Desktop, or Pictures. |
+| **Tile label** | The text under a tile, for example `Downloads` or `Pictures`. |
+| **Add tile** | The dashed `+` tile used to create a new target in the current level. |
+| **Folder target** | A target tile backed by a folder path; dropped files are copied or moved into it. |
+| **Run target** | A target tile backed by an executable or script; dropped files are passed to it as arguments. |
+| **Sorter target** | A folder target with routing rules, shown with an amber border and a sorting badge. |
+| **Group target** | A target tile that opens another wheel level instead of receiving files directly. |
+| **Badge** | The small status marker on a tile, such as copy, move, run, sorter, or group. |
+
 ## Sorter targets & routing rules
 
 A **sorter** distributes dropped files into subfolders by rules (amber-bordered
