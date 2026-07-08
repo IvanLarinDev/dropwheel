@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Open animation setting - Compact combo</title>
+<style>
+  :root { color-scheme: dark; font-family: "Segoe UI", Arial, sans-serif; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #11151d; color: #eaf0f7; }
+  .window { width: 340px; background: #1b222d; border: 1px solid #344051; box-shadow: 0 24px 70px #0009; }
+  .title { padding: 12px 16px; border-bottom: 1px solid #2c3645; font-size: 13px; color: #c7d2df; }
+  .body { padding: 16px; }
+  label { display: block; font-size: 13px; margin: 0 0 5px; color: #dce6f2; }
+  select, input { width: 100%; box-sizing: border-box; height: 31px; background: #101620; color: #f3f7fb; border: 1px solid #465365; padding: 0 9px; font: inherit; }
+  input[type="range"] { accent-color: #6ed7ff; padding: 0; border: 0; height: 24px; }
+  .field { margin-bottom: 12px; }
+  .row { display: grid; grid-template-columns: 1fr 82px; gap: 10px; align-items: end; }
+  .speed { display: grid; grid-template-columns: 1fr 48px; gap: 10px; align-items: center; }
+  .value { text-align: right; color: #cfe6ff; font-size: 13px; }
+  .preview { height: 31px; border: 1px solid #465365; background: #131a25; position: relative; overflow: hidden; }
+  .dot { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #6ed7ff; left: 37px; top: 12px; box-shadow: 0 0 12px #6ed7ff; }
+  .dot:nth-child(2) { left: 20px; top: 6px; opacity: .8; transform: scale(.85); }
+  .dot:nth-child(3) { left: 54px; top: 6px; opacity: .8; transform: scale(.85); }
+  .dot:nth-child(4) { left: 12px; top: 21px; opacity: .55; transform: scale(.7); }
+  .dot:nth-child(5) { left: 62px; top: 21px; opacity: .55; transform: scale(.7); }
+  button { height: 32px; min-width: 96px; background: #2f7ddf; color: white; border: 0; font: inherit; }
+  .actions { display: flex; justify-content: flex-end; margin-top: 3px; }
+</style>
+</head>
+<body>
+  <section class="window">
+    <div class="title">Settings - Dropwheel</div>
+    <div class="body">
+      <div class="field"><label>Theme</label><select><option>Fluent</option></select></div>
+      <div class="field"><label>Default drop action</label><select><option>Copy</option></select></div>
+      <div class="field row">
+        <div><label>Open animation</label><select><option>Magnetic settle</option><option>Pop</option><option>Radial burst</option><option>Clock sweep</option></select></div>
+        <div class="preview"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      </div>
+      <div class="field"><label>Animation speed</label><div class="speed"><input type="range" min="0.5" max="2" step="0.25" value="1"><span class="value">1x</span></div></div>
+      <div class="field"><label>Hover delay to open, ms</label><input value="250"></div>
+      <div class="field"><label>Orb opacity</label><input value="0.80"></div>
+      <div class="field"><label>Global hotkey</label><input value="Ctrl+Alt+Space"></div>
+      <div class="actions"><button>Save</button></div>
+    </div>
+  </section>
+</body>
+</html>
