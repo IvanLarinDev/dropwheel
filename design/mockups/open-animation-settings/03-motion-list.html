@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Open animation setting - Motion list</title>
+<style>
+  :root { color-scheme: dark; font-family: "Segoe UI", Arial, sans-serif; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #090b0f; color: #edf4fb; }
+  .window { width: 430px; background: #151922; border: 1px solid #293241; box-shadow: 0 30px 80px #000b; }
+  .title { padding: 14px 18px; border-bottom: 1px solid #293241; color: #cdd7e3; }
+  .body { padding: 16px 18px 18px; }
+  .section { margin-bottom: 15px; }
+  .section > label { display: block; font-size: 12px; color: #9facbc; margin-bottom: 8px; }
+  .choice { display: grid; grid-template-columns: 26px 1fr 70px; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid #303a4a; background: #10151d; margin-bottom: 7px; }
+  .choice.active { border-color: #72d7ff; background: #122235; }
+  .radio { width: 13px; height: 13px; border-radius: 50%; border: 1px solid #7d8ca0; }
+  .active .radio { border: 4px solid #72d7ff; width: 7px; height: 7px; }
+  .name { font-size: 13px; font-weight: 600; }
+  .desc { display: block; color: #9facbc; font-weight: 400; margin-top: 2px; }
+  .mini { height: 22px; position: relative; }
+  .mini i { position: absolute; display: block; width: 8px; height: 8px; border-radius: 3px; background: #72d7ff; top: 7px; }
+  .mini i:nth-child(1) { left: 5px; opacity: .45; }
+  .mini i:nth-child(2) { left: 25px; opacity: .7; }
+  .mini i:nth-child(3) { left: 45px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  input, select { width: 100%; box-sizing: border-box; height: 31px; background: #0e131b; color: #eef5fb; border: 1px solid #3a4658; padding: 0 8px; }
+  button { height: 32px; min-width: 96px; background: #72d7ff; color: #06111a; border: 0; font-weight: 600; }
+  .actions { display: flex; justify-content: flex-end; }
+</style>
+</head>
+<body>
+  <section class="window">
+    <div class="title">Settings - Dropwheel</div>
+    <div class="body">
+      <div class="section">
+        <label>Open animation</label>
+        <div class="choice"><span class="radio"></span><span class="name">Pop<span class="desc">Quick staggered scale-in.</span></span><span class="mini"><i></i><i></i><i></i></span></div>
+        <div class="choice"><span class="radio"></span><span class="name">Radial burst<span class="desc">Targets move from hub to rim.</span></span><span class="mini"><i></i><i></i><i></i></span></div>
+        <div class="choice"><span class="radio"></span><span class="name">Clock sweep<span class="desc">Reveals targets around the ring.</span></span><span class="mini"><i></i><i></i><i></i></span></div>
+        <div class="choice active"><span class="radio"></span><span class="name">Magnetic settle<span class="desc">Fast snap with a soft overshoot.</span></span><span class="mini"><i></i><i></i><i></i></span></div>
+      </div>
+      <div class="section grid">
+        <div><label>Hover delay, ms</label><input value="250"></div>
+        <div><label>Orb opacity</label><input value="0.80"></div>
+      </div>
+      <div class="actions"><button>Save</button></div>
+    </div>
+  </section>
+</body>
+</html>

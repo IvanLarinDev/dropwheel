@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Dropwheel.Services;
 
@@ -23,7 +24,11 @@ public partial class OverlayWindow : Window
         InitializeComponent();
 
         _hoverTimer = new DispatcherTimer { Interval = HoverInterval() };
-        _hoverTimer.Tick += (_, _) => { _hoverTimer.Stop(); OpenCloud(); };
+        _hoverTimer.Tick += (_, _) =>
+        {
+            _hoverTimer.Stop();
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) OpenCloud();
+        };
 
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _closeTimer.Tick += (_, _) => { _closeTimer.Stop(); CloseCloud(); };
@@ -32,7 +37,10 @@ public partial class OverlayWindow : Window
         _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
 
         Orb.Opacity = TargetStore.Config.OrbOpacity;
-        Orb.MouseEnter += (_, _) => { if (!_open) _hoverTimer.Start(); };
+        Orb.MouseEnter += (_, _) =>
+        {
+            if (!_open && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) _hoverTimer.Start();
+        };
         Orb.MouseLeave += (_, _) => _hoverTimer.Stop();
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
         Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud(); };
