@@ -47,6 +47,12 @@ public class TargetItem
     public static bool IsExeExtension(string path) =>
         ExeExtensions.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant());
 
+    public static bool IsLaunchUri(string path) =>
+        Uri.TryCreate(path, UriKind.Absolute, out var uri)
+        && (uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+            || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            || uri.Scheme.Equals("tg", StringComparison.OrdinalIgnoreCase));
+
     [JsonIgnore] public bool IsGroup => Children != null;
     [JsonIgnore] public bool IsSorter => SortRules is { Count: > 0 } || Rules is { Count: > 0 };
     [JsonIgnore] public bool IsFolder => !IsGroup && Directory.Exists(Path);
@@ -54,8 +60,9 @@ public class TargetItem
     /// <summary>An executable or script by its own extension. A .lnk that points at an executable
     /// is handled by LaunchService.IsRunTarget, which resolves the shortcut first.</summary>
     [JsonIgnore] public bool IsExecutable => !IsGroup && IsExeExtension(Path);
+    [JsonIgnore] public bool IsUri => !IsGroup && IsLaunchUri(Path);
 
-    [JsonIgnore] public bool Exists => IsGroup || IsFolder || File.Exists(Path);
+    [JsonIgnore] public bool Exists => IsGroup || IsFolder || File.Exists(Path) || IsUri;
 }
 
 public sealed class LaunchOptions

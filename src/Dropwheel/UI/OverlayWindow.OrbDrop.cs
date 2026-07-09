@@ -11,9 +11,7 @@ public partial class OverlayWindow
     /// the target goes into it; otherwise into the root.</summary>
     private void OnOrbDrop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
-        AddTargets(paths, _currentGroup);
-        e.Handled = true;
+        if (AddTargetsFromDrop(e.Data, _currentGroup)) e.Handled = true;
     }
 
     /// <summary>A quick drop on a group bubble (before hover-expand fires)
@@ -21,28 +19,58 @@ public partial class OverlayWindow
     private void OnGroupDrop(TargetItem group, DragEventArgs e)
     {
         _groupHover?.Stop();
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
-        AddTargets(paths, group);
+        if (AddTargetsFromDrop(e.Data, group)) e.Handled = true;
+    }
+
+    private void OnAddTargetDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = CanAddTarget(e.Data) ? DragDropEffects.Link : DragDropEffects.None;
         e.Handled = true;
     }
 
-    private void AddTargets(string[] paths, TargetItem? group)
+    private static bool CanAddTarget(IDataObject data) =>
+        data.GetDataPresent(DataFormats.FileDrop) || LinkTargetService.HasLaunchUri(data);
+
+    private bool AddTargetsFromDrop(IDataObject data, TargetItem? group)
     {
-        var list = group?.Children ?? TargetStore.Config.Targets;
-        foreach (var p in paths)
+        if (data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0)
         {
-            // A dropped .lnk becomes a target for what it points at, not the shortcut file.
-            var target = ShortcutResolver.Resolve(p);
-            // Keep the shortcut's friendly label (e.g. "Visual Studio Code") over the raw target name.
-            var name = IOPath.GetFileNameWithoutExtension(p);
-            if (string.IsNullOrEmpty(name)) name = IOPath.GetFileNameWithoutExtension(target);
-            if (string.IsNullOrEmpty(name)) name = target;
-            list.Add(new TargetItem { Name = name, Path = target });
+            AddTargets(paths.Select(TargetFromPath), group);
+            return true;
         }
+
+        if (LinkTargetService.CreateTarget(data) is { } linkTarget)
+        {
+            AddTargets(new[] { linkTarget }, group);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static TargetItem TargetFromPath(string path)
+    {
+        // A dropped .lnk becomes a target for what it points at, not the shortcut file.
+        var target = ShortcutResolver.Resolve(path);
+        // Keep the shortcut's friendly label (e.g. "Visual Studio Code") over the raw target name.
+        var name = IOPath.GetFileNameWithoutExtension(path);
+        if (string.IsNullOrEmpty(name)) name = IOPath.GetFileNameWithoutExtension(target);
+        if (string.IsNullOrEmpty(name)) name = target;
+        return new TargetItem { Name = name, Path = target };
+    }
+
+    private void AddTargets(IEnumerable<TargetItem> targets, TargetItem? group)
+    {
+        var items = targets.ToArray();
+        if (items.Length == 0) return;
+
+        var list = group?.Children ?? TargetStore.Config.Targets;
+        foreach (var item in items) list.Add(item);
+
         TargetStore.Save();
         ShowToast(group == null
-            ? $"Targets added: {paths.Length}"
-            : $"Added to {group.Name}: {paths.Length}");
+            ? $"Targets added: {items.Length}"
+            : $"Added to {group.Name}: {items.Length}");
         if (_open) BuildCloud();
     }
 }

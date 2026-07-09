@@ -78,7 +78,7 @@ public partial class OverlayWindow
             if (t.IsGroup)
             {
                 StartGroupHover(t, back: false);
-                e.Effects = DragDropEffects.Link;
+                e.Effects = CanAddTarget(e.Data) ? DragDropEffects.Link : DragDropEffects.None;
                 e.Handled = true;
             }
             else OnBubbleDragOver(t, badge, e);
