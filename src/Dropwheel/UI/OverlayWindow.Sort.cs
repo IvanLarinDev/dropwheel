@@ -9,6 +9,12 @@ public partial class OverlayWindow
 {
     internal readonly record struct SorterExecutionGroup(string Folder, string[] Sources);
 
+    internal static bool SameNormalizedFolder(string left, string right) =>
+        string.Equals(
+            IOPath.TrimEndingDirectorySeparator(IOPath.GetFullPath(left)),
+            IOPath.TrimEndingDirectorySeparator(IOPath.GetFullPath(right)),
+            StringComparison.OrdinalIgnoreCase);
+
     internal static IReadOnlyList<SorterExecutionGroup> ExecutableSorterGroups(
         Dictionary<string, List<string>> plan)
     {
@@ -48,10 +54,10 @@ public partial class OverlayWindow
     {
         var plan = SortService.Plan(t, saved);
         var ops = new List<FileOp>();
-        string root = IOPath.GetFullPath(t.Path).TrimEnd('\\');
+        string root = t.Path;
         foreach (var (folder, group) in plan)
         {
-            if (IOPath.GetFullPath(folder).TrimEnd('\\') == root)
+            if (SameNormalizedFolder(folder, root))
             { ops.Add(BuildCreatedCopyOp(group.ToArray(), folder)); continue; }
             Directory.CreateDirectory(folder);
             var sources = group.ToArray();
