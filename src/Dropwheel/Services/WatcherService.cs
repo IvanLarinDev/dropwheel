@@ -17,6 +17,7 @@ public sealed class WatcherService
     private sealed class Entry
     {
         public required FileSystemWatcher Watcher { get; init; }
+        public required CancellationTokenSource Lifetime { get; init; }
         public TargetItem Target { get; set; } = null!;
     }
 
@@ -50,12 +51,17 @@ public sealed class WatcherService
     public void Stop()
     {
         TargetStore.Saved -= Rebuild;
-        foreach (var e in _entries.Values) e.Watcher.Dispose();
+        foreach (var e in _entries.Values)
+        {
+            e.Lifetime.Cancel();
+            e.Watcher.Dispose();
+            e.Lifetime.Dispose();
+        }
         _entries.Clear();
     }
 
     /// <summary>Re-syncs watchers to the current set of watched sorter folders: adds new folders,
-    /// drops removed ones, and refreshes the target reference for folders that stay — so rule edits
+    /// drops removed ones, and refreshes the target reference for folders that stay so rule edits
     /// take effect without recreating the watcher.</summary>
     private void Rebuild()
     {
@@ -65,25 +71,31 @@ public sealed class WatcherService
             if (!t.Watch || !t.IsSorter) continue;
             string path;
             try { path = Path.GetFullPath(t.Path); }
-            catch { continue; } // invalid path in config — skip, do not throw
+            catch { continue; } // invalid path in config - skip, do not throw
             if (!Directory.Exists(path)) continue;
-            desired[path] = t; // rare duplicate (two targets on one folder) — keep the last
+            desired[path] = t; // rare duplicate (two targets on one folder) - keep the last
         }
 
         foreach (var path in _entries.Keys.Where(p => !desired.ContainsKey(p)).ToList())
         {
+            _entries[path].Lifetime.Cancel();
             _entries[path].Watcher.Dispose();
+            _entries[path].Lifetime.Dispose();
             _entries.Remove(path);
         }
 
         foreach (var (path, target) in desired)
         {
             if (_entries.TryGetValue(path, out var existing)) { existing.Target = target; continue; }
-            // One bad folder (path too long, network glitch) must not break the whole rebuild — it
+            // One bad folder (path too long, network glitch) must not break the whole rebuild - it
             // runs from the config-save handler.
             try
             {
-                var entry = new Entry { Watcher = CreateWatcher(path) };
+                var entry = new Entry
+                {
+                    Watcher = CreateWatcher(path),
+                    Lifetime = new CancellationTokenSource(),
+                };
                 entry.Target = target;
                 entry.Watcher.Created += (_, e) => OnAppeared(entry, e.FullPath);
                 entry.Watcher.Renamed += (_, e) => OnAppeared(entry, e.FullPath);
@@ -99,7 +111,7 @@ public sealed class WatcherService
     {
         IncludeSubdirectories = false,
         NotifyFilter = NotifyFilters.FileName,
-        // Larger buffer — fewer lost events when many files are dropped at once (64 KB is the max).
+        // Larger buffer - fewer lost events when many files are dropped at once (64 KB is the max).
         InternalBufferSize = 64 * 1024,
     };
 
@@ -108,7 +120,7 @@ public sealed class WatcherService
     /// it now. The _inFlight dedup keeps a file from being processed twice.</summary>
     private void OnError(Entry entry, string path, Exception ex)
     {
-        ErrorLog.Write($"Watch buffer overflow for folder '{path}' — rescanning", ex);
+        ErrorLog.Write($"Watch buffer overflow for folder '{path}' - rescanning", ex);
         Sweep(entry);
     }
 
@@ -127,31 +139,56 @@ public sealed class WatcherService
     private void OnAppeared(Entry entry, string fullPath)
     {
         if (!_inFlight.TryAdd(fullPath, 0)) return;
-        _ = ProcessWhenReady(entry, fullPath);
+        _ = ProcessWhenReady(entry, fullPath, entry.Lifetime.Token);
     }
 
-    private async Task ProcessWhenReady(Entry entry, string file)
+    private async Task ProcessWhenReady(Entry entry, string file, CancellationToken cancellationToken)
     {
         try
         {
-            for (int i = 0; i < MaxWaitTicks; i++)
+            if (!await WaitUntilReadyAsync(file, IsReady, PollMs, MaxWaitTicks, cancellationToken)) return;
+            await _moveGate.WaitAsync(cancellationToken);
+            try
             {
-                if (Directory.Exists(file)) return;   // a folder appeared, not a file
-                if (!File.Exists(file)) return;       // the file vanished while we waited
-                if (IsReady(file)) break;             // the writing process released it — fully written
-                if (i == MaxWaitTicks - 1)
-                {
-                    ErrorLog.Write($"File '{file}' stays locked — auto-sort skipped");
-                    return;
-                }
-                await Task.Delay(PollMs);
+                cancellationToken.ThrowIfCancellationRequested();
+                SortOne(entry, file); // off-thread: planning and the silent move never touch the UI
             }
-            await _moveGate.WaitAsync();
-            try { SortOne(entry, file); } // off-thread: planning and the silent move never touch the UI
             finally { _moveGate.Release(); }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception ex) { ErrorLog.Write($"Error waiting for file '{file}'", ex); }
         finally { _inFlight.TryRemove(file, out _); }
+    }
+
+    internal static async Task<bool> WaitUntilReadyAsync(
+        string file,
+        Func<string, bool> isReady,
+        int pollMs,
+        int maxWaitTicks,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            for (int i = 0; i < maxWaitTicks; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (Directory.Exists(file)) return false;   // a folder appeared, not a file
+                if (!File.Exists(file)) return false;       // the file vanished while we waited
+                if (isReady(file)) return true;             // the writing process released it - fully written
+                if (i == maxWaitTicks - 1)
+                {
+                    ErrorLog.Write($"File '{file}' stays locked - auto-sort skipped");
+                    return false;
+                }
+                await Task.Delay(pollMs, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        return false;
     }
 
     /// <summary>A file counts as fully written once it can be opened exclusively: while a copy or
@@ -175,7 +212,7 @@ public sealed class WatcherService
             var plan = SortService.Plan(entry.Target, new[] { file });
             foreach (var (folder, files) in plan)
             {
-                if (SameFolder(folder, file)) continue; // file stays in its own folder — no move, no loop
+                if (SameFolder(folder, file)) continue; // file stays in its own folder - no move, no loop
                 // Create the destination folder first: otherwise SHFileOperation moving a single file
                 // to a non-existent path treats the last segment as a new file name, not a folder.
                 Directory.CreateDirectory(folder);
