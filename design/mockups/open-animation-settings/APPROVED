@@ -1,2 +1,3 @@
 2026-07-08 feat/open-animation-settings 01-compact-combo
 2026-07-08 feat/open-animation-settings add animation speed slider
+2026-07-09 codex/tile-reorder-watch reuse existing motion direction for tile reorder animation; no visual restyle

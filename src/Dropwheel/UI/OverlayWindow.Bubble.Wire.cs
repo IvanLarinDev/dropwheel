@@ -157,7 +157,7 @@ public partial class OverlayWindow
         if (source != null && TargetStore.MoveTileBefore(CurrentLevelTargets(), source, target))
         {
             TargetStore.Save();
-            BuildCloud();
+            AnimateTileReorder(source);
             ShowToast($"Moved {source.Name}");
         }
         e.Handled = true;
@@ -169,7 +169,7 @@ public partial class OverlayWindow
         if (source != null && TargetStore.MoveTileToEnd(CurrentLevelTargets(), source))
         {
             TargetStore.Save();
-            BuildCloud();
+            AnimateTileReorder(source);
             ShowToast($"Moved {source.Name}");
         }
         e.Handled = true;

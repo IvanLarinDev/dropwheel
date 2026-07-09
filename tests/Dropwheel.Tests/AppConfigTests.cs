@@ -94,6 +94,33 @@ public class AppConfigTests : IDisposable
     }
 
     [Fact]
+    public void MoveTileToEnd_moves_source_after_the_display_order()
+    {
+        var one = new TargetItem { Name = "one" };
+        var two = new TargetItem { Name = "two" };
+        var three = new TargetItem { Name = "three" };
+        var targets = new List<TargetItem> { one, two, three };
+
+        Assert.True(TargetStore.MoveTileToEnd(targets, one));
+
+        Assert.Equal(new[] { "two", "three", "one" }, targets.Select(t => t.Name));
+        Assert.Equal(new int?[] { 0, 1, 2 }, targets.Select(t => t.TilePosition));
+    }
+
+    [Fact]
+    public void MoveTileToEnd_is_noop_when_source_is_already_last()
+    {
+        var one = new TargetItem { Name = "one" };
+        var two = new TargetItem { Name = "two" };
+        var targets = new List<TargetItem> { one, two };
+
+        Assert.False(TargetStore.MoveTileToEnd(targets, two));
+
+        Assert.Equal(new[] { "one", "two" }, targets.Select(t => t.Name));
+        Assert.All(targets, target => Assert.Null(target.TilePosition));
+    }
+
+    [Fact]
     public void MoveToGroup_preserves_position_when_group_does_not_change()
     {
         TargetStore.Config.Targets.Clear();
