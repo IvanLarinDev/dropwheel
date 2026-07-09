@@ -1,6 +1,16 @@
 # Changelog
 
 - - -
+## [v0.10.2](https://github.com/IvanLarinDev/dropwheel/compare/9891c2ff92ba5a1852aeb8f40967c4825cc5c75a..v0.10.2) - 2026-07-09
+#### Bug Fixes
+- (**files**) handle partial undo safely - ([b94f752](https://github.com/IvanLarinDev/dropwheel/commit/b94f752f124983f748447695f51f249511e99193)) - Ivan Larin
+- (**files**) harden drop safety paths - ([5bb7b09](https://github.com/IvanLarinDev/dropwheel/commit/5bb7b09d86779f86ad8223953d329872aaee3d2d)) - Ivan Larin
+#### Miscellaneous Chores
+- (**format**) normalize product code formatting - ([0a2692a](https://github.com/IvanLarinDev/dropwheel/commit/0a2692ad5d49aaf1df0f1ec8d030b978bc89426e)) - Ivan Larin
+- (**release**) restore changelog remote context - ([63d835c](https://github.com/IvanLarinDev/dropwheel/commit/63d835c475fdb6e4ccfcb206afef8c8e5d3ab54f)) - Ivan Larin
+
+- - -
+
 ## [v0.10.1](https://github.com/IvanLarinDev/dropwheel/compare/241caf59ad9b8133fb72717c0242ca9d1d493164..v0.10.1) - 2026-07-08
 #### Bug Fixes
 - (**files**) harden drop operations (#10) - ([8d1be7a](https://github.com/IvanLarinDev/dropwheel/commit/8d1be7ade82b5462b3be483903d99d3a112b8043)) - Ivan Larin

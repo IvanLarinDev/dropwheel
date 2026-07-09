@@ -15,7 +15,10 @@ branch_whitelist = ["main", "master", "feat/**", "fix/**", "docs/**", "hotfix/**
 
 [changelog]
 path = "CHANGELOG.md"
+template = "remote"
 remote = "github.com"
+owner = "IvanLarinDev"
+repository = "dropwheel"
 authors = []
 
 # Extra non-default type used by repos with this history.
