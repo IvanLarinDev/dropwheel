@@ -48,7 +48,7 @@ public sealed class WatcherServiceTests : IDisposable
                 { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } } } },
         };
         var folder = SortService.Plan(t, new[] { file }).Keys.Single();
-        Assert.True(WatcherService.SameFolder(folder, file)); // stays in its own folder — don't move
+        Assert.True(WatcherService.SameFolder(folder, file)); // stays in its own folder - don't move
     }
 
     [Fact]
@@ -63,6 +63,25 @@ public sealed class WatcherServiceTests : IDisposable
                 { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } } } },
         };
         var folder = SortService.Plan(t, new[] { file }).Keys.Single();
-        Assert.False(WatcherService.SameFolder(folder, file)); // routed into a subfolder — move it
+        Assert.False(WatcherService.SameFolder(folder, file)); // routed into a subfolder - move it
+    }
+
+    [Fact]
+    public async Task Wait_until_ready_returns_false_when_cancelled_before_file_is_ready()
+    {
+        var file = Path.Combine(_root, "locked.mov");
+        File.WriteAllBytes(file, Array.Empty<byte>());
+
+        using var cts = new CancellationTokenSource();
+        var waitTask = WatcherService.WaitUntilReadyAsync(
+            file,
+            _ => false,
+            pollMs: 1,
+            maxWaitTicks: 1000,
+            cts.Token);
+
+        cts.CancelAfter(TimeSpan.FromMilliseconds(10));
+
+        Assert.False(await waitTask);
     }
 }
