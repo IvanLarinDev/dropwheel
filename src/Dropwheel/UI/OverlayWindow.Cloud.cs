@@ -12,11 +12,20 @@ namespace Dropwheel.UI;
 public partial class OverlayWindow
 {
     private const double RingR = 170;          // radius of the rim centerline
+    private const double TileLeftOffset = 38;
+    private const double TileTopOffset = 40;
     private TargetItem? _currentGroup;         // null = root level
     private TargetItem? _pendingGroup;
     private bool _pendingBack;
     private DispatcherTimer? _groupHover;
     private readonly Dictionary<FrameworkElement, Line> _spokes = new();
+
+    private readonly record struct WheelSlot(
+        double Angle,
+        double Left,
+        double Top,
+        double SpokeX,
+        double SpokeY);
 
     private void OpenCloud()
     {
@@ -58,22 +67,22 @@ public partial class OverlayWindow
         Canvas.SetTop(backdrop, HalfSize - 226);
         backdrop.MouseLeftButtonUp += (_, e) => { CloseCloud(); e.Handled = true; };
         Cloud.Children.Add(backdrop);
-        var source = _currentGroup?.Children ?? TargetStore.Config.Targets;
+        var source = CurrentLevelTargets();
         var items = new List<FrameworkElement>();
         if (_currentGroup != null) items.Add(MakeBackBubble());
-        items.AddRange(source.OrderByDescending(t => t.Pinned).Select(MakeBubble));
+        items.AddRange(TargetStore.OrderedForDisplay(source).Select(MakeBubble));
         items.Add(MakePlusTile());
 
         int n = items.Count;
         for (int i = 0; i < n; i++)
         {
-            double a = -Math.PI / 2 + i * 2 * Math.PI / n;
+            var slot = SlotFor(i, n);
             var spoke = new Line
             {
                 X1 = HalfSize,
                 Y1 = HalfSize,
-                X2 = HalfSize + (RingR - 52) * Math.Cos(a),
-                Y2 = HalfSize + (RingR - 52) * Math.Sin(a),
+                X2 = slot.SpokeX,
+                Y2 = slot.SpokeY,
                 Stroke = new SolidColorBrush(th.Spoke),
                 StrokeThickness = 2,
                 IsHitTestVisible = false,
@@ -83,13 +92,157 @@ public partial class OverlayWindow
         }
         for (int i = 0; i < n; i++)
         {
-            double a = -Math.PI / 2 + i * 2 * Math.PI / n;
-            Canvas.SetLeft(items[i], HalfSize + RingR * Math.Cos(a) - 38);
-            Canvas.SetTop(items[i], HalfSize + RingR * Math.Sin(a) - 40);
+            var slot = SlotFor(i, n);
+            Canvas.SetLeft(items[i], slot.Left);
+            Canvas.SetTop(items[i], slot.Top);
             Cloud.Children.Add(items[i]);
-            AnimateTile(items[i], i, a);
+            AnimateTile(items[i], i, slot.Angle);
         }
         AnimateRim();
+    }
+
+    private static WheelSlot SlotFor(int index, int count)
+    {
+        double angle = -Math.PI / 2 + index * 2 * Math.PI / count;
+        return new WheelSlot(
+            angle,
+            HalfSize + RingR * Math.Cos(angle) - TileLeftOffset,
+            HalfSize + RingR * Math.Sin(angle) - TileTopOffset,
+            HalfSize + (RingR - 52) * Math.Cos(angle),
+            HalfSize + (RingR - 52) * Math.Sin(angle));
+    }
+
+    private void AnimateTileReorder(TargetItem moved)
+    {
+        var targets = TargetStore.OrderedForDisplay(CurrentLevelTargets()).ToArray();
+        var elements = Cloud.Children
+            .OfType<FrameworkElement>()
+            .Where(el => el.Tag is TargetItem)
+            .ToDictionary(el => (TargetItem)el.Tag);
+
+        if (targets.Any(target => !elements.ContainsKey(target)))
+        {
+            BuildCloud();
+            return;
+        }
+
+        int offset = _currentGroup == null ? 0 : 1;
+        int count = targets.Length + offset + 1; // plus tile is still the last slot
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        for (int i = 0; i < targets.Length; i++)
+        {
+            var target = targets[i];
+            var element = elements[target];
+            var slot = SlotFor(i + offset, count);
+            bool isMoved = ReferenceEquals(target, moved);
+            Panel.SetZIndex(element, isMoved ? 10 : 2);
+            AnimateAlongRim(element, slot, ease, isMoved);
+            if (_spokes.TryGetValue(element, out var spoke))
+                AnimateSpokeAlongRim(spoke, slot, ease);
+        }
+    }
+
+    private static void AnimateAlongRim(FrameworkElement element, WheelSlot slot, IEasingFunction ease, bool emphasize)
+    {
+        double fromLeft = Canvas.GetLeft(element);
+        double fromTop = Canvas.GetTop(element);
+        if (double.IsNaN(fromLeft)) fromLeft = slot.Left;
+        if (double.IsNaN(fromTop)) fromTop = slot.Top;
+
+        element.BeginAnimation(Canvas.LeftProperty, null);
+        element.BeginAnimation(Canvas.TopProperty, null);
+        Canvas.SetLeft(element, fromLeft);
+        Canvas.SetTop(element, fromTop);
+
+        var mid = MidArcSlot(fromLeft + TileLeftOffset, fromTop + TileTopOffset, slot.Angle);
+        var duration = TimeSpan.FromMilliseconds(emphasize ? 210 : 180);
+        var left = ArcAnimation(mid.Left, slot.Left, duration, ease);
+        var top = ArcAnimation(mid.Top, slot.Top, duration, ease);
+        top.Completed += (_, _) =>
+        {
+            element.BeginAnimation(Canvas.LeftProperty, null);
+            element.BeginAnimation(Canvas.TopProperty, null);
+            Canvas.SetLeft(element, slot.Left);
+            Canvas.SetTop(element, slot.Top);
+            Panel.SetZIndex(element, 0);
+        };
+        element.BeginAnimation(Canvas.LeftProperty, left);
+        element.BeginAnimation(Canvas.TopProperty, top);
+
+        if (emphasize && TileScale(element) is { } scale)
+        {
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty,
+                new DoubleAnimation(1.08, 1, TimeSpan.FromMilliseconds(220))
+                { EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.2 } });
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty,
+                new DoubleAnimation(1.08, 1, TimeSpan.FromMilliseconds(220))
+                { EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.2 } });
+        }
+    }
+
+    private static void AnimateSpokeAlongRim(Line spoke, WheelSlot slot, IEasingFunction ease)
+    {
+        var mid = MidArcSlot(spoke.X2, spoke.Y2, slot.Angle, RingR - 52);
+        var fromX = spoke.X2;
+        var fromY = spoke.Y2;
+        spoke.BeginAnimation(Line.X2Property, null);
+        spoke.BeginAnimation(Line.Y2Property, null);
+        spoke.X2 = fromX;
+        spoke.Y2 = fromY;
+
+        var duration = TimeSpan.FromMilliseconds(180);
+        var x = ArcAnimation(mid.Left, slot.SpokeX, duration, ease);
+        var y = ArcAnimation(mid.Top, slot.SpokeY, duration, ease);
+        y.Completed += (_, _) =>
+        {
+            spoke.BeginAnimation(Line.X2Property, null);
+            spoke.BeginAnimation(Line.Y2Property, null);
+            spoke.X2 = slot.SpokeX;
+            spoke.Y2 = slot.SpokeY;
+        };
+        spoke.BeginAnimation(Line.X2Property, x);
+        spoke.BeginAnimation(Line.Y2Property, y);
+    }
+
+    private static WheelSlot MidArcSlot(double fromX, double fromY, double toAngle, double radius = RingR)
+    {
+        double fromAngle = Math.Atan2(fromY - HalfSize, fromX - HalfSize);
+        double midAngle = fromAngle + NormalizeAngle(toAngle - fromAngle) / 2;
+        return new WheelSlot(
+            midAngle,
+            HalfSize + radius * Math.Cos(midAngle) - (radius == RingR ? TileLeftOffset : 0),
+            HalfSize + radius * Math.Sin(midAngle) - (radius == RingR ? TileTopOffset : 0),
+            HalfSize + (RingR - 52) * Math.Cos(midAngle),
+            HalfSize + (RingR - 52) * Math.Sin(midAngle));
+    }
+
+    private static DoubleAnimationUsingKeyFrames ArcAnimation(
+        double midValue,
+        double finalValue,
+        TimeSpan duration,
+        IEasingFunction ease) => new()
+        {
+            KeyFrames =
+            {
+                new EasingDoubleKeyFrame(midValue, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(duration.TotalMilliseconds * 0.52)))
+                { EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } },
+                new EasingDoubleKeyFrame(finalValue, KeyTime.FromTimeSpan(duration))
+                { EasingFunction = ease },
+            }
+        };
+
+    private static double NormalizeAngle(double angle)
+    {
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
+        return angle;
+    }
+
+    private static ScaleTransform? TileScale(FrameworkElement element)
+    {
+        if (element.RenderTransform is TransformGroup group)
+            return group.Children.OfType<ScaleTransform>().FirstOrDefault();
+        return element.RenderTransform as ScaleTransform;
     }
 
     private static void AnimateTile(FrameworkElement el, int index, double angle)
@@ -184,6 +337,8 @@ public partial class OverlayWindow
         s.Stroke = new SolidColorBrush(on ? th.Accent : th.Spoke);
         s.StrokeThickness = on ? 2.5 : 2;
     }
+
+    private IList<TargetItem> CurrentLevelTargets() => _currentGroup?.Children ?? TargetStore.Config.Targets;
 
     private void EnterGroup(TargetItem? group)
     {

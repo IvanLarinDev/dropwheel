@@ -160,6 +160,7 @@ public sealed class WatcherService
                 entry.Watcher.Error += (_, e) => OnError(entry, path, e.GetException());
                 entry.Watcher.EnableRaisingEvents = true;
                 _entries[path] = entry;
+                Sweep(entry);
             }
             catch (Exception ex) { ErrorLog.Write($"Failed to start watching folder '{path}'", ex); }
         }
@@ -278,7 +279,7 @@ public sealed class WatcherService
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!File.Exists(file)) return;
-            var plan = SortService.Plan(entry.Target, new[] { file });
+            var plan = SortService.MovePlan(entry.Target, new[] { file });
             foreach (var (folder, files) in plan)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -297,7 +298,7 @@ public sealed class WatcherService
                 if (FileOps.Execute(files, folder, DropAction.Move, silent: true))
                 {
                     if (!cancellationToken.IsCancellationRequested)
-                        _ui.InvokeAsync(() => QueueToast(files.Count)); // coalesce the toast on the UI thread
+                        _ui.InvokeAsync(() => QueueToast(files.Length)); // coalesce the toast on the UI thread
                 }
                 else
                     ErrorLog.Write($"Failed to move '{file}' to '{folder}'");
@@ -309,15 +310,7 @@ public sealed class WatcherService
 
     /// <summary>The destination folder is the file's own folder. Then there is nothing to move and,
     /// more importantly, moving into the same folder could make the watcher loop.</summary>
-    public static bool SameFolder(string destFolder, string file)
-    {
-        var src = Path.GetDirectoryName(Path.GetFullPath(file));
-        if (src == null) return false;
-        return string.Equals(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(destFolder)),
-            Path.TrimEndingDirectorySeparator(src),
-            StringComparison.OrdinalIgnoreCase);
-    }
+    public static bool SameFolder(string destFolder, string file) => SortService.SameFolder(destFolder, file);
 
     /// <summary>Coalesces sorted files into one toast: a burst of many files collapses into a single
     /// notification after a short pause instead of one toast per file.</summary>
