@@ -11,7 +11,9 @@ public sealed class LinkTargetServiceTests
     [InlineData("tg://resolve?domain=telegram", "tg://resolve?domain=telegram", "Telegram: telegram")]
     [InlineData("Open https://t.me/telegram.", "tg://resolve?domain=telegram", "Telegram: telegram")]
     [InlineData("t.me/c/2669588230/1", "tg://privatepost?channel=2669588230&post=1", "Telegram topic")]
+    [InlineData("t.me/c/2669588230/1/2", "tg://privatepost?channel=2669588230&topic=1&post=2", "Telegram topic")]
     [InlineData("https://telegram.me/durov", "tg://resolve?domain=durov", "Telegram: durov")]
+    [InlineData("https://t.me/group/1/2", "tg://resolve?domain=group&topic=1&post=2", "Telegram: group")]
     [InlineData("durov.t.me", "tg://resolve?domain=durov", "Telegram")]
     [InlineData("https://t.me/+abcdef", "tg://join?invite=abcdef", "Telegram invite")]
     public void CreateTarget_extracts_telegram_links(string text, string expectedPath, string expectedName)

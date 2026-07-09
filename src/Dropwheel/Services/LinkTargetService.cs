@@ -177,6 +177,9 @@ public static class LinkTargetService
         var first = Uri.UnescapeDataString(segments[0]);
         if (first.Equals("c", StringComparison.OrdinalIgnoreCase) && segments.Length >= 3)
         {
+            if (segments.Length >= 4)
+                return $"tg://privatepost?channel={Uri.EscapeDataString(segments[1])}&topic={Uri.EscapeDataString(segments[2])}&post={Uri.EscapeDataString(segments[3])}";
+
             return $"tg://privatepost?channel={Uri.EscapeDataString(segments[1])}&post={Uri.EscapeDataString(segments[2])}";
         }
 
@@ -186,7 +189,14 @@ public static class LinkTargetService
         if (first.Equals("joinchat", StringComparison.OrdinalIgnoreCase) && segments.Length >= 2)
             return $"tg://join?invite={Uri.EscapeDataString(segments[1])}";
 
-        return $"tg://resolve?domain={Uri.EscapeDataString(first.TrimStart('@'))}";
+        var resolvedDomain = Uri.EscapeDataString(first.TrimStart('@'));
+        if (segments.Length >= 3 && int.TryParse(segments[1], out _) && int.TryParse(segments[2], out _))
+            return $"tg://resolve?domain={resolvedDomain}&topic={Uri.EscapeDataString(segments[1])}&post={Uri.EscapeDataString(segments[2])}";
+
+        if (segments.Length >= 2 && int.TryParse(segments[1], out _))
+            return $"tg://resolve?domain={resolvedDomain}&post={Uri.EscapeDataString(segments[1])}";
+
+        return $"tg://resolve?domain={resolvedDomain}";
     }
 
     private static bool IsTelegramUri(Uri uri) =>

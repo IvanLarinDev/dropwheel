@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -9,11 +10,39 @@ namespace Dropwheel.Services;
 /// The extension is picked from the content: markdown-looking text becomes .md, otherwise .txt.</summary>
 public static class TextDropService
 {
-    public static bool HasText(IDataObject data) =>
-        data.GetDataPresent(DataFormats.UnicodeText) || data.GetDataPresent(DataFormats.Text);
+    private static readonly string[] PlainTextFormats =
+    {
+        DataFormats.UnicodeText,
+        DataFormats.Text,
+        DataFormats.StringFormat,
+        DataFormats.OemText,
+        "UTF8_STRING",
+        "text/plain",
+        "text/plain;charset=utf-8",
+    };
 
-    public static string? GetText(IDataObject data) =>
-        data.GetData(DataFormats.UnicodeText) as string ?? data.GetData(DataFormats.Text) as string;
+    public static bool HasText(IDataObject data) => !string.IsNullOrEmpty(GetText(data));
+
+    public static string? GetText(IDataObject data)
+    {
+        foreach (var format in PlainTextFormats)
+        {
+            if (!data.GetDataPresent(format)) continue;
+            if (TextFromData(data.GetData(format)) is { Length: > 0 } text) return text;
+        }
+
+        if (data.GetDataPresent(DataFormats.Html)
+            && data.GetData(DataFormats.Html) is string html
+            && TextFromHtml(html) is { Length: > 0 } htmlText)
+            return htmlText;
+
+        if (data.GetDataPresent(DataFormats.Rtf)
+            && data.GetData(DataFormats.Rtf) is string rtf
+            && TextFromRtf(rtf) is { Length: > 0 } rtfText)
+            return rtfText;
+
+        return null;
+    }
 
     /// <summary>Saves dragged text into the folder, or null when the drop carries no text.</summary>
     public static string? SaveFrom(IDataObject data, string folder, DateTime now)
@@ -42,6 +71,61 @@ public static class TextDropService
     public static bool LooksLikeMarkdown(string text) =>
         text.Contains("```") || Heading.IsMatch(text) || Link.IsMatch(text);
 
+    private static string? TextFromData(object? data)
+    {
+        if (data is string text) return text;
+        if (data is not MemoryStream stream) return null;
+
+        var bytes = stream.ToArray().TrimTrailingZeros();
+        if (bytes.Length == 0) return null;
+        return LooksLikeUtf16(bytes)
+            ? Encoding.Unicode.GetString(bytes)
+            : Encoding.UTF8.GetString(bytes);
+    }
+
+    private static string? TextFromHtml(string html)
+    {
+        var fragment = HtmlFragment(html);
+        fragment = Regex.Replace(fragment, @"(?i)<br\s*/?>", "\n");
+        fragment = Regex.Replace(fragment, @"(?i)</p\s*>", "\n");
+        fragment = Regex.Replace(fragment, "<[^>]+>", "");
+        return WebUtility.HtmlDecode(fragment).Trim();
+    }
+
+    private static string HtmlFragment(string html)
+    {
+        const string startMarker = "<!--StartFragment-->";
+        const string endMarker = "<!--EndFragment-->";
+        var markerStart = html.IndexOf(startMarker, StringComparison.OrdinalIgnoreCase);
+        var markerEnd = html.IndexOf(endMarker, StringComparison.OrdinalIgnoreCase);
+        if (markerStart >= 0 && markerEnd > markerStart)
+            return html[(markerStart + startMarker.Length)..markerEnd];
+
+        var start = Regex.Match(html, @"StartFragment:(\d+)");
+        var end = Regex.Match(html, @"EndFragment:(\d+)");
+        if (start.Success
+            && end.Success
+            && int.TryParse(start.Groups[1].Value, out var startIndex)
+            && int.TryParse(end.Groups[1].Value, out var endIndex)
+            && startIndex >= 0
+            && endIndex > startIndex
+            && endIndex <= html.Length)
+            return html[startIndex..endIndex];
+
+        return html;
+    }
+
+    private static string? TextFromRtf(string rtf)
+    {
+        var text = Regex.Replace(rtf, @"\\'[0-9a-fA-F]{2}", "");
+        text = Regex.Replace(text, @"\\[a-zA-Z]+\d* ?", "");
+        text = text.Replace("{", "").Replace("}", "").Trim();
+        return text.Length == 0 ? null : text;
+    }
+
+    private static bool LooksLikeUtf16(byte[] bytes) =>
+        bytes.Length >= 2 && bytes.Where((_, i) => i % 2 == 1).Take(16).Count(b => b == 0) >= 4;
+
     private static string Unique(string folder, string name)
     {
         var path = Path.Combine(folder, name);
@@ -56,4 +140,14 @@ public static class TextDropService
     }
 
     private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
+}
+
+internal static class ByteArrayExtensions
+{
+    public static byte[] TrimTrailingZeros(this byte[] bytes)
+    {
+        var length = bytes.Length;
+        while (length > 0 && bytes[length - 1] == 0) length--;
+        return length == bytes.Length ? bytes : bytes[..length];
+    }
 }

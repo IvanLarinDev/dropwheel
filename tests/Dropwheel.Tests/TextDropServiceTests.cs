@@ -1,5 +1,8 @@
 using System.IO;
+using System.Text;
 using Dropwheel.Services;
+using WpfDataObject = System.Windows.DataObject;
+using WpfDataFormats = System.Windows.DataFormats;
 
 namespace Dropwheel.Tests;
 
@@ -26,6 +29,45 @@ public sealed class TextDropServiceTests : IDisposable
     {
         Assert.False(TextDropService.LooksLikeMarkdown("issue #42 was fixed"));
         Assert.Equal("txt", TextDropService.ExtensionFor("issue #42 was fixed"));
+    }
+
+    [Fact]
+    public void GetText_reads_string_format()
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.StringFormat, "from editor");
+
+        Assert.True(TextDropService.HasText(data));
+        Assert.Equal("from editor", TextDropService.GetText(data));
+    }
+
+    [Fact]
+    public void GetText_reads_oem_text_format()
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.OemText, "from editor");
+
+        Assert.True(TextDropService.HasText(data));
+        Assert.Equal("from editor", TextDropService.GetText(data));
+    }
+
+    [Fact]
+    public void GetText_reads_utf8_memory_stream_plain_text()
+    {
+        var data = new WpfDataObject();
+        data.SetData("text/plain", new MemoryStream(Encoding.UTF8.GetBytes("stream text\0")));
+
+        Assert.Equal("stream text", TextDropService.GetText(data));
+    }
+
+    [Fact]
+    public void GetText_reads_html_fragment_when_plain_text_is_missing()
+    {
+        const string html = "Version:0.9\r\nStartHTML:00000097\r\nEndHTML:00000165\r\nStartFragment:00000129\r\nEndFragment:00000133\r\n<html><body><!--StartFragment-->hi<br>there<!--EndFragment--></body></html>";
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.Html, html);
+
+        Assert.Equal("hi\nthere", TextDropService.GetText(data));
     }
 
     [Fact]

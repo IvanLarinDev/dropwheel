@@ -26,8 +26,16 @@ public partial class OverlayWindow
 
         if (TelegramDropService.CanAccept(t, e.Data))
         {
+            var effect = TelegramDropEffect(e);
+            if (effect == DragDropEffects.None)
+            {
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+
             var telegramText = !real && !virt && TextDropService.HasText(e.Data);
-            e.Effects = DragDropEffects.Copy;
+            e.Effects = effect;
             ((TextBlock)badge.Child).Text = telegramText ? "≡" : "⧉";
             badge.Background = Brushes.CornflowerBlue;
             badge.Visibility = Visibility.Visible;
@@ -85,6 +93,9 @@ public partial class OverlayWindow
 
             LaunchService.Launch(new TargetItem { Name = t.Name, Path = TelegramDropService.LaunchPathFor(t) });
             TelegramDropService.PasteIntoTelegramWhenReady();
+            e.Effects = e.AllowedEffects.HasFlag(DragDropEffects.Copy)
+                ? DragDropEffects.Copy
+                : DragDropEffects.None;
             ShowToast(result.Kind == TelegramDropKind.Files
                 ? $"⧉ Copied {result.Count} file(s); pasting in Telegram"
                 : "≡ Copied text; pasting in Telegram");
@@ -148,5 +159,13 @@ public partial class OverlayWindow
                 ? $"≡ Saved text → {System.IO.Path.GetFileName(saved)}"
                 : "No text to save", saved != null);
         }
+    }
+
+    private static DragDropEffects TelegramDropEffect(DragEventArgs e)
+    {
+        if (e.AllowedEffects.HasFlag(DragDropEffects.Copy)) return DragDropEffects.Copy;
+        if (e.AllowedEffects.HasFlag(DragDropEffects.Move)) return DragDropEffects.Move;
+        if (e.AllowedEffects.HasFlag(DragDropEffects.Link)) return DragDropEffects.Link;
+        return DragDropEffects.None;
     }
 }
