@@ -11,6 +11,8 @@ public static class LinkTargetService
 {
     private static readonly Regex LaunchUri =
         new(@"\b(?:https?://|tg://)[^\s<>'""]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex SavedMessagesLabel =
+        new(@"^\s*(?:saved messages?|избранное)\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static bool HasLaunchUri(IDataObject data) => TryGetLaunchUri(data, out _);
 
@@ -23,6 +25,35 @@ public static class LinkTargetService
 
     public static TargetItem? CreateTarget(IDataObject data) =>
         TryGetLaunchUri(data, out var uriText) ? CreateTarget(uriText) : null;
+
+    public static bool HasSavedMessagesLabel(IDataObject data) =>
+        TextCandidates(data).Any(IsSavedMessagesText);
+
+    public static TargetItem? CreateSavedMessagesTarget(string account)
+    {
+        account = account.Trim();
+        if (account.Length == 0) return null;
+
+        if (CreateTarget(account) is { } linkTarget)
+            return new TargetItem { Name = "Saved Messages", Path = linkTarget.Path };
+
+        account = account.TrimStart('@');
+        if (account.Length == 0) return null;
+
+        var parameter = account.StartsWith('+') || account.Any(char.IsDigit) && account.All(c => char.IsDigit(c) || c is '+' or '-' or '(' or ')' or ' ')
+            ? "phone"
+            : "domain";
+        var value = parameter == "phone"
+            ? new string(account.Where(c => char.IsDigit(c) || c == '+').ToArray())
+            : account;
+        if (value.Length == 0) return null;
+
+        return new TargetItem
+        {
+            Name = "Saved Messages",
+            Path = $"tg://resolve?{parameter}={Uri.EscapeDataString(value)}",
+        };
+    }
 
     internal static TargetItem? CreateTarget(string text)
     {
@@ -43,6 +74,14 @@ public static class LinkTargetService
 
         uriText = candidate;
         return true;
+    }
+
+    internal static bool IsSavedMessagesText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        return text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Any(line => SavedMessagesLabel.IsMatch(line));
     }
 
     private static bool TryGetLaunchUri(IDataObject data, out string uriText)

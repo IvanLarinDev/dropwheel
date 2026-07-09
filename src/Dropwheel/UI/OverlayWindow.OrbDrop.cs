@@ -45,7 +45,28 @@ public partial class OverlayWindow
             return true;
         }
 
+        if (LinkTargetService.HasSavedMessagesLabel(data)
+            && PromptSavedMessagesTarget() is { } savedMessagesTarget)
+        {
+            AddTargets(new[] { savedMessagesTarget }, group);
+            return true;
+        }
+
         return false;
+    }
+
+    private TargetItem? PromptSavedMessagesTarget()
+    {
+        var prompt = new PromptWindow(
+            "Telegram Saved Messages",
+            "Enter your Telegram username or phone number:")
+        { Owner = this };
+
+        if (prompt.ShowDialog() != true) return null;
+        if (LinkTargetService.CreateSavedMessagesTarget(prompt.Value) is { } target) return target;
+
+        ShowToast("Saved Messages target needs a username or phone");
+        return null;
     }
 
     private static TargetItem TargetFromPath(string path)

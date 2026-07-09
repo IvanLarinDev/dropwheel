@@ -27,6 +27,32 @@ public sealed class LinkTargetServiceTests
         Assert.Null(LinkTargetService.CreateTarget("not a link"));
     }
 
+    [Theory]
+    [InlineData("Saved Messages")]
+    [InlineData("Saved message")]
+    [InlineData("Избранное")]
+    public void HasSavedMessagesLabel_detects_saved_messages_chat(string text)
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, text);
+
+        Assert.True(LinkTargetService.HasSavedMessagesLabel(data));
+    }
+
+    [Theory]
+    [InlineData("@durov", "tg://resolve?domain=durov")]
+    [InlineData("durov", "tg://resolve?domain=durov")]
+    [InlineData("+15555550123", "tg://resolve?phone=%2B15555550123")]
+    [InlineData("https://t.me/telegram", "https://t.me/telegram")]
+    public void CreateSavedMessagesTarget_builds_self_chat_target(string account, string expectedPath)
+    {
+        var target = LinkTargetService.CreateSavedMessagesTarget(account);
+
+        Assert.NotNull(target);
+        Assert.Equal("Saved Messages", target.Name);
+        Assert.Equal(expectedPath, target.Path);
+    }
+
     [Fact]
     public void CreateTarget_accepts_unicode_text_drop_data()
     {

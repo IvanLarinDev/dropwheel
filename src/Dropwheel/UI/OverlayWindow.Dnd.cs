@@ -98,9 +98,12 @@ public partial class OverlayWindow
                 ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
                 : "Nothing to save", saved.Length > 0);
         }
-        else if (LinkTargetService.CreateTarget(e.Data) is { } linkTarget)
+        else if (AddTargetsFromDrop(e.Data, _currentGroup))
         {
-            AddTargets(new[] { linkTarget }, _currentGroup);
+        }
+        else if (LinkTargetService.HasSavedMessagesLabel(e.Data))
+        {
+            ShowToast("Saved Messages target was not added");
         }
         else if (TextDropService.HasText(e.Data))
         {
