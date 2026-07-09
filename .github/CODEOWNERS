@@ -1,0 +1,5 @@
+# Code owners for this target repository.
+# No owner is configured yet, so the installed ruleset keeps code-owner
+# review disabled and relies on the regular approving-review requirement.
+# Re-run install.js with --code-owner @org/team or edit this file and
+# enable require_code_owner_review in .github/rulesets/main.json.

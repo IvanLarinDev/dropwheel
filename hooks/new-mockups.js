@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// new-mockups.js — scaffold N stylistically-distinct single-file HTML mockups for a
+// new-mockups.js - scaffold N stylistically-distinct single-file HTML mockups for a
 // GUI feature, satisfying the DESIGN stage (BACKLOG P1-5).
 //
 // Usage:  node hooks/new-mockups.js <feature-name>
 // Creates design/mockups/<feature>/ with 4 openable HTML mockups (4 different style
-// directions) + NOTES.md. Does NOT create APPROVED — you add that after picking a
+// directions) + NOTES.md. Does NOT create APPROVED; you add that after picking a
 // direction, which is what the gate checks.
 
 const fs = require("fs");
@@ -22,7 +22,7 @@ const STYLES = [
 function mockupHtml(feature, s) {
   return `<!doctype html>
 <meta charset="utf-8">
-<title>${feature} — ${s.name}</title>
+<title>${feature} - ${s.name}</title>
 <!-- Style direction: ${s.name}. Replace this placeholder with the real mockup. -->
 <style>
   :root { --bg:${s.bg}; --panel:${s.panel}; --fg:${s.fg}; --accent:${s.accent}; --r:${s.radius}; }
@@ -41,47 +41,47 @@ function mockupHtml(feature, s) {
   button { background:var(--accent); color:var(--bg); border:0; border-radius:var(--r);
            padding:9px 16px; font-size:13px; cursor:pointer; }
 </style>
-<header><b>${feature}</b><span>${s.name}</span><span class="badge">MOCKUP · ${s.id}</span></header>
+<header><b>${feature}</b><span>${s.name}</span><span class="badge">MOCKUP - ${s.id}</span></header>
 <main>
   <nav>
     <a class="active">Overview</a><a>Items</a><a>Settings</a><a>About</a>
   </nav>
   <section>
     <div class="card"><h3 style="margin-top:0">Panel A</h3>
-      <p>Замени этот скелет реальным макетом экрана «${feature}» в стиле «${s.name}».</p>
+      <p>Replace this skeleton with the real ${feature} screen in the ${s.name} direction.</p>
       <button>Primary action</button></div>
     <div class="card"><h3 style="margin-top:0">Panel B</h3>
-      <p>Разные стили нужны, чтобы сравнить направления до кода, а не переписывать GUI потом.</p></div>
+      <p>Use distinct directions to compare the design before implementation.</p></div>
   </section>
 </main>
 `;
 }
 
-const NOTES = (feature, styles) => `# Mockups — ${feature}
+const NOTES = (feature, styles) => `# Mockups - ${feature}
 
-DESIGN-стадия для GUI-фичи «${feature}». Правило: >=${styles.length} стилистически разных
-мокапа + approval **до** написания GUI-кода (BACKLOG P1-5).
+DESIGN stage for the GUI feature "${feature}". Rule: >=${styles.length} stylistically distinct
+mockups plus approval before GUI implementation.
 
-## Варианты
-${styles.map((s) => `- \`${s.id}.html\` — ${s.name}`).join("\n")}
+## Variants
+${styles.map((s) => `- \`${s.id}.html\` - ${s.name}`).join("\n")}
 
-## Как закрыть гейт
-1. Доведи мокапы до реальных экранов (это скелеты-заглушки).
-2. Обсуди/выбери направление с ревьюером.
-3. Создай пустой файл \`APPROVED\` в этом каталоге (его проверяет hooks/design-gate.js).
-4. Только после этого — реализация GUI.
+## Closing the gate
+1. Turn the skeletons into real screen mockups.
+2. Review and choose a direction.
+3. Create an \`APPROVED\` file in this directory.
+4. Implement GUI code only after approval.
 `;
 
 function main() {
   const feature = (process.argv[2] || "").trim().replace(/[^a-zA-Z0-9._-]/g, "-");
   if (!feature) { console.error("usage: node hooks/new-mockups.js <feature-name>"); process.exit(1); }
   const dir = path.join(ROOT, "design", "mockups", feature);
-  if (fs.existsSync(dir)) { console.error(`❌ уже существует: design/mockups/${feature}/ — не перезаписываю.`); process.exit(1); }
+  if (fs.existsSync(dir)) { console.error(`already exists: design/mockups/${feature}/; not overwriting.`); process.exit(1); }
   fs.mkdirSync(dir, { recursive: true });
   for (const s of STYLES) fs.writeFileSync(path.join(dir, s.id + ".html"), mockupHtml(feature, s));
   fs.writeFileSync(path.join(dir, "NOTES.md"), NOTES(feature, STYLES));
-  console.log(`✅ создано ${STYLES.length} мокапа: design/mockups/${feature}/`);
+  console.log(`created ${STYLES.length} mockups: design/mockups/${feature}/`);
   STYLES.forEach((s) => console.log(`   - ${s.id}.html (${s.name})`));
-  console.log(`Дальше: доведи макеты → approval → создай design/mockups/${feature}/APPROVED`);
+  console.log(`Next: refine mockups, get approval, then create design/mockups/${feature}/APPROVED`);
 }
 main();

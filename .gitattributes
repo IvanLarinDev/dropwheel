@@ -1,13 +1,13 @@
-# Git hooks и скрипты ДОЛЖНЫ быть LF — CRLF в shebang (`#!/usr/bin/env node\r`)
-# ломает запуск на macOS/Linux ("node\r: not found"). Форсим LF независимо от autocrlf.
+# Git hooks and scripts must stay LF; CRLF in a shebang (`#!/usr/bin/env node\r`)
+# breaks macOS/Linux execution ("node\r: not found"). Force LF regardless of autocrlf.
 hooks/*.js    text eol=lf
 hooks/**/*.js text eol=lf
 install.js    text eol=lf
 *.sh          text eol=lf
 
-# Конфиги — тоже LF: иначе на Windows (autocrlf=true) рабочая копия становится CRLF,
-# и `node hooks/doctor.js`, читающий рабочее дерево, даёт ложный FAIL (в индексе и на
-# Linux-CI всё равно LF). Пинним форматы явно.
+# Config files are LF too: otherwise Windows with autocrlf=true can make the working
+# tree CRLF, and `node hooks/doctor.js` reads the working tree and reports a false
+# FAIL even when the index and Linux CI are LF. Pin these formats explicitly.
 *.toml  text eol=lf
 *.yml   text eol=lf
 *.yaml  text eol=lf

@@ -1,11 +1,10 @@
 #!/usr/bin/env node
-// stop-reminder.js — Stop-хук. Напоминает про VERIFY / COMMIT / REPORT ТОЛЬКО если
-// в рабочем дереве есть незакоммиченные изменения; чистое дерево → молчит.
+// stop-reminder.js - Stop hook. Reminds about VERIFY / COMMIT / REPORT only when
+// the working tree has uncommitted changes; clean tree stays quiet.
 //
-// Контракт Stop-хука Claude Code: additionalContext на Stop НЕ поддерживается —
-// единственный способ донести текст до модели: {"decision":"block","reason":"…"}.
-// Защита от зацикливания: если раннер прислал stop_hook_active=true (мы уже
-// блокировали этот Stop), выходим молча — иначе агент никогда не остановится.
+// Claude Code Stop hooks do not support additionalContext. The only way to
+// deliver text is {"decision":"block","reason":"..."}. If the runner sends
+// stop_hook_active=true, this hook stays quiet to avoid an infinite stop loop.
 
 const { execSync } = require("child_process");
 const crypto = require("crypto");
@@ -61,10 +60,10 @@ function lastAssistantTextFromTranscript(file) {
 function explainedIntentionalDirty(text) {
   const s = String(text || "").toLowerCase();
   if (!s) return false;
-  const mentionsDirty = /dirty tree|uncommitted|незакоммич|некоммич|рабоч(ем|ее) дерев|оставш/.test(s);
-  const intentional = /intentional|intentionally|намеренн|осознанн|не трогал|не трогала|оставил|оставила|оставлены/.test(s);
-  const reportsLoop = /verify|проверен|проверено|self-review|diff|commit|коммит|report|отч[её]т/.test(s);
-  const reviewOnly = /review-only|только review|только ревью|повторн(ый|ое) review|повторн(ый|ое) ревью|изменения я не правил|изменения не правил|не коммитил|commit\/pr не делал|коммит не делал/.test(s);
+  const mentionsDirty = /dirty tree|uncommitted|working tree|left over|left intentionally/.test(s);
+  const intentional = /intentional|intentionally|left on purpose|not touched|left unchanged/.test(s);
+  const reportsLoop = /verify|verified|self-review|diff|commit|report/.test(s);
+  const reviewOnly = /review-only|review only|did not edit|did not commit|no commit\/pr|commit\/pr not created/.test(s);
   return (mentionsDirty && intentional && reportsLoop) || (reviewOnly && reportsLoop);
 }
 function isHarnessOrLocalStatus(line) {
@@ -83,7 +82,7 @@ function isHarnessOrLocalStatus(line) {
     stopHookActive = ctx.stopHookActive;
     raw = ctx.raw || {};
   } catch {}
-  if (stopHookActive) process.exit(0); // уже напоминали в этом же Stop — не зацикливаемся
+  if (stopHookActive) process.exit(0); // already reminded during this Stop; avoid loops
 
   let status = "";
   try {
@@ -107,16 +106,16 @@ function isHarnessOrLocalStatus(line) {
       process.exit(0);
     }
   }
-  const shown = lines.slice(0, 20).join("\n") + (lines.length > 20 ? `\n... ещё ${lines.length - 20}` : "");
+  const shown = lines.slice(0, 20).join("\n") + (lines.length > 20 ? `\n... ${lines.length - 20} more` : "");
   const harnessNote = harnessLike.length
-    ? "\nПохоже, часть dirty tree — bootstrap/harness/local files. Если они оставлены намеренно, повторный Stop с тем же git status будет разрешён.\n"
-    : "\nЕсли dirty tree оставлено намеренно и отчёт уже объясняет почему, повторный Stop с тем же git status будет разрешён.\n";
+    ? "\nSome dirty files look like bootstrap/harness/local files. If they are intentional, the next Stop with the same git status will be allowed.\n"
+    : "\nIf the dirty tree is intentional and the report explains why, the next Stop with the same git status will be allowed.\n";
   const reason =
-    "stop-reminder: есть незакоммиченные изменения — закрыты ли шаги loop?\n" +
-    "  4. VERIFY (node hooks/verify.js + git diff review) -> 5. COMMIT на feature-ветке -> 6. REPORT.\n" +
-    "Коммит не всегда нужен: можно явно отчитаться, почему изменения остаются uncommitted.\n" +
+    "stop-reminder: uncommitted changes remain; are the loop steps complete?\n" +
+    "  4. VERIFY (node hooks/verify.js + git diff review) -> 5. COMMIT on a feature branch -> 6. REPORT.\n" +
+    "A commit is not always required: explicitly report why changes remain uncommitted.\n" +
     harnessNote +
-    "git status (первые строки):\n" + shown;
+    "git status (first lines):\n" + shown;
   try { process.stdout.write(JSON.stringify({ decision: "block", reason }) + "\n"); } catch {}
   process.stderr.write(reason + "\n");
   process.exit(0);

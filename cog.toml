@@ -11,11 +11,14 @@
 from_latest_tag = true
 ignore_merge_commits = true
 tag_prefix = "v"
-branch_whitelist = ["main", "master", "feat/**", "fix/**", "docs/**", "hotfix/**", "chore/**", "refactor/**"]
+branch_whitelist = ["main", "master", "feat/**", "fix/**", "docs/**", "hotfix/**", "chore/**", "refactor/**", "release/**"]
 
 [changelog]
 path = "CHANGELOG.md"
 remote = "github.com"
+template = "remote"
+owner = "IvanLarinDev"
+repository = "dropwheel"
 authors = []
 
 # Extra non-default type used by repos with this history.
