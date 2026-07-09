@@ -61,6 +61,36 @@ public sealed class TextDropServiceTests : IDisposable
     }
 
     [Fact]
+    public void GetText_reads_case_variant_text_plain_byte_array()
+    {
+        var data = new TestDataObject(
+            "text/plain;charset=UTF-8",
+            Encoding.UTF8.GetBytes("byte text\0"));
+
+        Assert.Equal("byte text", TextDropService.GetText(data));
+    }
+
+    [Fact]
+    public void GetText_reads_qt_wrapped_text_plain_stream()
+    {
+        var data = new WpfDataObject();
+        data.SetData(
+            "application/x-qt-windows-mime;value=\"text/plain\"",
+            new MemoryStream(Encoding.UTF8.GetBytes("wrapped text\0")));
+
+        Assert.Equal("wrapped text", TextDropService.GetText(data));
+    }
+
+    [Fact]
+    public void HasPotentialText_accepts_delayed_text_format()
+    {
+        var data = new TestDataObject("text/plain;charset=UTF-8");
+
+        Assert.True(TextDropService.HasPotentialText(data));
+        Assert.False(TextDropService.HasText(data));
+    }
+
+    [Fact]
     public void GetText_reads_html_fragment_when_plain_text_is_missing()
     {
         const string html = "Version:0.9\r\nStartHTML:00000097\r\nEndHTML:00000165\r\nStartFragment:00000129\r\nEndFragment:00000133\r\n<html><body><!--StartFragment-->hi<br>there<!--EndFragment--></body></html>";
@@ -107,5 +137,25 @@ public sealed class TextDropServiceTests : IDisposable
         Assert.Equal("text_2026-07-06_23-15-04 (2).txt", Path.GetFileName(path));
         Assert.True(Directory.Exists(occupied));
         Assert.Equal("directory collision", File.ReadAllText(path));
+    }
+
+    private sealed class TestDataObject(string format, object? value = null) : System.Windows.IDataObject
+    {
+        public object? GetData(string requestedFormat) =>
+            GetDataPresent(requestedFormat) ? value : null;
+
+        public object? GetData(Type format) => null;
+        public object? GetData(string requestedFormat, bool autoConvert) => GetData(requestedFormat);
+        public bool GetDataPresent(string requestedFormat) =>
+            string.Equals(format, requestedFormat, StringComparison.OrdinalIgnoreCase);
+
+        public bool GetDataPresent(Type format) => false;
+        public bool GetDataPresent(string format, bool autoConvert) => GetDataPresent(format);
+        public string[] GetFormats() => new[] { format };
+        public string[] GetFormats(bool autoConvert) => GetFormats();
+        public void SetData(string format, object data) => throw new NotSupportedException();
+        public void SetData(Type format, object data) => throw new NotSupportedException();
+        public void SetData(string format, object data, bool autoConvert) => throw new NotSupportedException();
+        public void SetData(object data) => throw new NotSupportedException();
     }
 }

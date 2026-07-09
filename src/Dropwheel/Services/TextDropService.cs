@@ -21,27 +21,25 @@ public static class TextDropService
         "text/plain;charset=utf-8",
     };
 
+    public static bool HasPotentialText(IDataObject data) =>
+        TextFormatCandidates(data).Any();
+
     public static bool HasText(IDataObject data) => !string.IsNullOrEmpty(GetText(data));
 
     public static string? GetText(IDataObject data)
     {
-        foreach (var format in PlainTextFormats)
+        foreach (var format in TextFormatCandidates(data))
         {
-            if (!data.GetDataPresent(format)) continue;
-            if (TextFromData(data.GetData(format)) is { Length: > 0 } text) return text;
+            if (TryGetText(data, format) is { Length: > 0 } text) return text;
         }
 
-        if (data.GetDataPresent(DataFormats.Html)
-            && data.GetData(DataFormats.Html) is string html
-            && TextFromHtml(html) is { Length: > 0 } htmlText)
-            return htmlText;
-
-        if (data.GetDataPresent(DataFormats.Rtf)
-            && data.GetData(DataFormats.Rtf) is string rtf
-            && TextFromRtf(rtf) is { Length: > 0 } rtfText)
-            return rtfText;
-
         return null;
+    }
+
+    public static string DescribeFormats(IDataObject data)
+    {
+        try { return string.Join(", ", data.GetFormats()); }
+        catch (Exception ex) { return $"<formats unavailable: {ex.GetType().Name}>"; }
     }
 
     /// <summary>Saves dragged text into the folder, or null when the drop carries no text.</summary>
@@ -71,17 +69,103 @@ public static class TextDropService
     public static bool LooksLikeMarkdown(string text) =>
         text.Contains("```") || Heading.IsMatch(text) || Link.IsMatch(text);
 
+    private static string? TryGetText(IDataObject data, string format)
+    {
+        foreach (var autoConvert in new[] { false, true })
+        {
+            try
+            {
+                if (!data.GetDataPresent(format, autoConvert)) continue;
+                if (TextFromFormat(format, data.GetData(format, autoConvert)) is { Length: > 0 } text)
+                    return text;
+            }
+            catch
+            {
+                // Some delayed-rendered drag formats throw until the final Drop. Try the next mode.
+            }
+        }
+
+        return null;
+    }
+
+    private static string? TextFromFormat(string format, object? data)
+    {
+        var text = TextFromData(data);
+        if (string.IsNullOrEmpty(text)) return null;
+        if (IsHtmlFormat(format)) return TextFromHtml(text);
+        if (IsRtfFormat(format)) return TextFromRtf(text);
+        return text.TrimEnd('\0');
+    }
+
     private static string? TextFromData(object? data)
     {
         if (data is string text) return text;
-        if (data is not MemoryStream stream) return null;
+        if (data is byte[] bytes) return TextFromBytes(bytes);
+        if (data is not Stream stream) return null;
 
-        var bytes = stream.ToArray().TrimTrailingZeros();
+        if (stream.CanSeek) stream.Position = 0;
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return TextFromBytes(copy.ToArray());
+    }
+
+    private static string? TextFromBytes(byte[] bytes)
+    {
+        bytes = bytes.TrimTrailingZeros();
         if (bytes.Length == 0) return null;
         return LooksLikeUtf16(bytes)
             ? Encoding.Unicode.GetString(bytes)
             : Encoding.UTF8.GetString(bytes);
     }
+
+    private static IEnumerable<string> TextFormatCandidates(IDataObject data)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var formats = SafeGetFormats(data);
+
+        foreach (var format in PlainTextFormats)
+        {
+            if ((formats.Contains(format) || SafeGetDataPresent(data, format)) && seen.Add(format))
+                yield return format;
+        }
+
+        foreach (var format in formats)
+        {
+            if (LooksLikeTextFormat(format) && seen.Add(format))
+                yield return format;
+        }
+    }
+
+    private static string[] SafeGetFormats(IDataObject data)
+    {
+        try { return data.GetFormats(autoConvert: true); }
+        catch { return Array.Empty<string>(); }
+    }
+
+    private static bool SafeGetDataPresent(IDataObject data, string format)
+    {
+        try { return data.GetDataPresent(format, autoConvert: true); }
+        catch { return false; }
+    }
+
+    private static bool LooksLikeTextFormat(string format)
+    {
+        var normalized = format.ToLowerInvariant();
+        return normalized.Contains("text")
+            || normalized.Contains("string")
+            || normalized.Contains("utf8")
+            || normalized.Contains("unicode")
+            || normalized.Contains("html")
+            || normalized.Contains("rtf")
+            || normalized.Contains("rich text");
+    }
+
+    private static bool IsHtmlFormat(string format) =>
+        format.Contains("html", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRtfFormat(string format) =>
+        format.Contains("rtf", StringComparison.OrdinalIgnoreCase)
+        || format.Contains("rich text", StringComparison.OrdinalIgnoreCase);
 
     private static string? TextFromHtml(string html)
     {

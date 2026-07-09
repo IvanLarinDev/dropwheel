@@ -108,7 +108,7 @@ public static class TelegramDropService
     private static bool HasSendablePayload(IDataObject data) =>
         RealFiles(data).Length > 0
         || VirtualFileService.HasVirtualFiles(data)
-        || !string.IsNullOrEmpty(TextDropService.GetText(data));
+        || TextDropService.HasPotentialText(data);
 
     internal static TelegramClipboardPayload? CreatePayload(IDataObject data, string stagingFolder)
     {

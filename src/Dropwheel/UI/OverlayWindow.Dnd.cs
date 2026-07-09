@@ -87,6 +87,8 @@ public partial class OverlayWindow
 
             if (result == null)
             {
+                ErrorLog.Write(
+                    $"Telegram drop had no extractable payload. AllowedEffects={e.AllowedEffects}; Formats={TextDropService.DescribeFormats(e.Data)}");
                 ShowToast("Nothing to send");
                 return;
             }
