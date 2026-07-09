@@ -19,6 +19,68 @@ public sealed class WatcherService
         public required FileSystemWatcher Watcher { get; init; }
         public required CancellationTokenSource Lifetime { get; init; }
         public TargetItem Target { get; set; } = null!;
+
+        private readonly object _gate = new();
+        private int _queuedWork;
+        private bool _stopping;
+        private bool _lifetimeDisposed;
+
+        public CancellationToken Token => Lifetime.Token;
+
+        public bool TryQueueWork()
+        {
+            lock (_gate)
+            {
+                if (_stopping) return false;
+                _queuedWork++;
+                return true;
+            }
+        }
+
+        public void CompleteWork()
+        {
+            CancellationTokenSource? dispose = null;
+            lock (_gate)
+            {
+                _queuedWork--;
+                if (_queuedWork == 0 && _stopping && !_lifetimeDisposed)
+                {
+                    _lifetimeDisposed = true;
+                    dispose = Lifetime;
+                }
+            }
+            dispose?.Dispose();
+        }
+
+        public void Cancel()
+        {
+            CancellationTokenSource? dispose = null;
+            lock (_gate)
+            {
+                if (!_stopping)
+                {
+                    _stopping = true;
+                    Lifetime.Cancel();
+                    Watcher.Dispose();
+                }
+                if (_queuedWork == 0 && !_lifetimeDisposed)
+                {
+                    _lifetimeDisposed = true;
+                    dispose = Lifetime;
+                }
+            }
+            dispose?.Dispose();
+        }
+
+        public bool TryRunSort(CancellationToken cancellationToken, Action sort)
+        {
+            lock (_gate)
+            {
+                if (_stopping || cancellationToken.IsCancellationRequested) return false;
+                sort();
+                return true;
+            }
+        }
     }
 
     private readonly Dispatcher _ui;
@@ -53,9 +115,7 @@ public sealed class WatcherService
         TargetStore.Saved -= Rebuild;
         foreach (var e in _entries.Values)
         {
-            e.Lifetime.Cancel();
-            e.Watcher.Dispose();
-            e.Lifetime.Dispose();
+            e.Cancel();
         }
         _entries.Clear();
     }
@@ -78,9 +138,7 @@ public sealed class WatcherService
 
         foreach (var path in _entries.Keys.Where(p => !desired.ContainsKey(p)).ToList())
         {
-            _entries[path].Lifetime.Cancel();
-            _entries[path].Watcher.Dispose();
-            _entries[path].Lifetime.Dispose();
+            _entries[path].Cancel();
             _entries.Remove(path);
         }
 
@@ -138,8 +196,13 @@ public sealed class WatcherService
     /// Renamed can both fire for one file); then we wait off-thread for it to be released.</summary>
     private void OnAppeared(Entry entry, string fullPath)
     {
-        if (!_inFlight.TryAdd(fullPath, 0)) return;
-        _ = ProcessWhenReady(entry, fullPath, entry.Lifetime.Token);
+        if (!entry.TryQueueWork()) return;
+        if (!_inFlight.TryAdd(fullPath, 0))
+        {
+            entry.CompleteWork();
+            return;
+        }
+        _ = ProcessWhenReady(entry, fullPath, entry.Token);
     }
 
     private async Task ProcessWhenReady(Entry entry, string file, CancellationToken cancellationToken)
@@ -150,14 +213,19 @@ public sealed class WatcherService
             await _moveGate.WaitAsync(cancellationToken);
             try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                SortOne(entry, file); // off-thread: planning and the silent move never touch the UI
+                entry.TryRunSort(
+                    cancellationToken,
+                    () => SortOne(entry, file, cancellationToken)); // off-thread: planning and the silent move never touch the UI
             }
             finally { _moveGate.Release(); }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception ex) { ErrorLog.Write($"Error waiting for file '{file}'", ex); }
-        finally { _inFlight.TryRemove(file, out _); }
+        finally
+        {
+            _inFlight.TryRemove(file, out _);
+            entry.CompleteWork();
+        }
     }
 
     internal static async Task<bool> WaitUntilReadyAsync(
@@ -204,17 +272,20 @@ public sealed class WatcherService
         catch (UnauthorizedAccessException) { return false; }
     }
 
-    private void SortOne(Entry entry, string file)
+    private void SortOne(Entry entry, string file, CancellationToken cancellationToken)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!File.Exists(file)) return;
             var plan = SortService.Plan(entry.Target, new[] { file });
             foreach (var (folder, files) in plan)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (SameFolder(folder, file)) continue; // file stays in its own folder - no move, no loop
                 // Create the destination folder first: otherwise SHFileOperation moving a single file
                 // to a non-existent path treats the last segment as a new file name, not a folder.
+                cancellationToken.ThrowIfCancellationRequested();
                 Directory.CreateDirectory(folder);
                 var conflicts = FileOps.DestinationConflicts(files, folder);
                 if (conflicts.Length > 0)
@@ -222,12 +293,17 @@ public sealed class WatcherService
                     ErrorLog.Write($"Auto-sort skipped '{file}' because destination already exists: '{conflicts[0]}'");
                     continue;
                 }
+                cancellationToken.ThrowIfCancellationRequested();
                 if (FileOps.Execute(files, folder, DropAction.Move, silent: true))
-                    _ui.InvokeAsync(() => QueueToast(files.Count)); // coalesce the toast on the UI thread
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                        _ui.InvokeAsync(() => QueueToast(files.Count)); // coalesce the toast on the UI thread
+                }
                 else
                     ErrorLog.Write($"Failed to move '{file}' to '{folder}'");
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception ex) { ErrorLog.Write($"Auto-sort of '{file}' failed", ex); }
     }
 

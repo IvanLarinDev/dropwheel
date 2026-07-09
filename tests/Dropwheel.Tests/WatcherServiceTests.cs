@@ -84,4 +84,23 @@ public sealed class WatcherServiceTests : IDisposable
 
         Assert.False(await waitTask);
     }
+
+    [Fact]
+    public async Task Wait_until_ready_checks_cancellation_before_readiness()
+    {
+        var file = Path.Combine(_root, "ready.mov");
+        File.WriteAllBytes(file, Array.Empty<byte>());
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var ready = await WatcherService.WaitUntilReadyAsync(
+            file,
+            _ => true,
+            pollMs: 1,
+            maxWaitTicks: 1,
+            cts.Token);
+
+        Assert.False(ready);
+    }
 }
