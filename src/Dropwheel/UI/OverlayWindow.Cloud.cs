@@ -58,10 +58,10 @@ public partial class OverlayWindow
         Canvas.SetTop(backdrop, HalfSize - 226);
         backdrop.MouseLeftButtonUp += (_, e) => { CloseCloud(); e.Handled = true; };
         Cloud.Children.Add(backdrop);
-        var source = _currentGroup?.Children ?? TargetStore.Config.Targets;
+        var source = CurrentLevelTargets();
         var items = new List<FrameworkElement>();
         if (_currentGroup != null) items.Add(MakeBackBubble());
-        items.AddRange(source.OrderByDescending(t => t.Pinned).Select(MakeBubble));
+        items.AddRange(TargetStore.OrderedForDisplay(source).Select(MakeBubble));
         items.Add(MakePlusTile());
 
         int n = items.Count;
@@ -184,6 +184,8 @@ public partial class OverlayWindow
         s.Stroke = new SolidColorBrush(on ? th.Accent : th.Spoke);
         s.StrokeThickness = on ? 2.5 : 2;
     }
+
+    private IList<TargetItem> CurrentLevelTargets() => _currentGroup?.Children ?? TargetStore.Config.Targets;
 
     private void EnterGroup(TargetItem? group)
     {

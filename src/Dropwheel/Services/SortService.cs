@@ -27,6 +27,29 @@ public static class SortService
         return map;
     }
 
+    public static Dictionary<string, string[]> MovePlan(TargetItem t, IEnumerable<string> files)
+    {
+        var map = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (folder, group) in Plan(t, files))
+        {
+            var moving = group.Where(file => !SameFolder(folder, file)).ToArray();
+            if (moving.Length > 0) map[folder] = moving;
+        }
+        return map;
+    }
+
+    /// <summary>The destination folder is the file's own folder. Then there is nothing to move and,
+    /// more importantly, moving into the same folder could make a watched sorter loop.</summary>
+    public static bool SameFolder(string destFolder, string file)
+    {
+        var src = Path.GetDirectoryName(Path.GetFullPath(file));
+        if (src == null) return false;
+        return string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(destFolder)),
+            Path.TrimEndingDirectorySeparator(src),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Rules engine: first rule whose conditions all match wins. An empty condition
     /// list is a catch-all. No match → target root.</summary>
     private static string ResolveFolderV2(TargetItem t, string file)

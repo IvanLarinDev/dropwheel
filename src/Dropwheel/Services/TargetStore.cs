@@ -101,6 +101,58 @@ public static class TargetStore
 
     public static IEnumerable<TargetItem> Groups => Config.Targets.Where(t => t.IsGroup);
 
+    public static IReadOnlyList<TargetItem> OrderedForDisplay(IList<TargetItem> targets)
+    {
+        var indexed = targets.Select((target, index) => new { target, index }).ToArray();
+        if (!indexed.Any(x => x.target.TilePosition.HasValue))
+            return indexed
+                .OrderByDescending(x => x.target.Pinned)
+                .ThenBy(x => x.index)
+                .Select(x => x.target)
+                .ToArray();
+
+        return indexed
+            .OrderBy(x => x.target.TilePosition ?? int.MaxValue)
+            .ThenBy(x => x.index)
+            .Select(x => x.target)
+            .ToArray();
+    }
+
+    public static void RenumberTilePositions(IList<TargetItem> targets)
+    {
+        for (int i = 0; i < targets.Count; i++)
+            targets[i].TilePosition = i;
+    }
+
+    public static bool MoveTileBefore(IList<TargetItem> targets, TargetItem source, TargetItem before)
+    {
+        if (ReferenceEquals(source, before)) return false;
+        var ordered = OrderedForDisplay(targets).ToList();
+        if (!ordered.Remove(source)) return false;
+        var insert = ordered.IndexOf(before);
+        if (insert < 0) return false;
+        ordered.Insert(insert, source);
+        ApplyTileOrder(targets, ordered);
+        return true;
+    }
+
+    public static bool MoveTileToEnd(IList<TargetItem> targets, TargetItem source)
+    {
+        var ordered = OrderedForDisplay(targets).ToList();
+        if (ordered.Count > 0 && ReferenceEquals(ordered[^1], source)) return false;
+        if (!ordered.Remove(source)) return false;
+        ordered.Add(source);
+        ApplyTileOrder(targets, ordered);
+        return true;
+    }
+
+    private static void ApplyTileOrder(IList<TargetItem> targets, IReadOnlyList<TargetItem> ordered)
+    {
+        targets.Clear();
+        foreach (var target in ordered) targets.Add(target);
+        RenumberTilePositions(targets);
+    }
+
     /// <summary>Remove a target everywhere (from the root and all groups).</summary>
     public static void RemoveEverywhere(TargetItem item)
     {
@@ -111,12 +163,21 @@ public static class TargetStore
     /// <summary>Move a target into a group (null = root).</summary>
     public static void MoveToGroup(TargetItem item, TargetItem? group)
     {
+        var destination = group?.Children ?? Config.Targets;
+        if (ReferenceEquals(ContainingList(item), destination)) return;
         RemoveEverywhere(item);
-        (group?.Children ?? Config.Targets).Add(item);
+        item.TilePosition = null;
+        destination.Add(item);
     }
 
     public static TargetItem? FindParentGroup(TargetItem item)
         => Groups.FirstOrDefault(g => g.Children!.Contains(item));
+
+    private static IList<TargetItem>? ContainingList(TargetItem item)
+    {
+        if (Config.Targets.Contains(item)) return Config.Targets;
+        return Groups.Select(g => (IList<TargetItem>)g.Children!).FirstOrDefault(children => children.Contains(item));
+    }
 
     private static AppConfig Defaults()
     {

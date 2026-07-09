@@ -65,4 +65,25 @@ public sealed class WatcherServiceTests : IDisposable
         var folder = SortService.Plan(t, new[] { file }).Keys.Single();
         Assert.False(WatcherService.SameFolder(folder, file)); // routed into a subfolder — move it
     }
+
+    [Fact]
+    public void MovePlan_skips_files_that_would_stay_in_their_own_folder()
+    {
+        var stay = Path.Combine(_root, "a.xyz");
+        var move = Path.Combine(_root, "a.jpg");
+        File.WriteAllBytes(stay, Array.Empty<byte>());
+        File.WriteAllBytes(move, Array.Empty<byte>());
+        var t = new TargetItem
+        {
+            Path = _root,
+            Rules = new() { new SortRule { Dest = "Images", All = { new RuleCondition
+                { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } } } },
+        };
+
+        var plan = SortService.MovePlan(t, new[] { stay, move });
+
+        var group = Assert.Single(plan);
+        Assert.Equal(Path.Combine(_root, "Images"), group.Key);
+        Assert.Equal(new[] { move }, group.Value);
+    }
 }
