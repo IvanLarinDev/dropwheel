@@ -9,11 +9,11 @@ public sealed class LinkTargetServiceTests
 {
     [Theory]
     [InlineData("tg://resolve?domain=telegram", "tg://resolve?domain=telegram", "Telegram: telegram")]
-    [InlineData("Open https://t.me/telegram.", "https://t.me/telegram", "Telegram: telegram")]
-    [InlineData("t.me/c/2669588230/1", "https://t.me/c/2669588230/1", "Telegram topic")]
-    [InlineData("https://telegram.me/durov", "https://telegram.me/durov", "Telegram: durov")]
-    [InlineData("durov.t.me", "https://durov.t.me", "Telegram")]
-    [InlineData("https://t.me/+abcdef", "https://t.me/+abcdef", "Telegram invite")]
+    [InlineData("Open https://t.me/telegram.", "tg://resolve?domain=telegram", "Telegram: telegram")]
+    [InlineData("t.me/c/2669588230/1", "tg://privatepost?channel=2669588230&post=1", "Telegram topic")]
+    [InlineData("https://telegram.me/durov", "tg://resolve?domain=durov", "Telegram: durov")]
+    [InlineData("durov.t.me", "tg://resolve?domain=durov", "Telegram")]
+    [InlineData("https://t.me/+abcdef", "tg://join?invite=abcdef", "Telegram invite")]
     public void CreateTarget_extracts_telegram_links(string text, string expectedPath, string expectedName)
     {
         var target = LinkTargetService.CreateTarget(text);
@@ -45,7 +45,7 @@ public sealed class LinkTargetServiceTests
     [InlineData("@durov", "tg://resolve?domain=durov")]
     [InlineData("durov", "tg://resolve?domain=durov")]
     [InlineData("+15555550123", "tg://resolve?phone=%2B15555550123")]
-    [InlineData("https://t.me/telegram", "https://t.me/telegram")]
+    [InlineData("https://t.me/telegram", "tg://resolve?domain=telegram")]
     public void CreateSavedMessagesTarget_builds_self_chat_target(string account, string expectedPath)
     {
         var target = LinkTargetService.CreateSavedMessagesTarget(account);
@@ -66,7 +66,7 @@ public sealed class LinkTargetServiceTests
         var target = LinkTargetService.CreateTarget(data);
 
         Assert.NotNull(target);
-        Assert.Equal("https://t.me/c/2669588230/1", target.Path);
+        Assert.Equal("tg://privatepost?channel=2669588230&post=1", target.Path);
         Assert.Equal("Telegram topic", target.Name);
     }
 
@@ -81,7 +81,7 @@ public sealed class LinkTargetServiceTests
         var target = LinkTargetService.CreateTarget(data);
 
         Assert.NotNull(target);
-        Assert.Equal("https://t.me/telegram", target.Path);
+        Assert.Equal("tg://resolve?domain=telegram", target.Path);
         Assert.Equal("Telegram: telegram", target.Name);
     }
 }

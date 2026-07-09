@@ -59,7 +59,7 @@ public static class LinkTargetService
     internal static TargetItem? CreateTarget(string text)
     {
         if (!TryExtractLaunchUri(text, out var uriText)) return null;
-        return new TargetItem { Name = NameFor(uriText), Path = uriText };
+        return new TargetItem { Name = NameFor(uriText), Path = TargetPathFor(uriText) };
     }
 
     internal static bool TryExtractLaunchUri(string? text, out string uriText)
@@ -146,6 +146,47 @@ public static class LinkTargetService
         if (!Uri.TryCreate(uriText, UriKind.Absolute, out var uri)) return uriText;
         if (IsTelegramUri(uri)) return TelegramName(uri);
         return string.IsNullOrWhiteSpace(uri.Host) ? uriText : uri.Host;
+    }
+
+    private static string TargetPathFor(string uriText)
+    {
+        if (!Uri.TryCreate(uriText, UriKind.Absolute, out var uri) || !IsTelegramWebUri(uri))
+            return uriText;
+
+        return TelegramWebDeepLink(uri) ?? uriText;
+    }
+
+    private static bool IsTelegramWebUri(Uri uri) =>
+        uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+        || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+
+    private static string? TelegramWebDeepLink(Uri uri)
+    {
+        if (!IsTelegramUri(uri)) return null;
+
+        if (uri.Host.EndsWith(".t.me", StringComparison.OrdinalIgnoreCase)
+            && !uri.Host.Equals("t.me", StringComparison.OrdinalIgnoreCase))
+        {
+            var domain = uri.Host[..^".t.me".Length];
+            return $"tg://resolve?domain={Uri.EscapeDataString(domain)}";
+        }
+
+        var segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0) return null;
+
+        var first = Uri.UnescapeDataString(segments[0]);
+        if (first.Equals("c", StringComparison.OrdinalIgnoreCase) && segments.Length >= 3)
+        {
+            return $"tg://privatepost?channel={Uri.EscapeDataString(segments[1])}&post={Uri.EscapeDataString(segments[2])}";
+        }
+
+        if (first.StartsWith('+') && first.Length > 1)
+            return $"tg://join?invite={Uri.EscapeDataString(first[1..])}";
+
+        if (first.Equals("joinchat", StringComparison.OrdinalIgnoreCase) && segments.Length >= 2)
+            return $"tg://join?invite={Uri.EscapeDataString(segments[1])}";
+
+        return $"tg://resolve?domain={Uri.EscapeDataString(first.TrimStart('@'))}";
     }
 
     private static bool IsTelegramUri(Uri uri) =>
