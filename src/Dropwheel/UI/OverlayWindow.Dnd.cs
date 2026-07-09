@@ -24,6 +24,17 @@ public partial class OverlayWindow
         bool link = !real && !virt && LinkTargetService.HasLaunchUri(e.Data);
         bool text = !real && !virt && !link && TextDropService.HasText(e.Data);
 
+        if (TelegramDropService.CanAccept(t, e.Data))
+        {
+            var telegramText = !real && !virt && TextDropService.HasText(e.Data);
+            e.Effects = DragDropEffects.Copy;
+            ((TextBlock)badge.Child).Text = telegramText ? "≡" : "⧉";
+            badge.Background = Brushes.CornflowerBlue;
+            badge.Visibility = Visibility.Visible;
+            e.Handled = true;
+            return;
+        }
+
         if (real && LaunchService.IsRunTarget(t)) // drop files on an exe/script → run it (open with)
         {
             e.Effects = DragDropEffects.Link;
@@ -60,6 +71,25 @@ public partial class OverlayWindow
 
     private void OnBubbleDropCore(TargetItem t, DragEventArgs e)
     {
+        if (TelegramDropService.CanAccept(t, e.Data))
+        {
+            var result = TelegramDropService.CopyToClipboard(
+                e.Data,
+                System.IO.Path.Combine(TargetStore.Dir, "telegram-drop"));
+
+            if (result == null)
+            {
+                ShowToast("Nothing to send");
+                return;
+            }
+
+            LaunchService.Launch(new TargetItem { Name = t.Name, Path = TelegramDropService.LaunchPathFor(t) });
+            ShowToast(result.Kind == TelegramDropKind.Files
+                ? $"⧉ Copied {result.Count} file(s); paste in Telegram"
+                : "≡ Copied text; paste in Telegram");
+            return;
+        }
+
         // A shortcut target (.lnk) to a folder stores the shortcut's own path — resolve it so files
         // land in the target folder, not next to the .lnk.
         var dest = LaunchService.DestPath(t);
