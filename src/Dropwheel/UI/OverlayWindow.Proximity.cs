@@ -23,7 +23,7 @@ public partial class OverlayWindow
         var p = Orb.PointToScreen(new Point(23, 23)); // orb center, device px
         _orbSX = p.X; _orbSY = p.Y;
         double m = ct.TransformToDevice.M11;
-        _openR2  = 150 * m * 150 * m;  // open radius
+        _openR2 = 150 * m * 150 * m;  // open radius
         _closeR2 = 340 * m * 340 * m;  // close radius
     }
 

@@ -84,7 +84,9 @@ public partial class TargetEditorWindow
         };
         var summary = new TextBlock
         {
-            Text = MasterSummary(rule), FontSize = 11, Foreground = Palettes.TextMuted,
+            Text = MasterSummary(rule),
+            FontSize = 11,
+            Foreground = Palettes.TextMuted,
             TextTrimming = TextTrimming.CharacterEllipsis,
         };
         var body = new StackPanel { Margin = new Thickness(8, 4, 6, 4) };
@@ -93,7 +95,9 @@ public partial class TargetEditorWindow
 
         var border = new Border
         {
-            Child = body, CornerRadius = new CornerRadius(5), Margin = new Thickness(0, 0, 0, 3),
+            Child = body,
+            CornerRadius = new CornerRadius(5),
+            Margin = new Thickness(0, 0, 0, 3),
             Cursor = System.Windows.Input.Cursors.Hand,
             Background = sel ? SelectedBg : Brushes.Transparent,
             BorderBrush = sel ? SelectedBar : Brushes.Transparent,
@@ -165,7 +169,9 @@ public partial class TargetEditorWindow
 
         _tokenHint = new TextBlock
         {
-            FontSize = 11, Foreground = Palettes.TextMuted, TextWrapping = TextWrapping.Wrap,
+            FontSize = 11,
+            Foreground = Palettes.TextMuted,
+            TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 10),
         };
         DetailHost.Children.Add(_tokenHint);
@@ -179,8 +185,10 @@ public partial class TargetEditorWindow
 
         var addCond = new Button
         {
-            Content = "+ condition", Padding = new Thickness(6, 1, 6, 1),
-            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0),
+            Content = "+ condition",
+            Padding = new Thickness(6, 1, 6, 1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 4, 0, 0),
         };
         addCond.Click += (_, _) =>
         {
@@ -192,8 +200,10 @@ public partial class TargetEditorWindow
 
         var savePreset = new Button
         {
-            Content = "Save as preset…", Padding = new Thickness(6, 1, 6, 1),
-            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 8, 0, 0),
+            Content = "Save as preset…",
+            Padding = new Thickness(6, 1, 6, 1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 8, 0, 0),
         };
         savePreset.Click += (_, _) => OnSaveAsPreset(rule);
         DetailHost.Children.Add(savePreset);
@@ -216,7 +226,9 @@ public partial class TargetEditorWindow
             cond.Op = ops[0];
             var opWord = new TextBlock
             {
-                Text = OpWord(cond.Op), Foreground = Palettes.TextMuted, VerticalAlignment = VerticalAlignment.Center,
+                Text = OpWord(cond.Op),
+                Foreground = Palettes.TextMuted,
+                VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(8, 0, 4, 0),
             };
             DockPanel.SetDock(opWord, Dock.Right);
@@ -247,8 +259,11 @@ public partial class TargetEditorWindow
         var value = new TextBox { Text = cond.Value };
         var hint = new TextBlock
         {
-            Text = WatermarkFor(cond.Field), Foreground = Palettes.TextMuted, IsHitTestVisible = false,
-            Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+            Text = WatermarkFor(cond.Field),
+            Foreground = Palettes.TextMuted,
+            IsHitTestVisible = false,
+            Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
             Visibility = string.IsNullOrEmpty(cond.Value) ? Visibility.Visible : Visibility.Collapsed,
         };
         value.TextChanged += (_, _) =>
@@ -364,7 +379,9 @@ public partial class TargetEditorWindow
         var here = files.Where(f => SortService.MatchedRuleIndex(_rules, f) == _selected).ToArray();
         _matchesHost.Children.Add(new TextBlock
         {
-            Text = $"Routes here: {here.Length} of {files.Length}", FontSize = 11, Foreground = Palettes.TextMuted,
+            Text = $"Routes here: {here.Length} of {files.Length}",
+            FontSize = 11,
+            Foreground = Palettes.TextMuted,
             Margin = new Thickness(0, 0, 0, 2),
         });
         bool showDest = _rules[_selected].Dest.Contains("${", StringComparison.Ordinal);
@@ -374,7 +391,8 @@ public partial class TargetEditorWindow
                 Text = showDest
                     ? $"{Path.GetFileName(f)}  →  {ResolvedDestLabel(_rules[_selected], Path.GetFileName(f))}"
                     : Path.GetFileName(f),
-                FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
+                FontSize = 11,
+                TextTrimming = TextTrimming.CharacterEllipsis,
             });
         // Size/age conditions are treated as zero in the preview: the test input is names without
         // real files on disk. Warn if any rule has such a condition — a file might have been silently
@@ -499,8 +517,11 @@ public partial class TargetEditorWindow
     {
         var b = new Button
         {
-            Content = glyph, Width = 24, Margin = new Thickness(2, 0, 0, 0),
-            Padding = new Thickness(0), IsEnabled = enabled,
+            Content = glyph,
+            Width = 24,
+            Margin = new Thickness(2, 0, 0, 0),
+            Padding = new Thickness(0),
+            IsEnabled = enabled,
         };
         b.Click += (_, _) => onClick();
         return b;
@@ -548,7 +569,10 @@ public partial class TargetEditorWindow
 
     private static TextBlock Hint(string text) => new()
     {
-        Text = text, FontSize = 11, Foreground = Palettes.TextMuted, TextWrapping = TextWrapping.Wrap,
+        Text = text,
+        FontSize = 11,
+        Foreground = Palettes.TextMuted,
+        TextWrapping = TextWrapping.Wrap,
         Margin = new Thickness(0, 2, 0, 2),
     };
 

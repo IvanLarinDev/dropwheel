@@ -50,7 +50,8 @@ public partial class OverlayWindow
         // MouseLeave and the close timer instantly). Clicking empty space closes.
         var backdrop = new System.Windows.Shapes.Ellipse
         {
-            Width = 452, Height = 452,
+            Width = 452,
+            Height = 452,
             Fill = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)),
         };
         Canvas.SetLeft(backdrop, HalfSize - 226);
@@ -69,11 +70,13 @@ public partial class OverlayWindow
             double a = -Math.PI / 2 + i * 2 * Math.PI / n;
             var spoke = new Line
             {
-                X1 = HalfSize, Y1 = HalfSize,
+                X1 = HalfSize,
+                Y1 = HalfSize,
                 X2 = HalfSize + (RingR - 52) * Math.Cos(a),
                 Y2 = HalfSize + (RingR - 52) * Math.Sin(a),
                 Stroke = new SolidColorBrush(th.Spoke),
-                StrokeThickness = 2, IsHitTestVisible = false,
+                StrokeThickness = 2,
+                IsHitTestVisible = false,
             };
             Cloud.Children.Add(spoke);
             _spokes[items[i]] = spoke;
