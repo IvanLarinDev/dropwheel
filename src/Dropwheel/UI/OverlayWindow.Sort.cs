@@ -12,15 +12,16 @@ public partial class OverlayWindow
     {
         var plan = SortService.Plan(t, files);
         bool ok = true;
-        var ops = new List<(DropAction, string[], string, bool)>();
+        var ops = new List<FileOp>();
         foreach (var (folder, group) in plan)
         {
             Directory.CreateDirectory(folder);
-            bool hadCollision = FileOps.HasDestinationCollision(group, folder);
-            if (FileOps.Execute(group, folder, act)) ops.Add((act, group.ToArray(), folder, hadCollision));
+            var sources = group.ToArray();
+            var op = BuildOpBefore(act, sources, folder);
+            if (FileOps.Execute(sources, folder, act)) ops.Add(op);
             else ok = false;
         }
-        if (ops.Count > 0) RememberOpsIfUnambiguous(ops);
+        if (ops.Count > 0) RememberOps(ops);
         ShowToast(ok
             ? $"⇅ Sorted: {files.Length} item(s) → {t.Name}"
             : "Sorting was not completed", ops.Count > 0);
@@ -31,17 +32,17 @@ public partial class OverlayWindow
     private void SortSavedVirtuals(TargetItem t, string[] saved)
     {
         var plan = SortService.Plan(t, saved);
-        var ops = new List<(DropAction, string[], string, bool)>();
+        var ops = new List<FileOp>();
         string root = IOPath.GetFullPath(t.Path).TrimEnd('\\');
         foreach (var (folder, group) in plan)
         {
             if (IOPath.GetFullPath(folder).TrimEnd('\\') == root)
-            { ops.Add((DropAction.Copy, group.ToArray(), folder, false)); continue; }
+            { ops.Add(BuildCreatedCopyOp(group.ToArray(), folder)); continue; }
             Directory.CreateDirectory(folder);
-            bool hadCollision = FileOps.HasDestinationCollision(group, folder);
-            if (FileOps.Execute(group, folder, DropAction.Move))
-                ops.Add((DropAction.Copy, group.ToArray(), folder, hadCollision));
+            var sources = group.ToArray();
+            if (FileOps.Execute(sources, folder, DropAction.Move))
+                ops.Add(BuildCreatedCopyOp(sources, folder));
         }
-        if (ops.Count > 0) RememberOpsIfUnambiguous(ops);
+        if (ops.Count > 0) RememberOps(ops);
     }
 }

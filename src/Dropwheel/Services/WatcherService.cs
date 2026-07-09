@@ -179,6 +179,12 @@ public sealed class WatcherService
                 // Create the destination folder first: otherwise SHFileOperation moving a single file
                 // to a non-existent path treats the last segment as a new file name, not a folder.
                 Directory.CreateDirectory(folder);
+                var conflicts = FileOps.DestinationConflicts(files, folder);
+                if (conflicts.Length > 0)
+                {
+                    ErrorLog.Write($"Auto-sort skipped '{file}' because destination already exists: '{conflicts[0]}'");
+                    continue;
+                }
                 if (FileOps.Execute(files, folder, DropAction.Move, silent: true))
                     _ui.InvokeAsync(() => QueueToast(files.Count)); // coalesce the toast on the UI thread
                 else

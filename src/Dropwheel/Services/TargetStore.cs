@@ -8,6 +8,7 @@ namespace Dropwheel.Services;
 public static class TargetStore
 {
     public static AppConfig Config { get; private set; } = new();
+    internal static string? DirOverride { get; set; }
 
     /// <summary>Raised after the config is written to disk. The folder watcher listens to this to
     /// re-sync its FileSystemWatchers when targets or their Watch flag change.</summary>
@@ -18,7 +19,7 @@ public static class TargetStore
     public static IEnumerable<TargetItem> AllTargets =>
         Config.Targets.SelectMany(t => t.IsGroup ? (IEnumerable<TargetItem>)t.Children! : new[] { t });
 
-    public static string Dir => Path.Combine(
+    public static string Dir => DirOverride ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Dropwheel");
     public static string FilePath => Path.Combine(Dir, "config.json");
 
@@ -45,7 +46,12 @@ public static class TargetStore
             catch (IOException ex) { ErrorLog.Write("Config is unreadable; backing it up and recreating defaults", ex); shouldBackup = true; }
             catch (UnauthorizedAccessException ex) { ErrorLog.Write("Config is unreadable; backing it up and recreating defaults", ex); shouldBackup = true; }
         }
-        if (shouldBackup) BackupBadConfig(DateTime.Now);
+        if (shouldBackup && !BackupBadConfig(DateTime.Now))
+        {
+            Config = Defaults();
+            ErrorLog.Write("Settings file could not be backed up; using defaults in memory without overwriting it.");
+            return;
+        }
         Config = Defaults();
         Save();
     }
@@ -56,17 +62,22 @@ public static class TargetStore
         return Path.Combine(Dir, $"config.bad.{stamp}.json");
     }
 
-    private static void BackupBadConfig(DateTime now)
+    private static bool BackupBadConfig(DateTime now)
     {
         try
         {
-            if (!File.Exists(FilePath)) return;
+            if (!File.Exists(FilePath)) return true;
             var backup = BackupPath(now);
             for (int i = 2; File.Exists(backup); i++)
                 backup = Path.Combine(Dir, $"config.bad.{now:yyyyMMdd_HHmmss}.{i}.json");
             File.Copy(FilePath, backup);
+            return true;
         }
-        catch (Exception ex) { ErrorLog.Write("Failed to back up bad config", ex); }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Failed to back up bad config", ex);
+            return false;
+        }
     }
 
     /// <summary>Writes via a temp file then renames it: if the process is killed mid-write, the
