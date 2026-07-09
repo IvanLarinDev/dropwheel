@@ -4,8 +4,22 @@ using Dropwheel.Services;
 
 namespace Dropwheel.Tests;
 
-public class AppConfigTests
+public class AppConfigTests : IDisposable
 {
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "dw_config_" + Guid.NewGuid().ToString("N"));
+
+    public AppConfigTests()
+    {
+        Directory.CreateDirectory(_root);
+        TargetStore.DirOverride = _root;
+    }
+
+    public void Dispose()
+    {
+        TargetStore.DirOverride = null;
+        try { Directory.Delete(_root, true); } catch (DirectoryNotFoundException) { }
+    }
+
     [Fact]
     public void Default_open_animation_preserves_existing_pop_behavior()
     {
@@ -27,6 +41,37 @@ public class AppConfigTests
     {
         var path = TargetStore.BackupPath(new DateTime(2026, 7, 8, 18, 30, 5));
 
-        Assert.EndsWith(Path.Combine("Dropwheel", "config.bad.20260708_183005.json"), path);
+        Assert.Equal(Path.Combine(_root, "config.bad.20260708_183005.json"), path);
+    }
+
+    [Fact]
+    public void Load_backs_up_corrupt_config_before_recreating_defaults()
+    {
+        var configPath = Path.Combine(_root, "config.json");
+        File.WriteAllText(configPath, "{ not valid json");
+
+        TargetStore.Load();
+
+        var backup = Assert.Single(Directory.GetFiles(_root, "config.bad.*.json"));
+        Assert.Equal("{ not valid json", File.ReadAllText(backup));
+        Assert.NotEmpty(TargetStore.Config.Targets);
+        Assert.Contains("\"Targets\"", File.ReadAllText(configPath));
+    }
+
+    [Fact]
+    public void Load_does_not_overwrite_config_when_backup_fails()
+    {
+        var configPath = Path.Combine(_root, "config.json");
+        const string original = "{ locked config";
+        File.WriteAllText(configPath, original);
+
+        using (new FileStream(configPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            TargetStore.Load();
+            Assert.NotEmpty(TargetStore.Config.Targets);
+        }
+
+        Assert.Equal(original, File.ReadAllText(configPath));
+        Assert.Empty(Directory.GetFiles(_root, "config.bad.*.json"));
     }
 }

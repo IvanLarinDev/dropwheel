@@ -28,9 +28,17 @@ public static class FileOps
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHFileOperation(ref SHFILEOPSTRUCT op);
 
+    public static string[] DestinationConflicts(IEnumerable<string> files, string destFolder)
+    {
+        return files
+            .Select(f => Path.Combine(destFolder, Path.GetFileName(f)))
+            .Where(p => File.Exists(p) || Directory.Exists(p))
+            .ToArray();
+    }
+
     /// <summary>Copy or move files into destFolder. When silent (used by the folder watcher for
-    /// auto-sort) the shell shows no progress window, no error UI and no conflict prompt — collisions
-    /// are auto-renamed — so background sorting never interrupts the user with dialogs.</summary>
+    /// auto-sort) the shell shows no progress window, no error UI and no conflict prompt. Callers
+    /// that need no-overwrite behavior must preflight with DestinationConflicts first.</summary>
     public static bool Execute(IEnumerable<string> files, string destFolder, DropAction action, bool silent = false)
     {
         var list = files.ToArray();

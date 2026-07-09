@@ -44,4 +44,27 @@ public sealed class FileOpsTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    [Fact]
+    public void DestinationConflicts_reports_existing_destination_names()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dw_fileops_" + Guid.NewGuid().ToString("N"));
+        var dest = Path.Combine(root, "dest");
+        var src = Path.Combine(root, "src", "report.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(src)!);
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(src, "new");
+        var existing = Path.Combine(dest, "report.txt");
+        File.WriteAllText(existing, "old");
+        try
+        {
+            var conflicts = FileOps.DestinationConflicts(new[] { src }, dest);
+
+            Assert.Equal(new[] { existing }, conflicts);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch (DirectoryNotFoundException) { }
+        }
+    }
 }

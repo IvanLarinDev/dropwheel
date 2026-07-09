@@ -180,6 +180,19 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
+    public void Slow_regex_rule_times_out_and_lets_file_fall_through()
+    {
+        var file = MakeFile(new string('a', 40) + "!.txt");
+        var t = Sorter(_root,
+            Rule("Slow", ConditionField.NameRegex, CompareOp.Matches, "^(a+)+$"),
+            Rule("Text", ConditionField.Extension, CompareOp.In, "txt"));
+
+        var plan = SortService.Plan(t, new[] { file });
+
+        Assert.Contains(file, plan[Path.Combine(_root, "Text")]);
+    }
+
+    [Fact]
     public void MatchedRuleIndex_distinguishes_rules_with_the_same_destination()
     {
         // Two rules with the same Dest: the index must point at the rule that actually matched.
