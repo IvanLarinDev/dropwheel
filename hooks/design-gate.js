@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// design-gate.js — DESIGN-stage gate.
+// design-gate.js - DESIGN-stage gate.
 //
 // Policy: GUI work must be preceded by design review. If a branch's changes touch UI
-// paths, the SAME branch diff must also touch an APPROVED set of >= N mockups —
+// paths, the SAME branch diff must also touch an APPROVED set of >= N mockups -
 // otherwise one old approval would open the gate for all future UI work forever.
 //
 // Usage:
@@ -13,7 +13,7 @@
 //     --strict diff errors fail closed (CI/server enforcement)
 //
 // Exit 0 = gate satisfied (or no UI change), exit 1 = UI changed without approved mockups.
-// Internal error → exit 0 (never wedge unrelated work), но с ГРОМКИМ warning.
+// Internal error -> exit 0 locally (never wedge unrelated work), with a loud warning.
 
 const fs = require("fs");
 const path = require("path");
@@ -50,21 +50,18 @@ function defaultBase(root) {
   return "origin/main";
 }
 
-// ---------- config (общая с guard.js: hooks/_lib.js) ----------
-// changedFiles — общий с verify.js (--changed): единый источник git-diff логики.
+// ---------- config shared with guard.js and verify.js ----------
 const { globToRe, loadConfig, changedFiles } = require(path.join(__dirname, "_lib.js"));
 
 // ---------- mockups scan ----------
-// Одобренный набор засчитывается ТОЛЬКО если он затронут в diff этой же ветки —
-// иначе один старый approval навсегда открывал бы гейт для любых будущих UI-правок.
-// Повторное использование уже одобренного набора: допиши строку в его APPROVED
-// (дата/ветка) — файл попадёт в diff, и связь «этот набор ↔ это изменение» явная.
+// An approved set counts only if that same set is touched in this branch diff.
+// Otherwise one old approval would unlock future UI work forever.
 function hasApprovedMockups(root, m, changed) {
   const base = path.join(root, m.dir);
   const mockRoot = m.dir.replace(/\\/g, "/").replace(/\/$/, "");
   let dirs;
   try { dirs = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory()); }
-  catch { return { ok: false, reason: `нет каталога ${m.dir}/` }; }
+  catch { return { ok: false, reason: `missing directory ${m.dir}/` }; }
 
   const stale = [];
   for (const d of dirs) {
@@ -81,9 +78,9 @@ function hasApprovedMockups(root, m, changed) {
   return {
     ok: false,
     reason: stale.length
-      ? `одобренные наборы (${stale.join(", ")}) не затронуты в diff этой ветки — ` +
-        `привяжи набор к изменению: допиши строку в ${m.dir}/<feature>/${m.approvalFile}`
-      : `нет ${m.dir}/<feature>/ с >=${m.min} мокапами и файлом ${m.approvalFile}, затронутого в этой ветке`,
+      ? `approved set(s) (${stale.join(", ")}) are not touched in this branch diff; ` +
+        `touch ${m.dir}/<feature>/${m.approvalFile} to bind an existing approval to this change`
+      : `no ${m.dir}/<feature>/ with >=${m.min} mockups and ${m.approvalFile} touched in this branch`,
   };
 }
 
@@ -99,8 +96,8 @@ function hasApprovedMockups(root, m, changed) {
   const cf = changedFiles(a.base, a.root, a.files);
   if (cf.base) res.base = cf.base;
   if (cf.error) {
-    // local default = fail-open, но ГРОМКО; strict/CI = fail-closed.
-    const warn = `⚠️ design-gate: ${cf.error} — ${a.strict ? "гейт НЕ МОЖЕТ ПРОВЕРИТЬ UI-изменения" : "гейт ПРОПУЩЕН, UI-изменения не проверены"}. Укажи базу явно: --base <ref>.`;
+    // Local default = fail-open loudly; strict/CI = fail-closed.
+    const warn = `design-gate: ${cf.error}; ${a.strict ? "gate cannot verify UI changes" : "gate skipped and UI changes were not checked"}. Pass --base <ref>.`;
     if (a.json) console.log(JSON.stringify({ ...res, ok: !a.strict, skipped: true, warn }));
     else console.error(warn);
     process.exit(a.strict ? 1 : 0);
@@ -112,8 +109,8 @@ function hasApprovedMockups(root, m, changed) {
   );
 
   if (res.uiChanged.length === 0) {
-    if (a.json) console.log(JSON.stringify({ ...res, note: "нет изменений в UI-путях" }));
-    else console.log("OK design-gate: изменений в UI-путях нет — гейт не требуется.");
+    if (a.json) console.log(JSON.stringify({ ...res, note: "no UI-path changes" }));
+    else console.log("OK design-gate: no UI-path changes; gate not required.");
     process.exit(0);
   }
 
@@ -121,18 +118,18 @@ function hasApprovedMockups(root, m, changed) {
   res.mockups = mk;
   if (mk.ok) {
     if (a.json) console.log(JSON.stringify(res));
-    else console.log(`OK design-gate: UI-изменения есть, одобренный набор мокапов затронут в ветке (${mk.feature}, ${mk.count} шт.).`);
+    else console.log(`OK design-gate: UI changes have an approved mockup set touched in this branch (${mk.feature}, ${mk.count}).`);
     process.exit(0);
   }
 
   if (a.json) { console.log(JSON.stringify({ ...res, ok: false })); process.exit(1); }
   console.error(
-    `BLOCK design-gate: изменения затрагивают GUI, но DESIGN-стадия не выполнена.\n` +
-      `   UI-файлы: ${res.uiChanged.slice(0, 8).join(", ")}${res.uiChanged.length > 8 ? " ..." : ""}\n` +
-      `   Требуется: ${mk.reason}.\n` +
-      `   Новый набор:  node hooks/new-mockups.js <feature> → approval → создай ${cfg.mockups.dir}/<feature>/${cfg.mockups.approvalFile}.\n` +
-      `   Уже одобренный набор: допиши строку в его ${cfg.mockups.approvalFile}, чтобы он попал в diff ветки.\n` +
-      `   Политика: для нового/изменяемого GUI — >=${cfg.mockups.min} стилистически разных мокапа + approval.`
+    `BLOCK design-gate: GUI changes require DESIGN approval.\n` +
+      `   UI files: ${res.uiChanged.slice(0, 8).join(", ")}${res.uiChanged.length > 8 ? " ..." : ""}\n` +
+      `   Required: ${mk.reason}.\n` +
+      `   New set: node hooks/new-mockups.js <feature>, get approval, then create ${cfg.mockups.dir}/<feature>/${cfg.mockups.approvalFile}.\n` +
+      `   Existing set: touch its ${cfg.mockups.approvalFile} so it appears in this branch diff.\n` +
+      `   Policy: new/changed GUI needs >=${cfg.mockups.min} stylistically distinct mockups plus approval.`
   );
   process.exit(1);
 })();

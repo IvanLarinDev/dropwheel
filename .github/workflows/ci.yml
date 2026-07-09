@@ -1,22 +1,107 @@
-name: CI
+name: verify
+# CI mirror of the local harness - the SAME checks, server-side where local hooks and
+# `--no-verify` cannot skip them. The job id `verify` is the context referenced by the
+# branch ruleset (.github/rulesets/main.json -> required_status_checks). Renaming the job
+# means updating the ruleset too.
+#
+# On GitHub Free + private this workflow RUNS and reports status but cannot be *required*
+# (rulesets need Pro/Team or a public repo - see BACKLOG P0-0).
+#
+# Actions are pinned to full commit SHAs. The trailing comment keeps Dependabot's
+# github-actions updater able to identify the source action and desired major.
 
 on:
+  # Push runs only on main for post-merge control. Branches are checked through PRs;
+  # otherwise every PR commit would run CI twice (push + pull_request).
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   verify:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
         with:
-          dotnet-version: 10.0.x
+          fetch-depth: 0
 
-      - name: Build
-        run: dotnet build src/Dropwheel -c Release
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # actions/setup-node@v6
+        with:
+          node-version: "22"
 
-      - name: Test
-        run: dotnet test tests/Dropwheel.Tests -c Release
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # actions/setup-go@v6
+        with:
+          go-version: "1.24.x"
+
+      # Doctor catches bootstrap drift before the required check can go green by name only.
+      - name: Doctor (harness contract)
+        run: node hooks/doctor.js
+
+      # Secrets - gitleaks. Install from the Go module instead of gitleaks-action:
+      # the action's Windows asset resolver requested a non-existent .tar.gz.
+      - name: Secret scan (gitleaks)
+        shell: bash
+        env:
+          GITLEAKS_VERSION: "v8.24.3"
+          GITLEAKS_CONFIG: ".gitleaks.toml"
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@$GITLEAKS_VERSION
+          gitleaks detect --source . --config "$GITLEAKS_CONFIG" --redact --no-banner
+
+      # Conventional Commits across the PR's commits - cocogitto (`cog check`).
+      # cocogitto-action is Linux-only; install the Windows binary explicitly.
+      - name: Install cocogitto
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          COG_VERSION: "7.0.0"
+          COG_SHA256: "074f68f05d270da5c0d69d3e234ec362bec4c6e3189c21d1c948d038603655d7"
+        run: |
+          curl -fsSL -o cog.tar.gz "https://github.com/cocogitto/cocogitto/releases/download/$COG_VERSION/cocogitto-$COG_VERSION-x86_64-pc-windows-msvc.tar.gz"
+          echo "$COG_SHA256  cog.tar.gz" | sha256sum -c -
+          tar -xzf cog.tar.gz
+          "$PWD/x86_64-pc-windows-msvc/cog.exe" --version
+
+      # `cog.toml` is release-tag aware, but PR checks must also work before the
+      # first release tag exists. Use the PR base SHA explicitly instead of
+      # relying on from_latest_tag.
+      - name: Conventional commit range
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: ./x86_64-pc-windows-msvc/cog.exe check "${{ github.event.pull_request.base.sha }}..HEAD" --ignore-merge-commits
+
+      # Executable VERIFY: auto-detects stacks and runs lint/build/test fail-fast.
+      # For this repo that runs the harness self-test suite (node hooks/test.js).
+      - name: VERIFY (verify.js)
+        run: node hooks/verify.js
+
+      # AgentShield is an offline security scan of agent configuration: secrets,
+      # broad tool/MCP permissions, hook injections, and unsafe CLAUDE.md/AGENTS.md
+      # patterns. The version is pinned rather than using a floating tag/action, in
+      # the same supply-chain spirit as action SHA pinning. We do not use `--opus`;
+      # the baseline scan runs offline without a key. It is advisory for now
+      # (continue-on-error) while we collect false-positive data on our configs.
+      # Later: remove continue-on-error and add this as a second required check.
+      - name: AgentShield (agent-config security scan, advisory)
+        continue-on-error: true
+        shell: bash
+        env:
+          AGENTSHIELD_VERSION: "1.4.0"
+          AGENTSHIELD_INTEGRITY: "sha512-R98OO1Ujyk2lezDLb+iQmMhF6FwTJCHajy3G4FCB6x7wkSTqR9f8+eAelC5KDzYDsGSbc0sOZvjXOOPRBtMpDg=="
+          NPM_CONFIG_IGNORE_SCRIPTS: "true"
+        run: |
+          node -e "const {execFileSync}=require('child_process'); const got=execFileSync('npm',['view','ecc-agentshield@'+process.env.AGENTSHIELD_VERSION,'dist.integrity'],{encoding:'utf8'}).trim(); if(got!==process.env.AGENTSHIELD_INTEGRITY){ console.error('ecc-agentshield integrity mismatch: '+got); process.exit(1); }"
+          npx --yes ecc-agentshield@$AGENTSHIELD_VERSION scan --path .
+
+      # DESIGN-gate: UI changes require an approved mockup set touched in the same diff.
+      - name: DESIGN-gate
+        if: github.event_name == 'pull_request'
+        run: node hooks/design-gate.js --strict --base ${{ github.event.pull_request.base.sha }}

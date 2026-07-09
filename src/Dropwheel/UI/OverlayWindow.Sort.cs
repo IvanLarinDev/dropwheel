@@ -7,18 +7,33 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
+    internal readonly record struct SorterExecutionGroup(string Folder, string[] Sources);
+
+    internal static IReadOnlyList<SorterExecutionGroup> ExecutableSorterGroups(
+        Dictionary<string, List<string>> plan)
+    {
+        var groups = new List<SorterExecutionGroup>();
+        foreach (var (folder, group) in plan)
+        {
+            var sources = group
+                .Where(source => !WatcherService.SameFolder(folder, source))
+                .ToArray();
+            if (sources.Length > 0) groups.Add(new SorterExecutionGroup(folder, sources));
+        }
+        return groups;
+    }
+
     /// <summary>Real files dropped on a sorter target: distribute by the rules.</summary>
     private void DropSorted(TargetItem t, string[] files, DropAction act)
     {
         var plan = SortService.Plan(t, files);
         bool ok = true;
         var ops = new List<FileOp>();
-        foreach (var (folder, group) in plan)
+        foreach (var group in ExecutableSorterGroups(plan))
         {
-            Directory.CreateDirectory(folder);
-            var sources = group.ToArray();
-            var op = BuildOpBefore(act, sources, folder);
-            if (FileOps.Execute(sources, folder, act)) ops.Add(op);
+            Directory.CreateDirectory(group.Folder);
+            var op = BuildOpBefore(act, group.Sources, group.Folder);
+            if (FileOps.Execute(group.Sources, group.Folder, act)) ops.Add(op);
             else ok = false;
         }
         if (ops.Count > 0) RememberOps(ops);

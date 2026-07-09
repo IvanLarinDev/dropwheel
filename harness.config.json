@@ -27,8 +27,7 @@
     "enabled": true,
     "base": "main",
     "soft": false,
-    "exclude": [
-      "hooks/**"
-    ]
+    "exclude": [],
+    "strict": true
   }
 }
