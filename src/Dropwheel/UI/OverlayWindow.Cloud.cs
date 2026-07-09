@@ -149,11 +149,23 @@ public partial class OverlayWindow
         if (double.IsNaN(fromLeft)) fromLeft = slot.Left;
         if (double.IsNaN(fromTop)) fromTop = slot.Top;
 
+        element.BeginAnimation(Canvas.LeftProperty, null);
+        element.BeginAnimation(Canvas.TopProperty, null);
+        Canvas.SetLeft(element, fromLeft);
+        Canvas.SetTop(element, fromTop);
+
         var mid = MidArcSlot(fromLeft + TileLeftOffset, fromTop + TileTopOffset, slot.Angle);
-        var duration = TimeSpan.FromMilliseconds(emphasize ? 280 : 230);
+        var duration = TimeSpan.FromMilliseconds(emphasize ? 210 : 180);
         var left = ArcAnimation(mid.Left, slot.Left, duration, ease);
         var top = ArcAnimation(mid.Top, slot.Top, duration, ease);
-        top.Completed += (_, _) => Panel.SetZIndex(element, 0);
+        top.Completed += (_, _) =>
+        {
+            element.BeginAnimation(Canvas.LeftProperty, null);
+            element.BeginAnimation(Canvas.TopProperty, null);
+            Canvas.SetLeft(element, slot.Left);
+            Canvas.SetTop(element, slot.Top);
+            Panel.SetZIndex(element, 0);
+        };
         element.BeginAnimation(Canvas.LeftProperty, left);
         element.BeginAnimation(Canvas.TopProperty, top);
 
@@ -171,9 +183,25 @@ public partial class OverlayWindow
     private static void AnimateSpokeAlongRim(Line spoke, WheelSlot slot, IEasingFunction ease)
     {
         var mid = MidArcSlot(spoke.X2, spoke.Y2, slot.Angle, RingR - 52);
-        var duration = TimeSpan.FromMilliseconds(230);
-        spoke.BeginAnimation(Line.X2Property, ArcAnimation(mid.Left, slot.SpokeX, duration, ease));
-        spoke.BeginAnimation(Line.Y2Property, ArcAnimation(mid.Top, slot.SpokeY, duration, ease));
+        var fromX = spoke.X2;
+        var fromY = spoke.Y2;
+        spoke.BeginAnimation(Line.X2Property, null);
+        spoke.BeginAnimation(Line.Y2Property, null);
+        spoke.X2 = fromX;
+        spoke.Y2 = fromY;
+
+        var duration = TimeSpan.FromMilliseconds(180);
+        var x = ArcAnimation(mid.Left, slot.SpokeX, duration, ease);
+        var y = ArcAnimation(mid.Top, slot.SpokeY, duration, ease);
+        y.Completed += (_, _) =>
+        {
+            spoke.BeginAnimation(Line.X2Property, null);
+            spoke.BeginAnimation(Line.Y2Property, null);
+            spoke.X2 = slot.SpokeX;
+            spoke.Y2 = slot.SpokeY;
+        };
+        spoke.BeginAnimation(Line.X2Property, x);
+        spoke.BeginAnimation(Line.Y2Property, y);
     }
 
     private static WheelSlot MidArcSlot(double fromX, double fromY, double toAngle, double radius = RingR)

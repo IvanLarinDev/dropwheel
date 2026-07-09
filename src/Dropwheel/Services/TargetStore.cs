@@ -136,6 +136,21 @@ public static class TargetStore
         return true;
     }
 
+    public static bool MoveTileToIndex(IList<TargetItem> targets, TargetItem source, int destinationIndex)
+    {
+        var ordered = OrderedForDisplay(targets).ToList();
+        var sourceIndex = ordered.IndexOf(source);
+        if (sourceIndex < 0 || ordered.Count == 0) return false;
+
+        destinationIndex = Math.Clamp(destinationIndex, 0, ordered.Count - 1);
+        if (sourceIndex == destinationIndex) return false;
+
+        ordered.RemoveAt(sourceIndex);
+        ordered.Insert(destinationIndex, source);
+        ApplyTileOrder(targets, ordered);
+        return true;
+    }
+
     public static bool MoveTileToEnd(IList<TargetItem> targets, TargetItem source)
     {
         var ordered = OrderedForDisplay(targets).ToList();

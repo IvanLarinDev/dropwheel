@@ -13,6 +13,11 @@ public partial class OverlayWindow
     private Point _tileDragStart;
     private TargetItem? _tileDragCandidate;
     private bool _suppressTileClick;
+    private IList<TargetItem>? _tileDragLevel;
+    private TargetItem[]? _tileDragOriginalItems;
+    private TargetItem[]? _tileDragOriginalDisplay;
+    private int?[]? _tileDragOriginalPositions;
+    private bool _tileReorderCommitted;
 
     private StackPanel WireBubble(TargetItem t, Border badge, FrameworkElement label, Grid top, Border sq)
     {
@@ -108,15 +113,139 @@ public partial class OverlayWindow
 
         _suppressTileClick = true;
         _tileDragCandidate = null;
+
+        var level = CurrentLevelTargets();
+        _tileDragLevel = level;
+        _tileDragOriginalItems = level.ToArray();
+        _tileDragOriginalDisplay = TargetStore.OrderedForDisplay(level).ToArray();
+        _tileDragOriginalPositions = level.Select(target => target.TilePosition).ToArray();
+        _tileReorderCommitted = false;
+
         var data = new DataObject();
-        data.SetData(TileReorderFormat, source);
-        DragDrop.DoDragDrop(sourceElement, data, DragDropEffects.Move);
+        data.SetData(TileReorderFormat, source, false);
+        try
+        {
+            DragDrop.DoDragDrop(sourceElement, data, DragDropEffects.Move);
+        }
+        finally
+        {
+            if (!_tileReorderCommitted) RestoreTileDragState(source);
+            ClearTileDragState();
+        }
     }
 
     private bool IsTileReorderDrag(DragEventArgs e) => e.Data.GetDataPresent(TileReorderFormat);
 
     private TargetItem? TileReorderSource(DragEventArgs e) =>
         e.Data.GetData(TileReorderFormat) as TargetItem;
+
+    private void OnTileReorderPreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (!IsTileReorderDrag(e)) return;
+
+        var source = TileReorderSource(e);
+        if (source == null || _tileDragLevel == null || !_tileDragLevel.Contains(source)
+            || !ReferenceEquals(_tileDragLevel, CurrentLevelTargets()))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        var destinationIndex = TileReorderIndexAt(e, _tileDragLevel.Count);
+        if (destinationIndex.HasValue
+            && TargetStore.MoveTileToIndex(_tileDragLevel, source, destinationIndex.Value))
+        {
+            AnimateTileReorder(source);
+        }
+
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private void OnTileReorderPreviewDrop(object sender, DragEventArgs e)
+    {
+        if (!IsTileReorderDrag(e)) return;
+        CommitTileReorder(e);
+    }
+
+    private int? TileReorderIndexAt(DragEventArgs e, int targetCount)
+    {
+        if (targetCount == 0) return null;
+
+        var point = e.GetPosition(this);
+        var dx = point.X - HalfSize;
+        var dy = point.Y - HalfSize;
+        var distance = Math.Sqrt(dx * dx + dy * dy);
+        if (distance < RingR - 90 || distance > RingR + 90) return null;
+
+        int offset = _currentGroup == null ? 0 : 1;
+        int slotCount = targetCount + offset + 1;
+        int nearestSlot = 0;
+        double nearestDistance = double.MaxValue;
+        for (int i = 0; i < slotCount; i++)
+        {
+            var slot = SlotFor(i, slotCount);
+            var slotDx = point.X - (slot.Left + TileLeftOffset);
+            var slotDy = point.Y - (slot.Top + TileTopOffset);
+            var slotDistance = slotDx * slotDx + slotDy * slotDy;
+            if (slotDistance >= nearestDistance) continue;
+            nearestDistance = slotDistance;
+            nearestSlot = i;
+        }
+
+        if (_currentGroup != null && nearestSlot == 0) return null;
+        return Math.Clamp(nearestSlot - offset, 0, targetCount - 1);
+    }
+
+    private void CommitTileReorder(DragEventArgs e)
+    {
+        var source = TileReorderSource(e);
+        if (source == null || _tileDragLevel == null || !_tileDragLevel.Contains(source))
+        {
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        if (TileOrderChanged())
+        {
+            TargetStore.Save();
+            ShowToast($"Moved {source.Name}");
+        }
+
+        _tileReorderCommitted = true;
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private bool TileOrderChanged() =>
+        _tileDragLevel != null
+        && _tileDragOriginalDisplay != null
+        && !TargetStore.OrderedForDisplay(_tileDragLevel).SequenceEqual(_tileDragOriginalDisplay);
+
+    private void RestoreTileDragState(TargetItem source)
+    {
+        if (_tileDragLevel == null || _tileDragOriginalItems == null || _tileDragOriginalPositions == null)
+            return;
+
+        _tileDragLevel.Clear();
+        for (int i = 0; i < _tileDragOriginalItems.Length; i++)
+        {
+            _tileDragOriginalItems[i].TilePosition = _tileDragOriginalPositions[i];
+            _tileDragLevel.Add(_tileDragOriginalItems[i]);
+        }
+        if (_open) AnimateTileReorder(source);
+    }
+
+    private void ClearTileDragState()
+    {
+        _tileDragLevel = null;
+        _tileDragOriginalItems = null;
+        _tileDragOriginalDisplay = null;
+        _tileDragOriginalPositions = null;
+        _tileReorderCommitted = false;
+    }
 
     private bool CanReorderBefore(TargetItem target, DragEventArgs e)
     {
@@ -154,13 +283,14 @@ public partial class OverlayWindow
     {
         badge.Visibility = Visibility.Collapsed;
         var source = TileReorderSource(e);
-        if (source != null && TargetStore.MoveTileBefore(CurrentLevelTargets(), source, target))
+        var level = CurrentLevelTargets();
+        var destinationIndex = TargetStore.OrderedForDisplay(level).ToList().IndexOf(target);
+        if (source != null && destinationIndex >= 0
+            && TargetStore.MoveTileToIndex(level, source, destinationIndex))
         {
-            TargetStore.Save();
             AnimateTileReorder(source);
-            ShowToast($"Moved {source.Name}");
         }
-        e.Handled = true;
+        CommitTileReorder(e);
     }
 
     private void OnTileReorderDropToEnd(DragEventArgs e)
@@ -168,10 +298,8 @@ public partial class OverlayWindow
         var source = TileReorderSource(e);
         if (source != null && TargetStore.MoveTileToEnd(CurrentLevelTargets(), source))
         {
-            TargetStore.Save();
             AnimateTileReorder(source);
-            ShowToast($"Moved {source.Name}");
         }
-        e.Handled = true;
+        CommitTileReorder(e);
     }
 }

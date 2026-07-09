@@ -108,6 +108,33 @@ public class AppConfigTests : IDisposable
     }
 
     [Fact]
+    public void MoveTileToIndex_moves_forward_into_an_adjacent_tiles_slot()
+    {
+        var one = new TargetItem { Name = "one" };
+        var executable = new TargetItem { Name = "executable", Path = "C:\\tool.exe" };
+        var three = new TargetItem { Name = "three" };
+        var targets = new List<TargetItem> { one, executable, three };
+
+        Assert.True(TargetStore.MoveTileToIndex(targets, executable, 2));
+
+        Assert.Equal(new[] { "one", "three", "executable" }, targets.Select(t => t.Name));
+        Assert.Equal(new int?[] { 0, 1, 2 }, targets.Select(t => t.TilePosition));
+    }
+
+    [Fact]
+    public void MoveTileToIndex_is_noop_for_the_current_slot()
+    {
+        var one = new TargetItem { Name = "one" };
+        var two = new TargetItem { Name = "two" };
+        var targets = new List<TargetItem> { one, two };
+
+        Assert.False(TargetStore.MoveTileToIndex(targets, two, 1));
+
+        Assert.Equal(new[] { "one", "two" }, targets.Select(t => t.Name));
+        Assert.All(targets, target => Assert.Null(target.TilePosition));
+    }
+
+    [Fact]
     public void MoveTileToEnd_is_noop_when_source_is_already_last()
     {
         var one = new TargetItem { Name = "one" };
