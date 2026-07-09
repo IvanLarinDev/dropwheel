@@ -30,4 +30,13 @@ public sealed class OverlaySortTests : IDisposable
         Assert.Equal(_root, group.Folder);
         Assert.Equal(new[] { incoming }, group.Sources);
     }
+
+    [Fact]
+    public void SameNormalizedFolder_ignores_trailing_separator_and_case()
+    {
+        var canonical = _root;
+        var variant = canonical.ToUpperInvariant() + Path.DirectorySeparatorChar;
+
+        Assert.True(OverlayWindow.SameNormalizedFolder(canonical, variant));
+    }
 }
