@@ -74,4 +74,74 @@ public class AppConfigTests : IDisposable
         Assert.Equal(original, File.ReadAllText(configPath));
         Assert.Empty(Directory.GetFiles(_root, "config.bad.*.json"));
     }
+
+    [Fact]
+    public void Load_preserves_config_when_top_level_enum_token_is_unknown()
+    {
+        var configPath = Path.Combine(_root, "config.json");
+        File.WriteAllText(configPath,
+            """
+            {
+              "GlobalAction": "Move",
+              "OpenAnimation": "FutureSpin",
+              "HoverDelayMs": 900,
+              "Targets": [
+                {
+                  "Name": "Inbox",
+                  "Path": "C:\\Temp\\Inbox",
+                  "Override": "Copy",
+                  "Pinned": true
+                }
+              ]
+            }
+            """);
+
+        TargetStore.Load();
+
+        Assert.Equal(DropAction.Move, TargetStore.Config.GlobalAction);
+        Assert.Equal(OpenAnimation.Pop, TargetStore.Config.OpenAnimation);
+        Assert.Equal(900, TargetStore.Config.HoverDelayMs);
+
+        var target = Assert.Single(TargetStore.Config.Targets);
+        Assert.Equal("Inbox", target.Name);
+        Assert.Equal("C:\\Temp\\Inbox", target.Path);
+        Assert.Equal(DropAction.Copy, target.Override);
+        Assert.True(target.Pinned);
+
+        var saved = File.ReadAllText(configPath);
+        Assert.Contains("\"OpenAnimation\": \"Pop\"", saved);
+        Assert.Contains("\"HoverDelayMs\": 900", saved);
+        Assert.Contains("\"Name\": \"Inbox\"", saved);
+    }
+
+    [Fact]
+    public void Load_preserves_targets_when_target_override_enum_token_is_unknown()
+    {
+        var configPath = Path.Combine(_root, "config.json");
+        File.WriteAllText(configPath,
+            """
+            {
+              "Targets": [
+                {
+                  "Name": "Archive",
+                  "Path": "C:\\Temp\\Archive",
+                  "Override": "Teleport",
+                  "Pinned": true
+                }
+              ]
+            }
+            """);
+
+        TargetStore.Load();
+
+        var target = Assert.Single(TargetStore.Config.Targets);
+        Assert.Equal("Archive", target.Name);
+        Assert.Equal("C:\\Temp\\Archive", target.Path);
+        Assert.Equal(DropAction.Inherit, target.Override);
+        Assert.True(target.Pinned);
+
+        var saved = File.ReadAllText(configPath);
+        Assert.Contains("\"Override\": \"Inherit\"", saved);
+        Assert.Contains("\"Name\": \"Archive\"", saved);
+    }
 }
