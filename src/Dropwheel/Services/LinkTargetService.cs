@@ -10,7 +10,8 @@ namespace Dropwheel.Services;
 public static class LinkTargetService
 {
     private static readonly Regex LaunchUri =
-        new(@"\b(?:https?://|tg://)[^\s<>'""]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        new(@"\b(?:(?:https?://|tg://)[^\s<>'""]+|(?:t\.me|telegram\.me|telegram\.dog)/[^\s<>'""]+|[a-z0-9_]{2,64}\.t\.me(?:/[^\s<>'""]*)?)",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex SavedMessagesLabel =
         new(@"^\s*(?:saved messages?|избранное)\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
@@ -69,7 +70,7 @@ public static class LinkTargetService
         var match = LaunchUri.Match(text);
         if (!match.Success) return false;
 
-        var candidate = TrimUri(match.Value);
+        var candidate = NormalizeUri(TrimUri(match.Value));
         if (!TargetItem.IsLaunchUri(candidate)) return false;
 
         uriText = candidate;
@@ -131,6 +132,15 @@ public static class LinkTargetService
     private static string TrimUri(string value) =>
         value.Trim().TrimEnd('\0', '.', ',', ';', '!', ')', ']', '}');
 
+    private static string NormalizeUri(string value) =>
+        IsBareTelegramLink(value) ? "https://" + value : value;
+
+    private static bool IsBareTelegramLink(string value) =>
+        value.StartsWith("t.me/", StringComparison.OrdinalIgnoreCase)
+        || value.StartsWith("telegram.me/", StringComparison.OrdinalIgnoreCase)
+        || value.StartsWith("telegram.dog/", StringComparison.OrdinalIgnoreCase)
+        || Regex.IsMatch(value, @"^[a-z0-9_]{2,64}\.t\.me(?:/|$)", RegexOptions.IgnoreCase);
+
     private static string NameFor(string uriText)
     {
         if (!Uri.TryCreate(uriText, UriKind.Absolute, out var uri)) return uriText;
@@ -141,7 +151,9 @@ public static class LinkTargetService
     private static bool IsTelegramUri(Uri uri) =>
         uri.Scheme.Equals("tg", StringComparison.OrdinalIgnoreCase)
         || (uri.Host.Equals("t.me", StringComparison.OrdinalIgnoreCase)
-            || uri.Host.Equals("telegram.me", StringComparison.OrdinalIgnoreCase));
+            || uri.Host.Equals("telegram.me", StringComparison.OrdinalIgnoreCase)
+            || uri.Host.Equals("telegram.dog", StringComparison.OrdinalIgnoreCase)
+            || uri.Host.EndsWith(".t.me", StringComparison.OrdinalIgnoreCase));
 
     private static string TelegramName(Uri uri)
     {
@@ -156,14 +168,15 @@ public static class LinkTargetService
             return "Telegram";
         }
 
-        var firstSegment = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        var segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var firstSegment = segments.FirstOrDefault();
         if (string.IsNullOrWhiteSpace(firstSegment)) return "Telegram";
 
         firstSegment = Uri.UnescapeDataString(firstSegment);
         if (firstSegment.StartsWith('+') || firstSegment.Equals("joinchat", StringComparison.OrdinalIgnoreCase))
             return "Telegram invite";
         if (firstSegment.Equals("c", StringComparison.OrdinalIgnoreCase))
-            return "Telegram chat";
+            return segments.Length >= 3 ? "Telegram topic" : "Telegram chat";
 
         return "Telegram: " + firstSegment.TrimStart('@');
     }

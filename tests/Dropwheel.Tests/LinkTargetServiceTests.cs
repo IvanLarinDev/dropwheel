@@ -10,7 +10,9 @@ public sealed class LinkTargetServiceTests
     [Theory]
     [InlineData("tg://resolve?domain=telegram", "tg://resolve?domain=telegram", "Telegram: telegram")]
     [InlineData("Open https://t.me/telegram.", "https://t.me/telegram", "Telegram: telegram")]
+    [InlineData("t.me/c/2669588230/1", "https://t.me/c/2669588230/1", "Telegram topic")]
     [InlineData("https://telegram.me/durov", "https://telegram.me/durov", "Telegram: durov")]
+    [InlineData("durov.t.me", "https://durov.t.me", "Telegram")]
     [InlineData("https://t.me/+abcdef", "https://t.me/+abcdef", "Telegram invite")]
     public void CreateTarget_extracts_telegram_links(string text, string expectedPath, string expectedName)
     {
@@ -57,15 +59,15 @@ public sealed class LinkTargetServiceTests
     public void CreateTarget_accepts_unicode_text_drop_data()
     {
         var data = new WpfDataObject();
-        data.SetData(WpfDataFormats.UnicodeText, "tg://resolve?domain=telegram");
+        data.SetData(WpfDataFormats.UnicodeText, "t.me/c/2669588230/1");
 
         Assert.True(LinkTargetService.HasPotentialLaunchUriData(data));
 
         var target = LinkTargetService.CreateTarget(data);
 
         Assert.NotNull(target);
-        Assert.Equal("tg://resolve?domain=telegram", target.Path);
-        Assert.Equal("Telegram: telegram", target.Name);
+        Assert.Equal("https://t.me/c/2669588230/1", target.Path);
+        Assert.Equal("Telegram topic", target.Name);
     }
 
     [Fact]
