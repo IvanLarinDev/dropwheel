@@ -38,10 +38,10 @@ public sealed class HotkeyService : IDisposable
         foreach (var part in s.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
             switch (part.ToLowerInvariant())
             {
-                case "alt":   mods |= 0x1; break;
-                case "ctrl":  mods |= 0x2; break;
+                case "alt": mods |= 0x1; break;
+                case "ctrl": mods |= 0x2; break;
                 case "shift": mods |= 0x4; break;
-                case "win":   mods |= 0x8; break;
+                case "win": mods |= 0x8; break;
                 default:
                     if (key != null) return false; // more than one non-modifier key
                     try
@@ -74,10 +74,32 @@ public sealed class HotkeyService : IDisposable
 
     private static readonly Dictionary<char, char> CyrillicToLatin = new()
     {
-        ['й'] = 'q', ['ц'] = 'w', ['у'] = 'e', ['к'] = 'r', ['е'] = 't', ['н'] = 'y', ['г'] = 'u',
-        ['ш'] = 'i', ['щ'] = 'o', ['з'] = 'p', ['ф'] = 'a', ['ы'] = 's', ['в'] = 'd', ['а'] = 'f',
-        ['п'] = 'g', ['р'] = 'h', ['о'] = 'j', ['л'] = 'k', ['д'] = 'l', ['я'] = 'z', ['ч'] = 'x',
-        ['с'] = 'c', ['м'] = 'v', ['и'] = 'b', ['т'] = 'n', ['ь'] = 'm',
+        ['й'] = 'q',
+        ['ц'] = 'w',
+        ['у'] = 'e',
+        ['к'] = 'r',
+        ['е'] = 't',
+        ['н'] = 'y',
+        ['г'] = 'u',
+        ['ш'] = 'i',
+        ['щ'] = 'o',
+        ['з'] = 'p',
+        ['ф'] = 'a',
+        ['ы'] = 's',
+        ['в'] = 'd',
+        ['а'] = 'f',
+        ['п'] = 'g',
+        ['р'] = 'h',
+        ['о'] = 'j',
+        ['л'] = 'k',
+        ['д'] = 'l',
+        ['я'] = 'z',
+        ['ч'] = 'x',
+        ['с'] = 'c',
+        ['м'] = 'v',
+        ['и'] = 'b',
+        ['т'] = 'n',
+        ['ь'] = 'm',
     };
 
     private IntPtr Hook(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)

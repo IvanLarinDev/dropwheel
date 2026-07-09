@@ -45,7 +45,7 @@ public partial class OverlayWindow
         {
             var dip = ct.TransformFromDevice.Transform(new Point(c.X, c.Y));
             Left = dip.X - HalfSize;
-            Top  = dip.Y - HalfSize;
+            Top = dip.Y - HalfSize;
         }
         UpdateOrbScreenPos();
         OpenCloud();

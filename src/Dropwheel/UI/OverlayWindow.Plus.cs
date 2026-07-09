@@ -15,7 +15,8 @@ public partial class OverlayWindow
         var th = Themes.Current;
         var rect = new Rectangle
         {
-            RadiusX = 17, RadiusY = 17,
+            RadiusX = 17,
+            RadiusY = 17,
             Stroke = new SolidColorBrush(th.TileBorder),
             StrokeDashArray = new DoubleCollection { 4, 3 },
             StrokeThickness = 1.4,
@@ -23,7 +24,9 @@ public partial class OverlayWindow
         };
         var plus = new TextBlock
         {
-            Text = "+", FontSize = 26, Foreground = new SolidColorBrush(th.Label),
+            Text = "+",
+            FontSize = 26,
+            Foreground = new SolidColorBrush(th.Label),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };

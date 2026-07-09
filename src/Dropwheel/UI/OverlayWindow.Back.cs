@@ -12,13 +12,17 @@ public partial class OverlayWindow
         var th = Themes.Current;
         var sq = new Border
         {
-            Width = 64, Height = 64, CornerRadius = new CornerRadius(17),
+            Width = 64,
+            Height = 64,
+            CornerRadius = new CornerRadius(17),
             Background = new SolidColorBrush(th.TileBg),
             BorderBrush = new SolidColorBrush(th.GroupBorder),
             BorderThickness = new Thickness(1.2),
             Child = new TextBlock
             {
-                Text = "←", FontSize = 24, Foreground = new SolidColorBrush(th.Label),
+                Text = "←",
+                FontSize = 24,
+                Foreground = new SolidColorBrush(th.Label),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             }

@@ -19,7 +19,7 @@ public partial class OverlayWindow
         double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
         double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
         Left = Math.Clamp(cx - HalfSize, l - HalfSize + 24, r - HalfSize - 24);
-        Top  = Math.Clamp(cy - HalfSize, t - HalfSize + 24, b - HalfSize - 24);
+        Top = Math.Clamp(cy - HalfSize, t - HalfSize + 24, b - HalfSize - 24);
     }
 
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)

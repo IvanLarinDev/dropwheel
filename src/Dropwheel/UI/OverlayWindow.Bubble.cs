@@ -16,20 +16,26 @@ public partial class OverlayWindow
         UIElement inner = t.IsGroup
             ? new TextBlock
             {
-                Text = t.Children!.Count.ToString(), FontSize = 20,
-                FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(th.Label),
+                Text = t.Children!.Count.ToString(),
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(th.Label),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             }
             : new Image
             {
-                Width = 32, Height = 32, Source = IconService.GetIcon(t.Path),
+                Width = 32,
+                Height = 32,
+                Source = IconService.GetIcon(t.Path),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
         var sq = new Border
         {
-            Width = 64, Height = 64, CornerRadius = new CornerRadius(17),
+            Width = 64,
+            Height = 64,
+            CornerRadius = new CornerRadius(17),
             Background = new SolidColorBrush(th.TileBg),
             BorderBrush = new SolidColorBrush(
                 t.IsGroup ? th.GroupBorder : t.IsSorter ? th.SorterBorder : th.TileBorder),
@@ -39,8 +45,10 @@ public partial class OverlayWindow
         };
         var badge = new Border
         {
-            Background = Brushes.MediumSpringGreen, CornerRadius = new CornerRadius(10),
-            Padding = new Thickness(5, 1, 5, 1), Visibility = Visibility.Collapsed,
+            Background = Brushes.MediumSpringGreen,
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(5, 1, 5, 1),
+            Visibility = Visibility.Collapsed,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
             Child = new TextBlock { Text = "⧉", FontWeight = FontWeights.Bold, FontSize = 12 }
@@ -60,8 +68,11 @@ public partial class OverlayWindow
         var color = Luminance(th.Label) < 0.5 ? Color.FromRgb(0xEC, 0xF1, 0xF7) : th.Label;
         return new TextBlock
         {
-            Text = text, Foreground = new SolidColorBrush(color), FontSize = 11.5,
-            TextAlignment = TextAlignment.Center, MaxWidth = 88,
+            Text = text,
+            Foreground = new SolidColorBrush(color),
+            FontSize = 11.5,
+            TextAlignment = TextAlignment.Center,
+            MaxWidth = 88,
             TextTrimming = TextTrimming.CharacterEllipsis,
             Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.85 },
         };

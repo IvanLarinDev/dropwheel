@@ -12,7 +12,7 @@ public partial class OverlayWindow
     private static DropAction Resolve(TargetItem t, DragEventArgs e)
     {
         if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey)) return DropAction.Copy;
-        if (e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey))   return DropAction.Move;
+        if (e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey)) return DropAction.Move;
         if (t.Override != DropAction.Inherit) return t.Override;
         return TargetStore.Config.GlobalAction;
     }
