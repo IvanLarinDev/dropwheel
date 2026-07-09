@@ -84,9 +84,10 @@ public partial class OverlayWindow
             }
 
             LaunchService.Launch(new TargetItem { Name = t.Name, Path = TelegramDropService.LaunchPathFor(t) });
+            TelegramDropService.PasteIntoTelegramWhenReady();
             ShowToast(result.Kind == TelegramDropKind.Files
-                ? $"⧉ Copied {result.Count} file(s); paste in Telegram"
-                : "≡ Copied text; paste in Telegram");
+                ? $"⧉ Copied {result.Count} file(s); pasting in Telegram"
+                : "≡ Copied text; pasting in Telegram");
             return;
         }
 

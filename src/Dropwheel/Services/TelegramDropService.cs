@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -54,6 +55,12 @@ internal sealed class TelegramClipboardPayload
 
 public static class TelegramDropService
 {
+    private static readonly TimeSpan PasteTimeout = TimeSpan.FromSeconds(4);
+    private static readonly TimeSpan PastePoll = TimeSpan.FromMilliseconds(100);
+
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int processId);
+
     public static bool IsTelegramTarget(TargetItem target)
     {
         if (target.IsGroup || !Uri.TryCreate(target.Path, UriKind.Absolute, out var uri))
@@ -79,6 +86,15 @@ public static class TelegramDropService
         IsTelegramTarget(target) && LinkTargetService.CreateTarget(target.Path) is { } linkTarget
             ? linkTarget.Path
             : target.Path;
+
+    public static void PasteIntoTelegramWhenReady()
+    {
+        _ = Task.Run(async () =>
+        {
+            try { await PasteIntoTelegramWhenReady(PasteTimeout, PastePoll); }
+            catch (Exception ex) { ErrorLog.Write("Could not paste Telegram drop payload", ex); }
+        });
+    }
 
     public static TelegramDropResult? CopyToClipboard(IDataObject data, string stagingFolder)
     {
@@ -112,6 +128,48 @@ public static class TelegramDropService
         return string.IsNullOrEmpty(text)
             ? null
             : new TelegramClipboardPayload { Kind = TelegramDropKind.Text, Text = text };
+    }
+
+    internal static async Task<bool> PasteIntoTelegramWhenReady(
+        TimeSpan timeout,
+        TimeSpan poll,
+        Action? paste = null,
+        Func<string?>? foregroundProcessName = null)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        do
+        {
+            var processName = foregroundProcessName?.Invoke() ?? ForegroundProcessName();
+            if (IsTelegramProcessName(processName))
+            {
+                await Task.Delay(250);
+                if (paste != null) paste();
+                else await Application.Current.Dispatcher.InvokeAsync(() => System.Windows.Forms.SendKeys.SendWait("^v"));
+                return true;
+            }
+
+            await Task.Delay(poll);
+        }
+        while (DateTime.UtcNow <= deadline);
+
+        return false;
+    }
+
+    internal static bool IsTelegramProcessName(string? processName) =>
+        processName != null
+        && (processName.Equals("Telegram", StringComparison.OrdinalIgnoreCase)
+            || processName.Equals("TelegramDesktop", StringComparison.OrdinalIgnoreCase));
+
+    private static string? ForegroundProcessName()
+    {
+        var hWnd = GetForegroundWindow();
+        if (hWnd == IntPtr.Zero) return null;
+
+        GetWindowThreadProcessId(hWnd, out var processId);
+        if (processId == 0) return null;
+
+        try { return Process.GetProcessById(processId).ProcessName; }
+        catch { return null; }
     }
 
     private static string[] RealFiles(IDataObject data) =>

@@ -63,6 +63,44 @@ public sealed class TelegramDropServiceTests : IDisposable
         Assert.Equal("tg://privatepost?channel=4379453334&post=1", TelegramDropService.LaunchPathFor(target));
     }
 
+    [Theory]
+    [InlineData("Telegram", true)]
+    [InlineData("telegramdesktop", true)]
+    [InlineData("Dropwheel", false)]
+    [InlineData(null, false)]
+    public void IsTelegramProcessName_matches_only_telegram_processes(string? processName, bool expected) =>
+        Assert.Equal(expected, TelegramDropService.IsTelegramProcessName(processName));
+
+    [Fact]
+    public async Task PasteIntoTelegramWhenReady_does_not_paste_when_telegram_is_not_foreground()
+    {
+        var pasted = false;
+
+        var result = await TelegramDropService.PasteIntoTelegramWhenReady(
+            TimeSpan.Zero,
+            TimeSpan.Zero,
+            () => pasted = true,
+            () => "Dropwheel");
+
+        Assert.False(result);
+        Assert.False(pasted);
+    }
+
+    [Fact]
+    public async Task PasteIntoTelegramWhenReady_pastes_when_telegram_is_foreground()
+    {
+        var pasted = false;
+
+        var result = await TelegramDropService.PasteIntoTelegramWhenReady(
+            TimeSpan.Zero,
+            TimeSpan.Zero,
+            () => pasted = true,
+            () => "Telegram");
+
+        Assert.True(result);
+        Assert.True(pasted);
+    }
+
     [Fact]
     public void CreatePayload_prefers_file_drop_list_over_text()
     {
