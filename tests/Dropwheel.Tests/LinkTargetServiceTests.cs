@@ -33,6 +33,8 @@ public sealed class LinkTargetServiceTests
         var data = new WpfDataObject();
         data.SetData(WpfDataFormats.UnicodeText, "tg://resolve?domain=telegram");
 
+        Assert.True(LinkTargetService.HasPotentialLaunchUriData(data));
+
         var target = LinkTargetService.CreateTarget(data);
 
         Assert.NotNull(target);
@@ -45,6 +47,8 @@ public sealed class LinkTargetServiceTests
     {
         var data = new WpfDataObject();
         data.SetData("UniformResourceLocatorW", "https://t.me/telegram");
+
+        Assert.True(LinkTargetService.HasPotentialLaunchUriData(data));
 
         var target = LinkTargetService.CreateTarget(data);
 

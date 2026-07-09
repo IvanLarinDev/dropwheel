@@ -14,6 +14,13 @@ public static class LinkTargetService
 
     public static bool HasLaunchUri(IDataObject data) => TryGetLaunchUri(data, out _);
 
+    public static bool HasPotentialLaunchUriData(IDataObject data) =>
+        data.GetDataPresent("UniformResourceLocatorW")
+        || data.GetDataPresent("UniformResourceLocator")
+        || data.GetDataPresent("text/x-moz-url")
+        || data.GetDataPresent(DataFormats.Html)
+        || TextDropService.HasText(data);
+
     public static TargetItem? CreateTarget(IDataObject data) =>
         TryGetLaunchUri(data, out var uriText) ? CreateTarget(uriText) : null;
 

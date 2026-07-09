@@ -21,7 +21,8 @@ public partial class OverlayWindow
     {
         bool real = e.Data.GetDataPresent(DataFormats.FileDrop);
         bool virt = !real && VirtualFileService.HasVirtualFiles(e.Data);
-        bool text = !real && !virt && TextDropService.HasText(e.Data);
+        bool link = !real && !virt && LinkTargetService.HasLaunchUri(e.Data);
+        bool text = !real && !virt && !link && TextDropService.HasText(e.Data);
 
         if (real && LaunchService.IsRunTarget(t)) // drop files on an exe/script → run it (open with)
         {
@@ -32,13 +33,14 @@ public partial class OverlayWindow
             e.Handled = true;
             return;
         }
-        if ((!real && !virt && !text) || !LaunchService.IsFolderTarget(t))
+        if ((!real && !virt && !link && !text) || !LaunchService.IsFolderTarget(t))
         { e.Effects = DragDropEffects.None; e.Handled = true; return; }
 
         var act = virt || text ? DropAction.Copy : Resolve(t, e); // virtual files and text: copy only
-        e.Effects = act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
+        e.Effects = link ? DragDropEffects.Link : act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
         ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : text ? "≡" : act == DropAction.Move ? "➜" : "⧉";
-        badge.Background = act == DropAction.Move ? Brushes.Orange : Brushes.MediumSpringGreen;
+        if (link) ((TextBlock)badge.Child).Text = "+";
+        badge.Background = link ? Brushes.CornflowerBlue : act == DropAction.Move ? Brushes.Orange : Brushes.MediumSpringGreen;
         badge.Visibility = Visibility.Visible;
         e.Handled = true;
     }
@@ -95,6 +97,10 @@ public partial class OverlayWindow
             ShowToast(saved.Length > 0
                 ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
                 : "Nothing to save", saved.Length > 0);
+        }
+        else if (LinkTargetService.CreateTarget(e.Data) is { } linkTarget)
+        {
+            AddTargets(new[] { linkTarget }, _currentGroup);
         }
         else if (TextDropService.HasText(e.Data))
         {

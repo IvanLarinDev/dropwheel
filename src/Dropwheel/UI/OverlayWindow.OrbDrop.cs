@@ -29,7 +29,7 @@ public partial class OverlayWindow
     }
 
     private static bool CanAddTarget(IDataObject data) =>
-        data.GetDataPresent(DataFormats.FileDrop) || LinkTargetService.HasLaunchUri(data);
+        data.GetDataPresent(DataFormats.FileDrop) || LinkTargetService.HasPotentialLaunchUriData(data);
 
     private bool AddTargetsFromDrop(IDataObject data, TargetItem? group)
     {
