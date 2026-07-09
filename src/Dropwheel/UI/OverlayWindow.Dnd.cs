@@ -37,7 +37,7 @@ public partial class OverlayWindow
         { e.Effects = DragDropEffects.None; e.Handled = true; return; }
 
         var act = virt || text ? DropAction.Copy : Resolve(t, e); // virtual files and text: copy only
-        e.Effects = link ? DragDropEffects.Link : act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
+        e.Effects = link ? AddTargetDropEffect(e) : act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
         ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : text ? "≡" : act == DropAction.Move ? "➜" : "⧉";
         if (link) ((TextBlock)badge.Child).Text = "+";
         badge.Background = link ? Brushes.CornflowerBlue : act == DropAction.Move ? Brushes.Orange : Brushes.MediumSpringGreen;

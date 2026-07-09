@@ -24,12 +24,19 @@ public partial class OverlayWindow
 
     private void OnAddTargetDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = CanAddTarget(e.Data) ? DragDropEffects.Link : DragDropEffects.None;
+        e.Effects = CanAddTarget(e.Data) ? AddTargetDropEffect(e) : DragDropEffects.None;
         e.Handled = true;
     }
 
     private static bool CanAddTarget(IDataObject data) =>
         data.GetDataPresent(DataFormats.FileDrop) || LinkTargetService.HasPotentialLaunchUriData(data);
+
+    private static DragDropEffects AddTargetDropEffect(DragEventArgs e)
+    {
+        if (e.AllowedEffects.HasFlag(DragDropEffects.Copy)) return DragDropEffects.Copy;
+        if (e.AllowedEffects.HasFlag(DragDropEffects.Link)) return DragDropEffects.Link;
+        return DragDropEffects.None;
+    }
 
     private bool AddTargetsFromDrop(IDataObject data, TargetItem? group)
     {
