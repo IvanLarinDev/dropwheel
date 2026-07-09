@@ -58,6 +58,9 @@ public partial class OverlayWindow : Window
 
         Root.MouseEnter += (_, _) => _closeTimer.Stop();
         Root.MouseLeave += (_, _) => { if (_open) _closeTimer.Start(); };
+        AllowDrop = true;
+        PreviewDragOver += OnTileReorderPreviewDragOver;
+        PreviewDrop += OnTileReorderPreviewDrop;
         DragEnter += (_, _) => _closeTimer.Stop();
         DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
         Deactivated += (_, _) => CloseCloud();

@@ -12,6 +12,9 @@ public class TargetItem
     public DropAction Override { get; set; } = DropAction.Inherit;
     public bool Pinned { get; set; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? TilePosition { get; set; }
+
     /// <summary>null — regular target; otherwise a group (one nesting level).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<TargetItem>? Children { get; set; }

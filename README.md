@@ -56,6 +56,8 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Add a target          | drop a folder/exe onto the “+” tile or the orb     |
 | Create a group        | right-click the orb → “New group…”                 |
 | Enter a group         | click its tile, or hover it for 0.5 s while dragging |
+| Sort a sorter now     | middle-click a sorter tile                         |
+| Reorder tiles         | left-drag a target tile onto another tile; drop on “+” to move it last |
 | Move the orb          | Alt + left-drag (any monitor)                      |
 | Wheel at cursor       | Ctrl+Alt+Space (configurable)                      |
 | Settings              | tray icon or orb context menu                      |
@@ -115,11 +117,12 @@ goes to the target root rather than into a half-built path.
 
 **Watch a folder** — a folder sorter can watch itself. Tick **Watch folder, auto-sort
 new files** in the rule editor and Dropwheel routes files that appear in the folder by
-the same rules, in the background. It waits for a file to finish copying before moving
-it, watches only the top level (files routed into subfolders don't re-trigger it), and
-leaves a file in place when no rule matches. A tray notification reports how many files
-were sorted. Auto-sort **moves** files and is **not** tracked by Undo — revert from
-Explorer if needed.
+the same rules, in the background. When watch is enabled, Dropwheel immediately sweeps
+existing top-level files once, then keeps watching for new arrivals. It waits for a file
+to finish copying before moving it, watches only the top level (files routed into
+subfolders don't re-trigger it), and leaves a file in place when no rule matches. A tray
+notification reports how many files were sorted. Auto-sort **moves** files and is **not**
+tracked by Undo — revert from Explorer if needed.
 
 The legacy extension map still loads and is migrated to rules on first edit:
 

@@ -44,8 +44,26 @@ public partial class OverlayWindow
             OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup);
             e.Handled = true;
         };
-        panel.DragOver += (_, e) => { e.Effects = DragDropEffects.Link; e.Handled = true; };
-        panel.Drop += OnOrbDrop; // same logic: add to the current level
+        panel.DragOver += (_, e) =>
+        {
+            if (IsTileReorderDrag(e))
+            {
+                e.Effects = CanReorderToEnd(e) ? DragDropEffects.Move : DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+            e.Effects = DragDropEffects.Link;
+            e.Handled = true;
+        };
+        panel.Drop += (_, e) =>
+        {
+            if (IsTileReorderDrag(e))
+            {
+                OnTileReorderDropToEnd(e);
+                return;
+            }
+            OnOrbDrop(panel, e); // same logic: add to the current level
+        };
         return panel;
     }
 }

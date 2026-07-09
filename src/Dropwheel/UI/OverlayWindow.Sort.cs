@@ -45,4 +45,48 @@ public partial class OverlayWindow
         }
         if (ops.Count > 0) RememberOps(ops);
     }
+
+    private void SortTargetFolderNow(TargetItem t)
+    {
+        try
+        {
+            if (!Directory.Exists(t.Path))
+            {
+                ShowToast("Sorter folder is unavailable");
+                return;
+            }
+
+            var plan = SortService.MovePlan(t, Directory.GetFiles(t.Path));
+            if (plan.Count == 0)
+            {
+                ShowToast("Nothing to sort");
+                return;
+            }
+
+            bool ok = true;
+            int moved = 0;
+            var ops = new List<FileOp>();
+            foreach (var (folder, sources) in plan)
+            {
+                Directory.CreateDirectory(folder);
+                var op = BuildOpBefore(DropAction.Move, sources, folder);
+                if (FileOps.Execute(sources, folder, DropAction.Move))
+                {
+                    ops.Add(op);
+                    moved += sources.Length;
+                }
+                else ok = false;
+            }
+
+            if (ops.Count > 0) RememberOps(ops);
+            ShowToast(ok
+                ? $"⇅ Sorted: {moved} item(s) → {t.Name}"
+                : "Sorting was not completed", ops.Count > 0);
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write($"Manual sort of '{t.Name}' failed", ex);
+            ShowToast("Sorting was not completed");
+        }
+    }
 }
