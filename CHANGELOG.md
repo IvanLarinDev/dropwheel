@@ -1,6 +1,15 @@
 # Changelog
 
 - - -
+## [v0.11.0](https://github.com/IvanLarinDev/dropwheel/compare/d6ab8bfd1380a84d043c5da4e76865ca14a07456..v0.11.0) - 2026-07-09
+#### Features
+- (**overlay**) animate tile reorder - ([84916d1](https://github.com/IvanLarinDev/dropwheel/commit/84916d16712bba456b5ae042f32d4b9d456180f5)) - Ivan Larin
+- (**overlay**) persist tile order and trigger sorting - ([a107084](https://github.com/IvanLarinDev/dropwheel/commit/a107084b9542a74f59258dc0a46438d7dfb9ea44)) - Ivan Larin
+#### Bug Fixes
+- (**overlay**) preview tile reorder during drag - ([719248c](https://github.com/IvanLarinDev/dropwheel/commit/719248c4e21ab49ed69c81e89d21fa34deb26ed4)) - Ivan Larin
+
+- - -
+
 ## [v0.10.2](https://github.com/IvanLarinDev/dropwheel/compare/9891c2ff92ba5a1852aeb8f40967c4825cc5c75a..v0.10.2) - 2026-07-09
 #### Bug Fixes
 - (**files**) handle partial undo safely - ([b94f752](https://github.com/IvanLarinDev/dropwheel/commit/b94f752f124983f748447695f51f249511e99193)) - Ivan Larin
