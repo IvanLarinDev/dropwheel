@@ -45,13 +45,15 @@ public static class TextDropService
     private static string Unique(string folder, string name)
     {
         var path = Path.Combine(folder, name);
-        if (!File.Exists(path)) return path;
+        if (!PathExists(path)) return path;
         var stem = Path.GetFileNameWithoutExtension(name);
         var ext = Path.GetExtension(name);
         for (int i = 2; ; i++)
         {
             path = Path.Combine(folder, $"{stem} ({i}){ext}");
-            if (!File.Exists(path)) return path;
+            if (!PathExists(path)) return path;
         }
     }
+
+    private static bool PathExists(string path) => File.Exists(path) || Directory.Exists(path);
 }

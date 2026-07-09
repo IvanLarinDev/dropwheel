@@ -53,4 +53,17 @@ public sealed class TextDropServiceTests : IDisposable
         Assert.Equal("a", File.ReadAllText(first));
         Assert.Equal("b", File.ReadAllText(second));
     }
+
+    [Fact]
+    public void Save_avoids_collisions_with_existing_directory()
+    {
+        var occupied = Path.Combine(_root, "text_2026-07-06_23-15-04.txt");
+        Directory.CreateDirectory(occupied);
+
+        var path = TextDropService.Save("directory collision", _root, When);
+
+        Assert.Equal("text_2026-07-06_23-15-04 (2).txt", Path.GetFileName(path));
+        Assert.True(Directory.Exists(occupied));
+        Assert.Equal("directory collision", File.ReadAllText(path));
+    }
 }
