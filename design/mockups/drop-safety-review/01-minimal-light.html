@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Drop safety review - Minimal light</title>
+<style>
+  :root { --bg:#f7f8fb; --panel:#ffffff; --ink:#1f2937; --muted:#667085; --line:#d9dee7; --ok:#159947; --warn:#b45309; --blue:#2563eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg); color:var(--ink); font-family:"Segoe UI", system-ui, sans-serif; }
+  .stage { width:980px; height:620px; position:relative; border:1px solid var(--line); background:linear-gradient(180deg,#fff,#f2f4f8); overflow:hidden; }
+  .orb { position:absolute; left:454px; top:236px; width:72px; height:72px; border-radius:50%; background:var(--blue); color:#fff; display:grid; place-items:center; font-weight:700; box-shadow:0 12px 30px rgba(37,99,235,.24); }
+  .bubble { position:absolute; width:132px; padding:12px; border:1px solid var(--line); background:var(--panel); border-radius:8px; box-shadow:0 10px 24px rgba(15,23,42,.08); }
+  .bubble strong { display:block; font-size:14px; }
+  .bubble span { color:var(--muted); font-size:12px; }
+  .docs { left:252px; top:132px; } .images { left:596px; top:132px; } .archive { left:245px; top:390px; } .scripts { left:604px; top:390px; }
+  .drop { outline:3px solid rgba(21,153,71,.22); border-color:var(--ok); }
+  .badge { position:absolute; right:10px; top:10px; color:var(--ok); font-weight:700; }
+  .toast { position:absolute; left:300px; right:300px; bottom:42px; padding:14px 16px; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; color:#7c2d12; box-shadow:0 14px 26px rgba(124,45,18,.12); }
+  .toast b { display:block; margin-bottom:4px; }
+  .panel { position:absolute; left:28px; top:28px; width:240px; padding:14px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .panel h1 { margin:0 0 8px; font-size:17px; }
+  .panel p { margin:0; color:var(--muted); font-size:13px; line-height:1.4; }
+</style>
+<div class="stage">
+  <div class="panel"><h1>Drop safety state</h1><p>Conflict-aware copy and move operations keep Undo honest when a destination already existed.</p></div>
+  <div class="bubble docs drop"><strong>Documents</strong><span>copy target</span><span class="badge">+</span></div>
+  <div class="bubble images"><strong>Images</strong><span>sort by rule</span></div>
+  <div class="orb">DW</div>
+  <div class="bubble archive"><strong>Archive</strong><span>move target</span></div>
+  <div class="bubble scripts"><strong>Scripts</strong><span>open with</span></div>
+  <div class="toast"><b>Could not undo completely</b>report.txt existed before this drop; the original file was left protected.</div>
+</div>

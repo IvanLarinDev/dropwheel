@@ -44,4 +44,32 @@ public sealed class OverlayUndoTests : IDisposable
 
         Assert.Equal(new[] { copy }, targets);
     }
+
+    [Fact]
+    public void UndoOne_copy_reports_incomplete_when_destination_preexisted()
+    {
+        var src = Path.Combine(_root, "src", "report.txt");
+        var dest = Path.Combine(_root, "dest");
+        Directory.CreateDirectory(Path.GetDirectoryName(src)!);
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(src, "new");
+        File.WriteAllText(Path.Combine(dest, "report.txt"), "old");
+        var op = OverlayWindow.BuildOpBefore(DropAction.Copy, new[] { src }, dest);
+
+        Assert.False(OverlayWindow.UndoOne(op));
+    }
+
+    [Fact]
+    public void UndoOne_move_reports_incomplete_when_destination_preexisted()
+    {
+        var src = Path.Combine(_root, "src", "report.txt");
+        var dest = Path.Combine(_root, "dest");
+        Directory.CreateDirectory(Path.GetDirectoryName(src)!);
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(src, "new");
+        File.WriteAllText(Path.Combine(dest, "report.txt"), "old");
+        var op = OverlayWindow.BuildOpBefore(DropAction.Move, new[] { src }, dest);
+
+        Assert.False(OverlayWindow.UndoOne(op));
+    }
 }
