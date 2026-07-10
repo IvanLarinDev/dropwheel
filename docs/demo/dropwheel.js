@@ -19,20 +19,78 @@ const DW = (() => {
   const HUB = 56;        // диаметр хаба
   const SPOKE_R = RING - 52;
 
-  /** Палитра Dark-темы из Themes.cs (ARGB → css). */
-  const THEME = {
-    accent: "rgb(157,178,204)",
-    tileBg: "rgba(32,38,48,.94)",
-    tileHot: "rgba(46,56,72,.96)",
-    tileBorder: "rgba(255,255,255,.22)",
-    label: "rgb(201,210,222)",
-    rim: "rgba(138,150,168,.10)",
-    spoke: "rgba(192,200,212,.15)",
-    hubBg: "rgba(26,32,42,.96)",
-    hubBorder: "rgba(192,200,212,.30)",
-    groupBorder: "rgba(138,176,255,.55)",
-    sorterBorder: "rgba(232,166,72,.60)",
+  /** Четыре палитры из Themes.cs (ARGB → css). Поле stage — фон демо-подложки
+   * под цвет темы (светлые темы над «светлым столом», тёмные — над тёмным). */
+  const THEMES = {
+    Fluent: {
+      accent: "rgb(77,163,255)",
+      tileBg: "rgba(255,255,255,.12)", tileHot: "rgba(255,255,255,.24)",
+      tileBorder: "rgba(255,255,255,.24)", label: "rgb(219,231,245)",
+      rim: "rgba(255,255,255,.08)", spoke: "rgba(255,255,255,.19)",
+      hubBg: "rgba(255,255,255,.14)", hubBorder: "rgba(255,255,255,.30)",
+      groupBorder: "rgba(124,196,255,.55)", sorterBorder: "rgba(255,184,77,.55)",
+      stage: "#243447",
+    },
+    Dark: {
+      accent: "rgb(157,178,204)",
+      tileBg: "rgba(32,38,48,.94)", tileHot: "rgba(46,56,72,.96)",
+      tileBorder: "rgba(255,255,255,.22)", label: "rgb(201,210,222)",
+      rim: "rgba(138,150,168,.10)", spoke: "rgba(192,200,212,.15)",
+      hubBg: "rgba(26,32,42,.96)", hubBorder: "rgba(192,200,212,.30)",
+      groupBorder: "rgba(138,176,255,.55)", sorterBorder: "rgba(232,166,72,.60)",
+      stage: "#0d1017",
+    },
+    Light: {
+      accent: "rgb(11,98,198)",
+      tileBg: "rgba(255,255,255,.91)", tileHot: "rgba(255,255,255,1)",
+      tileBorder: "rgba(0,0,0,.19)", label: "rgb(26,36,48)",
+      rim: "rgba(255,255,255,.19)", spoke: "rgba(0,0,0,.25)",
+      hubBg: "rgba(255,255,255,.94)", hubBorder: "rgba(0,0,0,.25)",
+      groupBorder: "rgba(61,125,214,.78)", sorterBorder: "rgba(216,138,30,.78)",
+      labelBg: "rgba(255,255,255,.90)", stage: "#c3cbd6",
+    },
+    Neon: {
+      accent: "rgb(89,245,255)",
+      tileBg: "rgba(8,16,28,.90)", tileHot: "rgba(14,30,48,.90)",
+      tileBorder: "rgba(41,216,255,.55)", label: "rgb(143,220,239)",
+      rim: "rgba(41,216,255,.09)", spoke: "rgba(41,216,255,.20)",
+      hubBg: "rgba(6,20,34,.90)", hubBorder: "rgba(41,216,255,.55)",
+      groupBorder: "rgba(180,140,255,.61)", sorterBorder: "rgba(255,122,216,.61)",
+      stage: "#061020",
+    },
   };
+
+  /** Параметры анимации открытия по OverlayWindow.Cloud.cs::AnimateTile. */
+  const OPEN_ANIM = {
+    pop:    { stagger: 18, dur: 220, opacity: 140, scale: 0.72, offMul: -24,  offMode: "radial",     ease: (t) => backOut(t, 0.36) },
+    burst:  { stagger: 18, dur: 240, opacity: 140, scale: 0.46, offMul: -139, offMode: "radial",     ease: (t) => cubicOut(t) },
+    sweep:  { stagger: 38, dur: 190, opacity: 120, scale: 0.68, offMul: 18,   offMode: "tangential", ease: (t) => sineOut(t) },
+    settle: { stagger: 12, dur: 170, opacity: 140, scale: 0.86, offMul: -10,  offMode: "radial",     ease: (t) => backOut(t, 0.28) },
+  };
+
+  /** Бейджи действий на тайле (глиф + цвет) по OverlayWindow.Dnd.cs. */
+  const BADGES = {
+    copy:   { glyph: "⧉", color: "rgb(0,250,154)" },   // MediumSpringGreen
+    move:   { glyph: "➜", color: "rgb(255,165,0)" },   // Orange
+    run:    { glyph: "▶", color: "rgb(100,149,237)" }, // CornflowerBlue
+    sorter: { glyph: "⇅", color: "rgb(232,166,72)" },  // amber (sorter)
+    text:   { glyph: "≡", color: "rgb(0,250,154)" },   // text → save (copy)
+    add:    { glyph: "+", color: "rgb(100,149,237)" }, // add as target
+    reorder:{ glyph: "↕", color: "rgb(0,191,255)" },   // DeepSkyBlue
+  };
+
+  /** Цвет подписи под тайлом: светлый на тёмной подписи темы (как MakeLabel). */
+  function captionColor(theme) {
+    const m = theme.label.match(/\d+/g).map(Number);
+    const lum = (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255;
+    return lum < 0.5 ? "#ECF1F7" : theme.label;
+  }
+
+  /** "rgb(r,g,b)" акцента темы → "rgba(r,g,b,a)". */
+  function accentA(theme, a) {
+    const m = theme.accent.match(/\d+/g);
+    return `rgba(${m[0]},${m[1]},${m[2]},${a})`;
+  }
 
   const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
   /** WPF BackEase easeOut с амплитудой amp. */
@@ -40,6 +98,8 @@ const DW = (() => {
     const u = 1 - t;
     return 1 - (u * u * u - u * amp * Math.sin(Math.PI * u));
   };
+  /** WPF SineEase easeOut. */
+  const sineOut = (t) => Math.sin((t * Math.PI) / 2);
   /** WPF CubicEase easeOut. */
   const cubicOut = (t) => {
     const u = 1 - t;
@@ -133,6 +193,10 @@ const DW = (() => {
       this.hoverEnabled = opts.hover !== false;
       this.dpr = Math.min(window.devicePixelRatio || 1, 2);
       this.hover = -1;
+      this.theme = THEMES[opts.theme] || THEMES.Dark;
+      this.caption = captionColor(this.theme);
+      this.animation = opts.animation || "pop";  // pop | burst | sweep | settle
+      this.speed = opts.speed || 1;               // множитель скорости 0.5..2
       // Программное состояние для сценариев (drop файла и т.п.):
       this.forceHot = -1;             // подсвеченный тайл помимо наведения
       this.badges = new Map();        // index → "copy" | "move"
@@ -154,6 +218,10 @@ const DW = (() => {
     open() { this.t0 = performance.now(); }
     /** Свернуть колесо к одному хабу (обод и тайлы становятся невидимыми). */
     close() { this.t0 = performance.now() + 1e9; }
+
+    setTheme(name) { this.theme = THEMES[name] || this.theme; this.caption = captionColor(this.theme); }
+    setAnimation(name) { if (OPEN_ANIM[name]) this.animation = name; }
+    setSpeed(v) { this.speed = Math.max(0.5, Math.min(2, v)); }
 
     /** Центр тайла i в логических координатах (460×460). */
     tileCenter(i) {
@@ -191,21 +259,23 @@ const DW = (() => {
 
     _draw(el) {
       const ctx = this.ctx;
+      const th = this.theme;
+      const sp = this.speed;
       const k = (this.canvas.width / this.dpr) / SIZE;
       ctx.setTransform(this.dpr * k, 0, 0, this.dpr * k, 0, 0);
       ctx.clearRect(0, 0, SIZE, SIZE);
 
       const n = this.tiles.length;
 
-      // обод: opacity 200мс, scale .7→1 280мс, rotate −10°→0
-      const rimP = cubicOut(clamp01(el / 280));
-      const rimO = clamp01(el / 200);
+      // обод: opacity 200мс, scale .7→1 280мс, rotate −10°→0 (масштаб скорости)
+      const rimP = cubicOut(clamp01(el / (280 / sp)));
+      const rimO = clamp01(el / (200 / sp));
       ctx.save();
       ctx.translate(CENTER, CENTER);
       ctx.rotate(((-10 + 10 * rimP) * Math.PI) / 180);
       ctx.scale(0.7 + 0.3 * rimP, 0.7 + 0.3 * rimP);
       ctx.globalAlpha = rimO;
-      ctx.strokeStyle = THEME.rim; ctx.lineWidth = 34;
+      ctx.strokeStyle = th.rim; ctx.lineWidth = 34;
       ctx.beginPath(); ctx.arc(0, 0, RING, 0, 7); ctx.stroke();
       ctx.restore();
 
@@ -213,8 +283,8 @@ const DW = (() => {
       ctx.globalAlpha = rimO;
       for (let i = 0; i < n; i++) {
         const s = slot(i, n);
-        const lit = this.hoverEnabled && this.hover === i;
-        ctx.strokeStyle = lit ? THEME.accent : THEME.spoke;
+        const lit = (this.hoverEnabled && this.hover === i) || this.forceHot === i;
+        ctx.strokeStyle = lit ? th.accent : th.spoke;
         ctx.lineWidth = lit ? 2.5 : 2;
         ctx.beginPath();
         ctx.moveTo(CENTER, CENTER);
@@ -225,27 +295,25 @@ const DW = (() => {
 
       this._drawHub(ctx);
 
-      // тайлы: Pop — задержка i*18, длительность 220 backOut(.36), opacity 140
+      // тайлы: параметры по выбранной анимации открытия, тайминги делятся на speed
+      const A = OPEN_ANIM[this.animation] || OPEN_ANIM.pop;
       for (let i = 0; i < n; i++) {
         const s = slot(i, n);
         const t = this.tiles[i];
-        const tt = el - i * 18;
-        const p = backOut(clamp01(tt / 220), 0.36);
-        const op = clamp01(tt / 140);
-        const scale = 0.72 + 0.28 * p;
-        const sx = -24 * Math.cos(s.a);
-        const sy = -24 * Math.sin(s.a);
-        const x = s.x + sx * (1 - p);
-        const y = s.y - 8 + sy * (1 - p);
+        const tt = el - (i * A.stagger) / sp;
+        const p = A.ease(clamp01(tt / (A.dur / sp)));
+        const op = clamp01(tt / (A.opacity / sp));
+        const scale = A.scale + (1 - A.scale) * p;
+        // радиальное или касательное стартовое смещение
+        const off = A.offMode === "tangential"
+          ? { x: A.offMul * Math.sin(s.a) * -1, y: A.offMul * Math.cos(s.a) }
+          : { x: A.offMul * Math.cos(s.a), y: A.offMul * Math.sin(s.a) };
+        const x = s.x + off.x * (1 - p);
+        const y = s.y - 8 + off.y * (1 - p);
         const hot = (this.hoverEnabled && this.hover === i) || this.forceHot === i;
         ctx.globalAlpha = op;
         this._drawTile(ctx, t, x, y, scale * (hot ? 1.06 : 1), hot, this.badges.get(i));
-        ctx.fillStyle = THEME.label;
-        ctx.font = "11.5px system-ui,-apple-system,Segoe UI,sans-serif";
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0,0,0,.85)"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
-        ctx.fillText(t.label, s.x, s.y + 40);
-        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        this._drawCaption(ctx, t.label, s.x, s.y + 40);
         ctx.globalAlpha = 1;
       }
 
@@ -255,12 +323,31 @@ const DW = (() => {
       if (this.cursor) this._drawCursor(ctx);
     }
 
+    /** Подпись под тайлом: светлый текст с тенью, либо тёмный текст на светлой
+     * подложке-пилюле (тема Light, у которой задан labelBg). */
+    _drawCaption(ctx, text, x, y) {
+      ctx.font = "11.5px system-ui,-apple-system,Segoe UI,sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      if (this.theme.labelBg) {
+        const w = ctx.measureText(text).width + 12;
+        ctx.fillStyle = this.theme.labelBg;
+        roundRect(ctx, x - w / 2, y - 9, w, 18, 6); ctx.fill();
+        ctx.fillStyle = this.theme.label;
+        ctx.fillText(text, x, y);
+        return;
+      }
+      ctx.fillStyle = this.caption;
+      ctx.shadowColor = "rgba(0,0,0,.85)"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+      ctx.fillText(text, x, y);
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    }
+
     /** Указатель мыши: стрелка с опциональным кольцом-кликом. */
     _drawCursor(ctx) {
       const cur = this.cursor;
       if (cur.click > 0) {
         ctx.globalAlpha = (1 - cur.click) * 0.7;
-        ctx.strokeStyle = THEME.accent; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = this.theme.accent; ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.arc(cur.x, cur.y, 6 + cur.click * 16, 0, 7); ctx.stroke();
         ctx.globalAlpha = 1;
       }
@@ -280,7 +367,7 @@ const DW = (() => {
       const c = this.tileCenter(this.flash.index);
       const p = this.flash.p; // 0..1
       ctx.globalAlpha = (1 - p) * 0.9;
-      ctx.strokeStyle = THEME.accent;
+      ctx.strokeStyle = this.theme.accent;
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(c.x, c.y, 34 + p * 22, 0, 7);
@@ -384,23 +471,23 @@ const DW = (() => {
       const look = this.orbLook || { x: 0, y: 0 };
       const haloR = 46 + pulse * 16;
       const halo = ctx.createRadialGradient(CENTER, CENTER, 2, CENTER, CENTER, haloR);
-      halo.addColorStop(0, `rgba(157,178,204,${0.28 + pulse * 0.22})`);
-      halo.addColorStop(1, "rgba(157,178,204,0)");
+      halo.addColorStop(0, accentA(this.theme, 0.28 + pulse * 0.22));
+      halo.addColorStop(1, accentA(this.theme, 0));
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(CENTER, CENTER, haloR, 0, 7); ctx.fill();
 
-      ctx.fillStyle = THEME.hubBg;
+      ctx.fillStyle = this.theme.hubBg;
       ctx.beginPath(); ctx.arc(CENTER, CENTER, HUB / 2, 0, 7); ctx.fill();
-      ctx.strokeStyle = THEME.hubBorder; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = this.theme.hubBorder; ctx.lineWidth = 1; ctx.stroke();
 
       const cx = CENTER + look.x, cy = CENTER + look.y;
       const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 11);
-      core.addColorStop(0, THEME.accent);
-      core.addColorStop(1, "rgba(26,32,42,.96)");
+      core.addColorStop(0, this.theme.accent);
+      core.addColorStop(1, this.theme.hubBg);
       ctx.fillStyle = core;
       ctx.beginPath(); ctx.arc(cx, cy, 11, 0, 7); ctx.fill();
 
-      ctx.fillStyle = THEME.hubBorder;
+      ctx.fillStyle = this.theme.hubBorder;
       for (const [bx, by] of [[0, -19], [0, 19], [-19, 0], [19, 0]]) {
         ctx.beginPath(); ctx.arc(CENTER + bx, CENTER + by, 2, 0, 7); ctx.fill();
       }
@@ -428,13 +515,13 @@ const DW = (() => {
 
       if (t.back) {
         ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 3;
-        ctx.fillStyle = hot ? THEME.tileHot : THEME.tileBg;
+        ctx.fillStyle = hot ? this.theme.tileHot : this.theme.tileBg;
         roundRect(ctx, -s, -s, s * 2, s * 2, 17); ctx.fill();
         ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-        ctx.lineWidth = 1.2; ctx.strokeStyle = THEME.tileBorder;
+        ctx.lineWidth = 1.2; ctx.strokeStyle = this.theme.tileBorder;
         roundRect(ctx, -s, -s, s * 2, s * 2, 17); ctx.stroke();
         // шеврон «назад»
-        ctx.strokeStyle = THEME.label; ctx.lineWidth = 3.2;
+        ctx.strokeStyle = this.theme.label; ctx.lineWidth = 3.2;
         ctx.lineCap = "round"; ctx.lineJoin = "round";
         ctx.beginPath();
         ctx.moveTo(5, -11); ctx.lineTo(-7, 0); ctx.lineTo(5, 11);
@@ -444,17 +531,17 @@ const DW = (() => {
       }
 
       ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 3;
-      ctx.fillStyle = hot ? THEME.tileHot : THEME.tileBg;
+      ctx.fillStyle = hot ? this.theme.tileHot : this.theme.tileBg;
       roundRect(ctx, -s, -s, s * 2, s * 2, 17); ctx.fill();
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
       ctx.lineWidth = 1.2;
-      ctx.strokeStyle = t.group ? THEME.groupBorder : t.sorter ? THEME.sorterBorder : THEME.tileBorder;
+      ctx.strokeStyle = t.group ? this.theme.groupBorder : t.sorter ? this.theme.sorterBorder : this.theme.tileBorder;
       roundRect(ctx, -s, -s, s * 2, s * 2, 17); ctx.stroke();
 
       if (t.group) {
         if (t.num) {
-          ctx.fillStyle = THEME.label;
+          ctx.fillStyle = this.theme.label;
           ctx.font = "bold 22px system-ui,-apple-system,Segoe UI,sans-serif";
           ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(t.num, 0, 1);
@@ -465,7 +552,7 @@ const DW = (() => {
 
       if (t.code) {
         const w = Math.max(20, 10 + t.code.length * 7);
-        ctx.fillStyle = THEME.accent;
+        ctx.fillStyle = this.theme.accent;
         roundRect(ctx, -s - 2, -s - 6, w, 18, 9); ctx.fill();
         ctx.fillStyle = "#0d1017";
         ctx.font = "bold 11px Consolas,monospace";
@@ -473,19 +560,20 @@ const DW = (() => {
         ctx.fillText(t.code, -s - 2 + w / 2, -s - 6 + 9);
       }
 
-      // бейдж копирования/перемещения (верхний правый угол тайла)
+      // бейдж действия (верхний правый угол тайла), цвет и глиф по OverlayWindow.Dnd.cs
       if (badge) {
-        ctx.fillStyle = "rgb(0,250,154)";
+        const b = BADGES[badge] || BADGES.copy;
+        ctx.fillStyle = b.color;
         roundRect(ctx, s - 16, -s - 8, 22, 18, 9); ctx.fill();
-        ctx.fillStyle = "#06210f";
+        ctx.fillStyle = "#0c1420";
         ctx.font = "bold 13px system-ui,-apple-system,Segoe UI,sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(badge === "move" ? "➜" : "⧉", s - 5, -s + 1);
+        ctx.fillText(b.glyph, s - 5, -s + 1);
       }
 
       ctx.restore();
     }
   }
 
-  return { Wheel, THEME, SIZE };
+  return { Wheel, THEMES, SIZE };
 })();

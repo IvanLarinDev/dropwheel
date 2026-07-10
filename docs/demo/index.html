@@ -56,6 +56,21 @@
       background: rgba(157,178,204,.12); color: #c9d2de; cursor: pointer;
     }
     .btn:hover { background: rgba(157,178,204,.2); }
+    .stage { transition: background .3s ease; }
+    .ctl { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+    .ctl label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #98a2b0; }
+    .ctl select, .ctl input[type=range] { font: inherit; }
+    .ctl select {
+      font-size: 13px; padding: 6px 8px; border-radius: 8px;
+      background: #141a22; color: #c9d2de; border: 1px solid rgba(255,255,255,.14);
+    }
+    .ctl input[type=range] { accent-color: #7cc4ff; width: 100%; }
+    .themes { display: flex; gap: 6px; flex-wrap: wrap; }
+    .themes button {
+      font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+      background: rgba(255,255,255,.05); color: #9aa5b3; border: 1px solid rgba(255,255,255,.12);
+    }
+    .themes button.on { background: rgba(124,196,255,.18); color: #cfe6ff; border-color: rgba(124,196,255,.5); }
     .soon {
       opacity: .5;
       font-size: 13px; color: #8b95a4;
@@ -78,17 +93,40 @@
 
   <main class="scenes">
     <section class="scene">
-      <div class="stage"><canvas id="scene-open"></canvas></div>
+      <div class="stage" id="stage-open"><canvas id="scene-open"></canvas></div>
       <div class="about">
         <h2>Основной вид</h2>
         <p>
           Орб раскрывается в радиальное колесо целей. В центре — хаб, вокруг —
           обод со спицами и тайлы папок, приложений, групп и сортеров. Тайлы
-          вылетают из центра по одному с эффектом отскока: это анимация «Pop»,
-          воспроизведённая тик-в-тик по коду приложения. Наведите курсор на
-          тайл — он подсветится, а его спица «загорится».
+          вылетают из центра по одному; наведите курсор на тайл — он подсветится,
+          а его спица «загорится».
         </p>
-        <button class="btn" id="replay-open">▶ Открыть заново</button>
+        <p>
+          В настройках выбирается одна из четырёх анимаций открытия, скорость и
+          одна из четырёх тем. Здесь можно всё это покрутить — колесо рисуется по
+          тем же формулам, что и приложение:
+        </p>
+        <div class="ctl">
+          <label>Анимация
+            <select id="anim-open">
+              <option value="pop">Pop</option>
+              <option value="burst">Radial burst</option>
+              <option value="sweep">Clock sweep</option>
+              <option value="settle">Magnetic settle</option>
+            </select>
+          </label>
+          <label>Скорость <span id="spd-val">1.0×</span>
+            <input id="spd-open" type="range" min="0.5" max="2" step="0.25" value="1">
+          </label>
+          <div class="themes" id="themes-open">
+            <button data-th="Fluent">Fluent</button>
+            <button data-th="Dark" class="on">Dark</button>
+            <button data-th="Light">Light</button>
+            <button data-th="Neon">Neon</button>
+          </div>
+          <button class="btn" id="replay-open">▶ Открыть заново</button>
+        </div>
       </div>
     </section>
 
@@ -165,8 +203,25 @@
       { label: "Add",        icon: "plus", add: true },
     ];
 
-    const wheel = new DW.Wheel(document.getElementById("scene-open"), ROOT_TILES);
+    const stageOpen = document.getElementById("stage-open");
+    const wheel = new DW.Wheel(document.getElementById("scene-open"), ROOT_TILES, { theme: "Dark" });
+    stageOpen.style.background = DW.THEMES.Dark.stage;
     document.getElementById("replay-open").onclick = () => wheel.open();
+    document.getElementById("anim-open").onchange = (e) => { wheel.setAnimation(e.target.value); wheel.open(); };
+    document.getElementById("spd-open").oninput = (e) => {
+      const v = parseFloat(e.target.value);
+      wheel.setSpeed(v);
+      document.getElementById("spd-val").textContent = v.toFixed(1) + "×";
+      wheel.open();
+    };
+    document.getElementById("themes-open").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-th]");
+      if (!b) return;
+      const name = b.dataset.th;
+      wheel.setTheme(name);
+      stageOpen.style.background = DW.THEMES[name].stage;
+      for (const el of e.currentTarget.children) el.classList.toggle("on", el === b);
+    });
 
     // ---- Сцена 2: перетаскивание файла (самоиграющаяся) ----
     const drop = new DW.Wheel(document.getElementById("scene-drop"), ROOT_TILES,
