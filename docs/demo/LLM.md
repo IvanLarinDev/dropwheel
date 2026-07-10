@@ -1,33 +1,42 @@
 # docs/demo — заметка для нейросети
 
-Роль папки: живое JS-демо колеса Dropwheel для GitHub Pages, замена GIF из
+Роль папки: живая JS-документация колеса Dropwheel для GitHub Pages, замена GIF из
 `docs/media`. Рисование на canvas, без сборки и зависимостей.
 
 ## Ключевые файлы
 
-- `dropwheel.js` — движок. Модуль `DW` (IIFE) экспортирует класс `Wheel`,
-  палитру `THEME` (Dark-тема из `Themes.cs`) и константу `SIZE`. Внутри —
-  геометрия (`CENTER=230`, `RING=170`, `HUB=56`, `SPOKE_R=RING-52`), функции
-  сглаживания `backOut`/`cubicOut`, векторные иконки в `ICONS`, отрисовка кадра
-  в `Wheel._draw`.
-- `index.html` — страница со сценами; в конце `<script>` задаёт набор целей и
-  создаёт `DW.Wheel`.
+- `dropwheel.js` — движок. Модуль `DW` (IIFE) экспортирует класс `Wheel`, карту
+  палитр `THEMES` (4 темы из `Themes.cs`) и константу `SIZE`. Внутри: геометрия
+  (`CENTER=230`, `RING=170`, `HUB=56`, `SPOKE_R=RING-52`), сглаживания
+  `backOut/cubicOut/sineOut`, параметры анимаций открытия `OPEN_ANIM`
+  (pop/burst/sweep/settle), бейджи `BADGES` (copy/move/run/sorter/text/add/reorder),
+  векторные иконки `ICONS`, отрисовка кадра в `Wheel._draw`.
+- `index.html` — страница со сценами; в конце `<script>` заданы наборы целей и
+  функции-таймлайны на `requestAnimationFrame`.
 
 ## Правила именно здесь
 
-- Цифры геометрии и таймингов — зеркало настоящего кода. Источник правды:
-  `src/Dropwheel/UI/OverlayWindow.Cloud.cs` (слоты, анимация `AnimateTile`,
-  обод `AnimateRim`), `OverlayWindow.xaml` (размеры хаба и обода),
-  `UI/Themes.cs` (цвета). Менять их тут можно только вслед за приложением.
-- Анимация открытия по умолчанию — `Pop`: задержка `i*18мс`, длительность
-  `220мс`, `BackEase` с амплитудой `0.36`, старт из точки на `24px` внутрь.
+- Числа геометрии, таймингов и цветов — зеркало настоящего кода. Источник правды:
+  `src/Dropwheel/UI/OverlayWindow.Cloud.cs` (слоты, `AnimateTile`, `AnimateRim`),
+  `OverlayWindow.Charge.cs` (проксимити-реакция), `OverlayWindow.PinDrop.cs` и
+  `Capture.cs` (захват, кольцо-пульс), `Dnd.cs` (бейджи), `OverlayWindow.xaml`
+  (размеры), `UI/Themes.cs` (палитры). Менять их тут можно только вслед за
+  приложением.
+- Анимация открытия по умолчанию — `Pop`: задержка `i*18мс`, длительность `220мс`,
+  `BackEase` с амплитудой `0.36`.
 - Иконки только векторные, нарисованные кодом. Никаких внешних картинок и
   системных иконок.
+
+## Модель сцены
+
+`DW.Wheel` рисует колесо; сцена каждый кадр выставляет управляемые поля и не
+рисует сама. Поля: `forceHot`, `badges`, `ghost` (file/text/orb), `toast`,
+`flash`, `chips`, `highlight`, `pinRing`, `cursor`, `orbPulse`/`orbLook`,
+`orbOffset`/`orbAlpha`, `tileAngles`, `tileMul`, `orbBadge`. Закрытый орб —
+`close()` (t0 в будущем: виден только хаб).
 
 ## Связи
 
 Использует: ничего (чистый браузерный JS). Опирается по смыслу на UI-код в
-`src/Dropwheel/UI`. Кто использует: страница GitHub Pages и ссылки из корневого
-`README.md`.
-
-Общие правила проекта — в корневом `LLM.md` (если появится) и в `AGENTS.md`.
+`src/Dropwheel/UI`. Кто использует: страница GitHub Pages и ссылка «Live demo»
+из корневого `README.md`.
