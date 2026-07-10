@@ -36,6 +36,7 @@ public partial class OverlayWindow
 
     private void CloseCloud()
     {
+        ResetGroupShortcutInput();
         if (!_open) return;
         _open = false;
         _currentGroup = null;

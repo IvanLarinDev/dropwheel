@@ -22,6 +22,10 @@ public class TargetItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? TilePosition { get; set; }
 
+    /// <summary>Optional one- or two-digit shortcut used while the pointer is over the orb.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GroupCode { get; set; }
+
     /// <summary>null — regular target; otherwise a group (one nesting level).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<TargetItem>? Children { get; set; }

@@ -43,6 +43,7 @@ public partial class OverlayWindow
         _idleTimer?.Stop();
         _idleTimer = null;
         InitIdleFade();
+        ApplyGroupShortcutSettings();
         // The string was already validated for parsing in settings, but being taken by another
         // process is only checked here: on failure the previous working combo stays.
         ApplyHotkey(TargetStore.Config.Hotkey, notify: true);
@@ -50,6 +51,7 @@ public partial class OverlayWindow
 
     public void OpenSettings()
     {
+        ResetGroupShortcutInput(preserveHover: false);
         new SettingsWindow { Owner = this }.ShowDialog();
     }
 }

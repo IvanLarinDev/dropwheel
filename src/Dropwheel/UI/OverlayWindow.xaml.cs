@@ -39,9 +39,10 @@ public partial class OverlayWindow : Window
         Orb.Opacity = TargetStore.Config.OrbOpacity;
         Orb.MouseEnter += (_, _) =>
         {
+            ArmGroupShortcuts();
             if (!_open && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) _hoverTimer.Start();
         };
-        Orb.MouseLeave += (_, _) => _hoverTimer.Stop();
+        Orb.MouseLeave += (_, _) => { _hoverTimer.Stop(); OnOrbGroupShortcutLeave(); };
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
         Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud(); };
         Orb.DragOver += OnAddTargetDragOver;
@@ -58,7 +59,11 @@ public partial class OverlayWindow : Window
         Orb.ContextMenu = orbMenu;
 
         Root.MouseEnter += (_, _) => _closeTimer.Stop();
-        Root.MouseLeave += (_, _) => { if (_open) _closeTimer.Start(); };
+        Root.MouseLeave += (_, _) =>
+        {
+            ResetGroupShortcutInput(preserveHover: false);
+            if (_open) _closeTimer.Start();
+        };
         AllowDrop = true;
         PreviewDragOver += OnTileReorderPreviewDragOver;
         PreviewDrop += OnTileReorderPreviewDrop;
@@ -67,7 +72,7 @@ public partial class OverlayWindow : Window
         Deactivated += (_, _) => CloseCloud();
 
         Loaded += (_, _) =>
-        { PlaceWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitIdleFade(); };
+        { PlaceWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade(); };
         LocationChanged += (_, _) => UpdateOrbScreenPos();
     }
 }

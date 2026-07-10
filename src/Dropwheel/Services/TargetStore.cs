@@ -41,8 +41,10 @@ public static class TargetStore
             {
                 var configText = File.ReadAllText(FilePath);
                 Config = DeserializeConfig(configText, out var sanitizedInvalidEnums) ?? new();
-                if (sanitizedInvalidEnums) Save();
-                if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); Save(); }
+                var needsSave = sanitizedInvalidEnums;
+                if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); needsSave = true; }
+                if (InitializeGroupShortcuts()) needsSave = true;
+                if (needsSave) Save();
                 return;
             }
             catch (JsonException ex) { ErrorLog.Write("Config is corrupted; backing it up and recreating defaults", ex); shouldBackup = true; }
@@ -103,6 +105,37 @@ public static class TargetStore
     }
 
     public static IEnumerable<TargetItem> Groups => Config.Targets.Where(t => t.IsGroup);
+
+    public static string? NextAvailableGroupCode(IEnumerable<string?>? reserved = null)
+    {
+        var used = (reserved ?? Groups.Select(group => group.GroupCode))
+            .Where(GroupShortcutSequence.IsValidCode)
+            .Select(code => code!)
+            .ToHashSet(StringComparer.Ordinal);
+        for (int code = 1; code <= 99; code++)
+        {
+            var candidate = code.ToString();
+            if (!used.Contains(candidate)) return candidate;
+        }
+        return used.Contains("0") ? null : "0";
+    }
+
+    private static bool InitializeGroupShortcuts()
+    {
+        if (Config.GroupShortcutsInitialized) return false;
+
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var group in Groups)
+        {
+            if (GroupShortcutSequence.IsValidCode(group.GroupCode) && used.Add(group.GroupCode!))
+                continue;
+
+            group.GroupCode = NextAvailableGroupCode(used);
+            if (group.GroupCode != null) used.Add(group.GroupCode);
+        }
+        Config.GroupShortcutsInitialized = true;
+        return true;
+    }
 
     public static IReadOnlyList<TargetItem> OrderedForDisplay(IList<TargetItem> targets)
     {
@@ -289,6 +322,7 @@ public static class TargetStore
         static string P(Environment.SpecialFolder f) => Environment.GetFolderPath(f);
         return new AppConfig
         {
+            GroupShortcutsInitialized = true,
             Presets = PresetService.Defaults(),
             Targets = {
                 new() { Name = "Downloads", Path = Path.Combine(P(Environment.SpecialFolder.UserProfile), "Downloads"), Pinned = true },

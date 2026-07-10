@@ -20,6 +20,9 @@
             <StackPanel Grid.Column="0" Width="280">
                 <TextBlock Text="Name"/>
                 <TextBox x:Name="NameBox" Margin="0,4,0,10"/>
+                <TextBlock x:Name="GroupShortcutLabel" Text="Group shortcut (1–2 digits)"/>
+                <TextBox x:Name="GroupShortcutBox" Margin="0,4,0,10" MaxLength="2"
+                         ToolTip="One or two digits. Leave empty to disable."/>
                 <TextBlock Text="Path (folder or .exe)"/>
                 <DockPanel Margin="0,4,0,10">
                     <Button Content="…" Width="28" DockPanel.Dock="Right" Margin="6,0,0,0" Click="OnBrowse"/>
