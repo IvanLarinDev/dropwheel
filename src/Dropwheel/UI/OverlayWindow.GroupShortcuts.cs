@@ -9,10 +9,9 @@ namespace Dropwheel.UI;
 public partial class OverlayWindow
 {
     private readonly GroupShortcutSequence _groupShortcutSequence = new();
+    private readonly GroupShortcutActivation _groupShortcutActivation = new();
     private DispatcherTimer? _groupShortcutTimer;
     private KeyboardHook? _groupKeyboardHook;
-    private bool _groupShortcutArmed;
-    private bool _pointerOverOrb;
 
     private static TimeSpan GroupShortcutInterval() => TimeSpan.FromMilliseconds(
         Math.Clamp(TargetStore.Config.GroupShortcutDelayMs, 150, 1500));
@@ -33,21 +32,22 @@ public partial class OverlayWindow
 
     private void ArmGroupShortcuts()
     {
-        _pointerOverOrb = true;
+        _groupShortcutActivation.PointerEntered();
         RefreshGroupShortcuts();
     }
 
     private void OnOrbGroupShortcutLeave()
     {
-        _pointerOverOrb = false;
-        if (_groupShortcutSequence.Input.Length == 0) _groupShortcutArmed = false;
+        _groupShortcutActivation.PointerLeft(
+            wheelOpen: _open,
+            inputPending: _groupShortcutSequence.Input.Length > 0);
     }
 
     private void RefreshGroupShortcuts()
     {
         var codes = TargetStore.Groups.Select(group => group.GroupCode).ToArray();
         _groupShortcutSequence.SetCodes(codes);
-        _groupShortcutArmed = _pointerOverOrb && codes.Any(GroupShortcutSequence.IsValidCode);
+        _groupShortcutActivation.Refresh(codes.Any(GroupShortcutSequence.IsValidCode));
         HideGroupShortcutInput();
     }
 
@@ -59,14 +59,15 @@ public partial class OverlayWindow
 
     private bool OnGroupShortcutDigit(char digit)
     {
-        if (!_groupShortcutArmed || !IsVisible || !IsEnabled || _hiddenByFullscreen || _movingOrb)
+        var inputPending = _groupShortcutSequence.Input.Length > 0;
+        if (!_open && !inputPending && !Orb.IsMouseOver)
+            _groupShortcutActivation.PointerLeft(wheelOpen: false, inputPending: false);
+        if (!_groupShortcutActivation.CanAcceptDigit(
+                wheelOpen: _open,
+                inputPending: inputPending)
+            || !IsVisible || !IsEnabled || _hiddenByFullscreen || _movingOrb)
             return false;
         if (Orb.ContextMenu?.IsOpen == true) return false;
-        if (_groupShortcutSequence.Input.Length == 0 && !Orb.IsMouseOver)
-        {
-            _groupShortcutArmed = false;
-            return false;
-        }
         if (Keyboard.Modifiers != ModifierKeys.None || Mouse.LeftButton == MouseButtonState.Pressed)
             return false;
 
@@ -149,13 +150,15 @@ public partial class OverlayWindow
         }
     }
 
-    private void ResetGroupShortcutInput(bool preserveHover = true)
+    private void ResetGroupShortcutInput(bool preserveActivation = true)
     {
         _groupShortcutTimer?.Stop();
         _groupShortcutSequence.Reset();
         HideGroupShortcutInput();
-        _groupShortcutArmed = preserveHover && _pointerOverOrb
-            && TargetStore.Groups.Any(group => GroupShortcutSequence.IsValidCode(group.GroupCode));
+        _groupShortcutActivation.ResetInput(
+            preserveActivation,
+            wheelOpen: _open,
+            hasCodes: TargetStore.Groups.Any(group => GroupShortcutSequence.IsValidCode(group.GroupCode)));
     }
 
     private void HideGroupShortcutInput()

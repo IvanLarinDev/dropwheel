@@ -61,7 +61,7 @@ public partial class OverlayWindow : Window
         Root.MouseEnter += (_, _) => _closeTimer.Stop();
         Root.MouseLeave += (_, _) =>
         {
-            ResetGroupShortcutInput(preserveHover: false);
+            ResetGroupShortcutInput(preserveActivation: false);
             if (_open) _closeTimer.Start();
         };
         AllowDrop = true;

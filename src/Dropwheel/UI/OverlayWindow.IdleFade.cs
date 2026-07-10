@@ -51,7 +51,7 @@ public partial class OverlayWindow
 
     public void OpenSettings()
     {
-        ResetGroupShortcutInput(preserveHover: false);
+        ResetGroupShortcutInput(preserveActivation: false);
         new SettingsWindow { Owner = this }.ShowDialog();
     }
 }
