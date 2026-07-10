@@ -11,8 +11,13 @@
   `backOut/cubicOut/sineOut`, параметры анимаций открытия `OPEN_ANIM`
   (pop/burst/sweep/settle), бейджи `BADGES` (copy/move/run/sorter/text/add/reorder),
   векторные иконки `ICONS`, отрисовка кадра в `Wheel._draw`.
-- `index.html` — страница со сценами; в конце `<script>` заданы наборы целей и
-  функции-таймлайны на `requestAnimationFrame`.
+- `scenes.js` — общий код всех сцен (наборы целей и таймлайны на
+  `requestAnimationFrame`), одинаков для обеих языковых страниц. Локализуемая строка
+  берётся из `window.DW_TXT`.
+- `index.html` (RU) и `index.en.html` (EN) — тонкие страницы: только разметка и
+  текст. Каждая перед `scenes.js` задаёт `window.DW_TXT` со своим переводом. Общие
+  стили — `styles.css`. Наборы `id` в обеих страницах обязаны совпадать, иначе сцены
+  не привяжутся.
 
 ## Правила именно здесь
 

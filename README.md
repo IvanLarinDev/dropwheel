@@ -21,6 +21,10 @@ browser — no video files:
 
 <p align="center">
   <a href="https://ivanlarindev.github.io/dropwheel/demo/"><b>▶ Open the live demo</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://ivanlarindev.github.io/dropwheel/demo/index.en.html">English</a>
+  &nbsp;/&nbsp;
+  <a href="https://ivanlarindev.github.io/dropwheel/demo/">Русский</a>
 </p>
 
 It replays the wheel opening, dropping files (copy/move badges), the wheel
