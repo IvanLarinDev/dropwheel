@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "feature": "shift-pin-drop",
+  "kind": "animation",
+  "fidelity": "js",
+  "example": "Shift+drop on the orb pins a new target: orb feedback ring during drag, then the new tile lands first on the rim",
+  "variants": [
+    {
+      "file": "01-direct-ease.html",
+      "focus": "Fast, restrained feedback with no overshoot."
+    },
+    {
+      "file": "02-soft-settle.html",
+      "focus": "A visible arrival with a small overshoot and settle."
+    },
+    {
+      "file": "03-staggered-reflow.html",
+      "focus": "Affected elements move in a short sequence so the reflow is easy to follow."
+    },
+    {
+      "file": "04-guided-arc.html",
+      "focus": "A curved path makes the source and destination relationship explicit."
+    }
+  ]
+}
