@@ -19,7 +19,8 @@
       padding: 40px 20px 8px;
     }
     header h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: .5px; color: #eef2f8; }
-    header p { margin: 0; color: #8b95a4; font-size: 15px; }
+    header p { margin: 0 auto; color: #8b95a4; font-size: 15px; max-width: 640px; }
+    header .lead { margin: 14px auto 0; color: #9aa5b3; font-size: 14px; line-height: 1.55; }
 
     .scenes { max-width: 980px; margin: 0 auto; padding: 24px 20px 80px; }
     .scene {
@@ -80,6 +81,18 @@
       aspect-ratio: 1 / 1; max-width: 460px; margin: 0 auto;
     }
 
+    .more { padding: 34px 0 10px; border-top: 1px solid rgba(255,255,255,.06); }
+    .more h2 { margin: 0 0 18px; font-size: 20px; color: #eef2f8; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card {
+      border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 16px;
+      background: rgba(255,255,255,.02);
+    }
+    .card h3 { margin: 0 0 8px; font-size: 15px; color: #cfe6ff; }
+    .card p { margin: 0; font-size: 13.5px; line-height: 1.5; color: #9aa5b3; }
+    footer { text-align: center; padding: 30px 20px 50px; color: #7b8593; font-size: 13px; }
+    footer a { color: #7cc4ff; text-decoration: none; }
+
     @media (max-width: 760px) {
       .scene { grid-template-columns: 1fr; }
     }
@@ -88,7 +101,15 @@
 <body>
   <header>
     <h1>Dropwheel</h1>
-    <p>Живые JS-анимации интерфейса — без GIF-записей экрана.</p>
+    <p>Живая документация интерфейса — все анимации нарисованы на JavaScript,
+       без GIF-записей экрана.</p>
+    <p class="lead">
+      Dropwheel — оверлей-лаунчер для Windows: плавающий орб раскрывается в
+      радиальное колесо целей (папок и приложений). Файлы можно копировать и
+      перемещать, текст — сохранять в файл, а поток файлов — раскладывать по
+      подпапкам правилами. Ниже каждая возможность показана вживую и рядом
+      объяснена.
+    </p>
   </header>
 
   <main class="scenes">
@@ -324,7 +345,54 @@
         </p>
       </div>
     </section>
+
+    <section class="more">
+      <h2>Ещё возможности</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Отправка в Telegram</h3>
+          <p>Файлы или текст, брошенные на Telegram-тайл, копируются в буфер обмена,
+             Dropwheel выводит нужный чат или тему на передний план и вставляет
+             содержимое (Ctrl+V) — остаётся нажать «Отправить».</p>
+        </div>
+        <div class="card">
+          <h3>Виртуальные файлы</h3>
+          <p>Вложения из Outlook и картинки из браузера, которых ещё нет на диске,
+             принимаются напрямую: Dropwheel извлекает их поток и сохраняет реальным
+             файлом. Такие файлы всегда копируются.</p>
+        </div>
+        <div class="card">
+          <h3>Наблюдение за папкой</h3>
+          <p>Сортер может следить за своей папкой: появившиеся файлы фоном
+             раскладываются по тем же правилам. Dropwheel ждёт окончания загрузки
+             файла, разбирает верхний уровень и шлёт одно уведомление на пачку.</p>
+        </div>
+        <div class="card">
+          <h3>Правила: пресеты и проверка</h3>
+          <p>Правила редактируются списком «мастер-деталь»; есть готовые категории
+             (Images, Documents, Archives…) и поле «тестовых файлов», которое сразу
+             показывает, какие файлы попадут в выбранное правило.</p>
+        </div>
+        <div class="card">
+          <h3>Параметры запуска</h3>
+          <p>Для программ и скриптов можно задать свою команду с токенами
+             <code>{target}</code>, <code>{targetDir}</code>, <code>{files}</code> и
+             видеть предпросмотр итоговой командной строки.</p>
+        </div>
+        <div class="card">
+          <h3>Автозапуск и размещение</h3>
+          <p>Орб может стартовать вместе с Windows, помнит своё место на любом
+             мониторе, а настройки хранятся в
+             <code>%AppData%\Dropwheel\config.json</code>.</p>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <footer>
+    Исходный код колеса — <a href="dropwheel.js">dropwheel.js</a> ·
+    проект на <a href="https://github.com/IvanLarinDev/dropwheel">GitHub</a>
+  </footer>
 
   <script src="dropwheel.js"></script>
   <script>
