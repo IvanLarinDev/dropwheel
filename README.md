@@ -1,9 +1,5 @@
 # Dropwheel
 
-<p align="center">
-  <img src="docs/media/dropwheel.png" width="420" alt="Dropwheel wheel">
-</p>
-
 [![CI](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/IvanLarinDev/dropwheel)](https://github.com/IvanLarinDev/dropwheel/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -79,13 +75,23 @@ and `11` exist, `1` opens after the configurable sequence timeout, while typing
 the second `1` before that timeout opens `11` immediately. Right-click a group
 to edit or disable its code.
 
+## A living interface
+
+The wheel reacts before you click it. As a drag approaches the orb, a halo glows,
+the core breathes and leans toward the cursor, and at the threshold the wheel
+unfolds on its own — the inhale flowing straight into the reveal. During an
+**Alt+Shift** capture the ghost orb arms as it nears a valid target: its core
+fills with the accent colour, a frame lights around the object in Explorer or on
+the desktop, and a radar aura pings outward while it holds the lock. On release
+the ghost furls back into the orb with a confirming ring, and the wheel opens with
+the freshly pinned tile first. Every one of these moments plays live in the
+[interactive demo](https://ivanlarindev.github.io/dropwheel/demo/).
+
 ## Interface names
 
-Use these names when describing the wheel in issues, docs, or UI changes:
-
-<p align="center">
-  <img src="docs/media/interface-names.png" width="720" alt="Annotated Dropwheel interface names">
-</p>
+Use these names when describing the wheel in issues, docs, or UI changes. The
+[interactive demo](https://ivanlarindev.github.io/dropwheel/demo/) shows the same
+parts numbered on a live wheel.
 
 | Name | Meaning |
 |------|---------|
@@ -180,17 +186,9 @@ foreground; review and press Send in Telegram.
 Four themes — chosen in Settings. Each carries a full palette: the wheel, the
 target editor and settings windows, the orb context menu, and the tray menu all
 follow the theme (accent colour, surfaces, text); group and sorter tile borders
-are tuned per theme.
-
-<p align="center">
-  <img src="docs/media/fluent.png" width="240" alt="Fluent theme">
-  <img src="docs/media/dark.png" width="240" alt="Dark theme">
-  <br>
-  <img src="docs/media/light.png" width="240" alt="Light theme">
-  <img src="docs/media/neon.png" width="240" alt="Neon theme">
-  <br>
-  <sub>Fluent · Dark · Light · Neon</sub>
-</p>
+are tuned per theme. Switch themes live in the
+[demo](https://ivanlarindev.github.io/dropwheel/demo/) to compare Fluent, Dark,
+Light and Neon.
 
 ## Project layout
 
@@ -208,8 +206,7 @@ are tuned per theme.
     tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta,
                  TextDropService, WatcherService, HotkeyService, VirtualFileService,
                  LinkTargetService, LinkMetadataService, TelegramDropService)
-    docs/media/  screenshots used by this README
-    docs/demo/   live interactive JS demo (GitHub Pages), replaces the old gifs
+    docs/demo/   live interactive JS demo (GitHub Pages)
 
 ## Known limitations
 
