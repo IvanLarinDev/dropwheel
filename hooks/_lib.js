@@ -11,7 +11,9 @@ const DEFAULT_MOCKUPS = {
   dir: "design/mockups",
   min: 4,
   mockupExtensions: [".html", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".pdf"],
+  manifestFile: "DESIGN.json",
   approvalFile: "APPROVED",
+  waiverFile: "WAIVER.json",
 };
 const DEFAULT_PROTECTED = [
   "hooks/", "lefthook.yml", "harness.config.json", ".gitleaks.toml", "cog.toml",

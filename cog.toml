@@ -15,8 +15,8 @@ branch_whitelist = ["main", "master", "feat/**", "fix/**", "docs/**", "hotfix/**
 
 [changelog]
 path = "CHANGELOG.md"
-template = "remote"
 remote = "github.com"
+template = "remote"
 owner = "IvanLarinDev"
 repository = "dropwheel"
 authors = []
