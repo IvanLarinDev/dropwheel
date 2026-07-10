@@ -51,7 +51,7 @@ function defaultBase(root) {
 }
 
 // ---------- config shared with guard.js and verify.js ----------
-const { globToRe, loadConfig, changedFiles, normRel } = require(path.join(__dirname, "_lib.js"));
+const { globToRe, loadConfig, isUiPath, changedFiles, normRel } = require(path.join(__dirname, "_lib.js"));
 
 // ---------- DESIGN evidence scan ----------
 function safeVariantFile(file) {
@@ -271,7 +271,6 @@ function hasApprovedMockups(root, m, changed, uiChanged) {
   const cfg = loadConfig(a.root);
   const res = { ok: true, base: a.base, uiChanged: [], mockups: null };
 
-  const uiRes = cfg.uiGlobs.map(globToRe);
   const mockRoot = cfg.mockups.dir.replace(/\\/g, "/").replace(/\/$/, "");
   const cf = changedFiles(a.base, a.root, a.files);
   if (cf.base) res.base = cf.base;
@@ -285,7 +284,7 @@ function hasApprovedMockups(root, m, changed, uiChanged) {
   const files = cf.files.map((f) => f.replace(/\\/g, "/"));
 
   res.uiChanged = files.filter(
-    (f) => !f.startsWith(mockRoot + "/") && uiRes.some((re) => re.test(f))
+    (f) => !f.startsWith(mockRoot + "/") && isUiPath(f, cfg)
   );
 
   if (res.uiChanged.length === 0) {

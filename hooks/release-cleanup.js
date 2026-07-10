@@ -5,21 +5,24 @@
 //
 // Dry-run is the default. --apply authorizes deletion, but only for branches
 // with a known development prefix whose commits are ancestors of --base.
-// Dirty worktrees and diverged refs block cleanup. Unmerged branches block
-// exact mode and are reported-but-skipped in release-wide mode. Tags are never
-// touched. Local and remote deletion use the OIDs that passed ancestry checks.
+// Provider-confirmed squash/rebase cleanup may add --include-equivalent.
+// Dirty worktrees and unique/ambiguous refs block cleanup. Unmerged branches
+// block exact mode and are reported-but-skipped in release-wide mode. Tags are
+// never touched. Local and remote deletion use the OIDs that were classified.
 //
 // Usage:
 //   node hooks/release-cleanup.js [--root <dir>] [--base origin/main]
-//     [--remote origin] [--branch feat/name] [--no-fetch] [--apply] [--json]
+//     [--remote origin] [--branch feat/name] [--no-fetch]
+//     [--include-equivalent] [--apply] [--json]
 
 const path = require("path");
 const { execFileSync } = require("child_process");
+const { classifyRef } = require("./branch-state");
 
 const BRANCH_PREFIXES = [
   "codex/", "feat/", "feature/", "fix/", "bugfix/", "docs/", "chore/",
   "refactor/", "perf/", "build/", "style/", "release/", "hotfix/",
-  "test/", "ci/", "improvement/",
+  "test/", "ci/", "improvement/", "dependabot/", "renovate/", "automation/",
 ];
 const PROTECTED_BRANCHES = new Set(["main", "master"]);
 const RELEASE_PREFIXES = ["release/", "hotfix/"];
@@ -27,7 +30,7 @@ const RELEASE_PREFIXES = ["release/", "hotfix/"];
 function parseArgs(argv) {
   const a = {
     root: process.cwd(), base: "origin/main", remote: "origin",
-    branch: "", fetch: true, apply: false, json: false, argErrors: [],
+    branch: "", fetch: true, apply: false, includeEquivalent: false, json: false, argErrors: [],
   };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--root") a.root = argv[++i];
@@ -38,8 +41,10 @@ function parseArgs(argv) {
       else a.branch = argv[++i];
     }
     else if (argv[i] === "--no-fetch") a.fetch = false;
+    else if (argv[i] === "--include-equivalent") a.includeEquivalent = true;
     else if (argv[i] === "--apply") a.apply = true;
     else if (argv[i] === "--json") a.json = true;
+    else a.argErrors.push(`unknown option: ${argv[i]}`);
   }
   a.root = path.resolve(a.root);
   return a;
@@ -72,10 +77,6 @@ function isPostMergeBranch(name) {
   return isManagedBranch(name) && !RELEASE_PREFIXES.some((prefix) => name.startsWith(prefix));
 }
 
-function isAncestor(root, ref, base) {
-  return result(root, ["merge-base", "--is-ancestor", ref, base]).ok;
-}
-
 function parseWorktrees(text) {
   const out = [];
   let item = null;
@@ -106,7 +107,9 @@ function main(argv = process.argv.slice(2), options = {}) {
     branch: a.branch,
     base: a.base,
     remote: a.remote,
+    includeEquivalent: a.includeEquivalent,
     candidates: [],
+    equivalent: [],
     removedWorktrees: [],
     deletedLocal: [],
     deletedRemote: [],
@@ -165,8 +168,8 @@ function main(argv = process.argv.slice(2), options = {}) {
         report.absent.push(name);
         continue;
       }
-      const localMerged = localExists && isAncestor(a.root, name, a.base);
-      const remoteMerged = !!remoteRef && isAncestor(a.root, remoteRef, a.base);
+      const localState = localExists ? classifyRef(a.root, name, a.base) : { state: "missing", oid: "" };
+      const remoteState = remoteRef ? classifyRef(a.root, remoteRef, a.base) : { state: "missing", oid: "" };
       const entry = {
         branch: name,
         local: localExists,
@@ -174,24 +177,40 @@ function main(argv = process.argv.slice(2), options = {}) {
         remote: !!remoteRef,
         remoteOid: remote ? remote.oid : "",
         worktree: worktreeByBranch.get(name) || "",
+        localState: localState.state,
+        remoteState: remoteState.state,
       };
+      if (localState.state === "equivalent" || remoteState.state === "equivalent") {
+        report.equivalent.push(entry);
+      }
       const reasons = [];
-      if (localExists && !localMerged) reasons.push("local branch contains commits not merged into base");
-      if (remoteRef && !remoteMerged) reasons.push("remote branch contains commits not merged into base");
-      if (!localMerged && !remoteMerged) {
-        const target = a.branch ? report.blocked : report.skipped;
+      const accepted = (state) => state === "merged" || (a.includeEquivalent && state === "equivalent");
+      if (localExists && !accepted(localState.state)) {
+        reasons.push(localState.state === "equivalent"
+          ? "local branch is patch-equivalent to base; provider-confirmed --include-equivalent is required"
+          : `local branch contains commits not merged into base: ${localState.reason}`);
+      }
+      if (remoteRef && !accepted(remoteState.state)) {
+        reasons.push(remoteState.state === "equivalent"
+          ? "remote branch is patch-equivalent to base; provider-confirmed --include-equivalent is required"
+          : `remote branch contains commits not merged into base: ${remoteState.reason}`);
+      }
+      if (reasons.length) {
+        const hasAcceptedRef = (localExists && accepted(localState.state)) || (remoteRef && accepted(remoteState.state));
+        const target = a.branch || hasAcceptedRef ? report.blocked : report.skipped;
         target.push({ ...entry, reasons });
         continue;
       }
-      if (entry.worktree && samePath(entry.worktree, a.root)) reasons.push("branch is checked out in the cleanup worktree");
+      const worktreeReasons = [];
+      if (entry.worktree && samePath(entry.worktree, a.root)) worktreeReasons.push("branch is checked out in the cleanup worktree");
       if (entry.worktree && !samePath(entry.worktree, a.root)) {
         const status = result(entry.worktree, ["status", "--porcelain"]);
-        if (!status.ok) reasons.push("cannot inspect linked worktree");
-        else if (status.out) reasons.push("linked worktree is dirty");
+        if (!status.ok) worktreeReasons.push("cannot inspect linked worktree");
+        else if (status.out) worktreeReasons.push("linked worktree is dirty");
       }
 
-      if (reasons.length) {
-        report.blocked.push({ ...entry, reasons });
+      if (worktreeReasons.length) {
+        report.blocked.push({ ...entry, reasons: worktreeReasons });
         continue;
       }
       report.candidates.push(entry);
@@ -234,6 +253,7 @@ function main(argv = process.argv.slice(2), options = {}) {
   } else {
     console.log(`${label} (${a.apply ? "apply" : "dry-run"}): ${a.base}`);
     for (const entry of report.candidates) console.log(`  ${a.apply ? "deleted" : "candidate"}: ${entry.branch}`);
+    for (const entry of report.equivalent) console.log(`  equivalent: ${entry.branch}`);
     for (const entry of report.blocked) console.log(`  blocked: ${entry.branch} (${entry.reasons.join("; ")})`);
     for (const entry of report.skipped) console.log(`  skipped: ${entry.branch} (${entry.reasons.join("; ")})`);
     for (const branch of report.absent) console.log(`  absent: ${branch}`);

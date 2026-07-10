@@ -15,10 +15,12 @@
 //     --allow-missing-tag do not require a local tag at HEAD yet
 //     --allow-remote-tag  allow the tag to already exist on origin
 //     --require-tag-in-base require the tag commit to be an ancestor of --base
+//     --require-release-tip require --base to be the exact merge commit for the tagged release PR
 
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
+const { loadReleaseConfig, includesAutoManifest } = require("./release-config.js");
 
 const SKIP_DIRS = new Set([".git", "node_modules", "target", "bin", "obj", "dist", "build", ".venv", "venv", "__pycache__", ".next"]);
 const MAX_DEPTH = 6;
@@ -33,6 +35,7 @@ function parseArgs(argv) {
     allowMissingTag: false,
     allowRemoteTag: false,
     requireTagInBase: false,
+    requireReleaseTip: false,
   };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--root") a.root = argv[++i];
@@ -43,6 +46,7 @@ function parseArgs(argv) {
     else if (argv[i] === "--allow-missing-tag") a.allowMissingTag = true;
     else if (argv[i] === "--allow-remote-tag") a.allowRemoteTag = true;
     else if (argv[i] === "--require-tag-in-base") a.requireTagInBase = true;
+    else if (argv[i] === "--require-release-tip") { a.requireReleaseTip = true; a.requireTagInBase = true; }
   }
   a.root = path.resolve(a.root);
   return a;
@@ -152,13 +156,24 @@ function pyprojectVersion(abs, rel) {
   return version ? { rel, kind: "pyproject.toml", version } : null;
 }
 
-function collectVersions(root) {
+function collectVersions(root, contract) {
   const versions = [];
-  walk(root, (abs, rel) => {
+  const errors = contract.versioning.invalid.map((value) => `invalid release.versioning.manifests path: ${value}`);
+  if (contract.versioning.explicit && !contract.versioning.manifests.length && !contract.versioning.allowMissing)
+    errors.push("release.versioning.manifests is empty but allowMissing is false");
+  const inspect = (abs, rel, configured) => {
     const hit = csprojVersion(abs, rel) || packageJsonVersion(abs, rel) || cargoVersion(abs, rel) || pyprojectVersion(abs, rel);
     if (hit) versions.push(hit);
-  });
-  return versions;
+    else if (configured) errors.push(`configured file is missing or is not a supported version manifest: ${rel}`);
+  };
+  if (contract.versioning.explicit) {
+    for (const rel of contract.versioning.manifests) inspect(path.join(root, rel), rel, true);
+  } else {
+    walk(root, (abs, rel) => {
+      if (includesAutoManifest(rel, contract.versioning)) inspect(abs, rel, false);
+    });
+  }
+  return { versions, errors };
 }
 
 function checkGitState(a, res) {
@@ -182,6 +197,20 @@ function checkGitState(a, res) {
         fail(res, `cannot verify tag ancestry in ${a.base}: local tag is missing`);
       } else if (gitOk(a.root, ["merge-base", "--is-ancestor", tagRef, a.base])) {
         pass(res, `tag ${a.tag} is included in ${a.base}`);
+        if (a.requireReleaseTip) {
+          const tagCommit = gitOut(a.root, ["rev-parse", tagRef]);
+          const baseCommit = gitOut(a.root, ["rev-parse", a.base]);
+          const parents = gitOut(a.root, ["show", "-s", "--format=%P", baseCommit]).split(/\s+/).filter(Boolean);
+          if (parents.length !== 2) {
+            fail(res, `${a.base} must be the exact two-parent release merge commit`, { base: baseCommit, parents });
+          } else if (parents[1] !== tagCommit) {
+            fail(res, `release merge second parent must equal tag ${a.tag}`, { tag: tagCommit, secondParent: parents[1] });
+          } else if (!gitOk(a.root, ["merge-base", "--is-ancestor", parents[0], tagRef])) {
+            fail(res, `release tag ${a.tag} does not include the merge base parent`, { firstParent: parents[0], tag: tagCommit });
+          } else {
+            pass(res, `${a.base} is the exact release merge for ${a.tag}`);
+          }
+        }
       } else {
         fail(res, `tag ${a.tag} is not included in ${a.base}`);
       }
@@ -235,11 +264,15 @@ function checkTag(a, res, version) {
   else pass(res, `remote tag does not exist yet: ${a.tag}`);
 }
 
-function checkVersions(a, res, version) {
+function checkVersions(a, res, version, contract) {
   if (!version) return;
-  const versions = collectVersions(a.root);
+  const collected = collectVersions(a.root, contract);
+  for (const error of collected.errors) fail(res, error);
+  const versions = collected.versions;
   if (!versions.length) {
-    warn(res, "no project version manifests found");
+    contract.versioning.allowMissing
+      ? pass(res, "release contract allows no project version manifest")
+      : warn(res, "no project version manifests found");
     return;
   }
   const mismatches = versions.filter((v) => v.version !== version);
@@ -250,7 +283,8 @@ function checkVersions(a, res, version) {
   }
 }
 
-function checkChangelog(a, res) {
+function checkChangelog(a, res, contract) {
+  if (!contract.changelog) { pass(res, "release contract does not require CHANGELOG.md"); return; }
   const p = path.join(a.root, "CHANGELOG.md");
   let text = "";
   try { text = fs.readFileSync(p, "utf8"); } catch { fail(res, "CHANGELOG.md not found"); return; }
@@ -264,15 +298,17 @@ function main() {
     ok: true,
     tag: a.tag,
     root: a.root,
-    mode: a.requireTagInBase ? "post-merge" : "prepare",
+    mode: a.requireReleaseTip ? "release-tip" : a.requireTagInBase ? "post-merge" : "prepare",
     results: [],
   };
   const version = semverFromTag(a.tag);
+  const contract = loadReleaseConfig(a.root);
 
+  if (contract.provider === "none") fail(res, "release capability is disabled in harness.config.json");
   checkGitState(a, res);
   checkTag(a, res, version);
-  checkVersions(a, res, version);
-  checkChangelog(a, res);
+  checkVersions(a, res, version, contract);
+  checkChangelog(a, res, contract);
 
   res.ok = !res.results.some((r) => r.level === "FAIL");
   if (a.json) {

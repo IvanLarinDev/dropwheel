@@ -7,6 +7,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { loadReleaseConfig, includesAutoManifest } = require("./release-config.js");
 
 const SKIP_DIRS = new Set([".git", "node_modules", "target", "bin", "obj", "dist", "build", ".venv", "venv", "__pycache__", ".next"]);
 const MAX_DEPTH = 6;
@@ -129,20 +130,45 @@ function main() {
   const a = parseArgs(process.argv.slice(2));
   const version = a.version || semverFromTag(a.tag);
   const res = { ok: true, root: a.root, tag: a.tag, version, dryRun: a.dryRun, results: [], manifests: [] };
+  const contract = loadReleaseConfig(a.root);
 
-  if (!validVersion(version)) {
+  if (contract.provider === "none") {
+    fail(res, "release capability is disabled in harness.config.json");
+  } else if (!validVersion(version)) {
     fail(res, "release version is required; pass --tag vX.Y.Z or --version X.Y.Z");
   } else {
-    walk(a.root, (abs, rel) => {
-      try {
-        const hit = updateManifest(abs, rel, version, a.dryRun);
-        if (hit) res.manifests.push(hit);
-      } catch (e) {
-        fail(res, `could not update ${rel}: ${e.message || e}`);
+    for (const value of contract.versioning.invalid) fail(res, `invalid release.versioning.manifests path: ${value}`);
+    if (contract.versioning.explicit && !contract.versioning.manifests.length && !contract.versioning.allowMissing)
+      fail(res, "release.versioning.manifests is empty but allowMissing is false");
+    if (contract.versioning.explicit) {
+      for (const rel of contract.versioning.manifests) {
+        const abs = path.join(a.root, rel);
+        if (!fs.existsSync(abs)) {
+          fail(res, `configured version manifest is missing: ${rel}`);
+          continue;
+        }
+        try {
+          const hit = updateManifest(abs, rel, version, a.dryRun);
+          hit ? res.manifests.push(hit) : fail(res, `configured file is not a supported version manifest: ${rel}`);
+        } catch (e) {
+          fail(res, `could not update ${rel}: ${e.message || e}`);
+        }
       }
-    });
+    } else {
+      walk(a.root, (abs, rel) => {
+        if (!includesAutoManifest(rel, contract.versioning)) return;
+        try {
+          const hit = updateManifest(abs, rel, version, a.dryRun);
+          if (hit) res.manifests.push(hit);
+        } catch (e) {
+          fail(res, `could not update ${rel}: ${e.message || e}`);
+        }
+      });
+    }
     if (!res.manifests.length) {
-      warn(res, "no project version manifests found");
+      contract.versioning.allowMissing
+        ? pass(res, "release contract allows no project version manifest")
+        : warn(res, "no project version manifests found");
     } else {
       const changed = res.manifests.filter((m) => m.changed);
       changed.length
