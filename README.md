@@ -51,7 +51,7 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Drop text             | drag selected text onto a folder → saves `text_<date>.txt` (`.md` if it looks like Markdown) |
 | Open with an app      | drag files onto an .exe/.bat/.ps1/… target → runs it with them as arguments |
 | Force copy / move     | hold Ctrl / Shift while dropping on a target tile   |
-| Undo last drop        | click “Undo” in the toast (6 s)                    |
+| Undo last drop or add | click “Undo” in the toast (6 s)                    |
 | Edit a target         | right-click its tile                               |
 | Add a target          | drop a folder/exe/link onto the “+” tile or the orb |
 | Pin a target from the desktop | Alt+Shift-drag the orb onto a folder, app or file in Explorer or on the desktop — it’s pinned first, next to the hub |
