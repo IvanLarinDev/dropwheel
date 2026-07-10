@@ -165,8 +165,7 @@ if ($Mode -eq "New") {
       roots = [ordered]@{
         pipeline = "C:\Users\poweruser\projects\csharp\dropwheel-release"
         dropwheelAccepted = "C:\Users\poweruser\projects\csharp\dropwheel-release"
-        agentsDevelopment = "C:\Users\poweruser\projects\llms\agents"
-        agentsAccepted = "C:\Users\poweruser\projects\llms\agents-main"
+        agents = "C:\Users\poweruser\projects\llms\agents"
         automation = "C:\Users\poweruser\.codex\automations\dropwheel-pipeline-orchestrator"
       }
       budgets = [ordered]@{

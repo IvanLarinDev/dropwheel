@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [string]$AgentsRoot = "C:\Users\poweruser\projects\llms\agents-main",
+  [string]$AgentsRoot = "C:\Users\poweruser\projects\llms\agents",
   [string]$DropwheelRoot = "",
   [string]$ReportRoot = "",
   [string]$WorktreeRoot = "",
