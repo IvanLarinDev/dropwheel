@@ -31,6 +31,19 @@ public sealed class ExecutableTargetTests
         Assert.False(t.IsExecutable);
     }
 
+    [Theory]
+    [InlineData("tg://resolve?domain=telegram")]
+    [InlineData("https://t.me/telegram")]
+    [InlineData("https://example.com/docs")]
+    public void Uri_targets_count_as_existing_quick_access_targets(string path)
+    {
+        var t = new TargetItem { Name = "link", Path = path };
+
+        Assert.True(t.IsUri);
+        Assert.True(t.Exists);
+        Assert.False(t.IsExecutable);
+    }
+
     [Fact]
     public void BuildArgs_quotes_and_joins_paths()
     {

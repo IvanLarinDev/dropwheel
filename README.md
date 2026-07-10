@@ -53,7 +53,7 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Force copy / move     | hold Ctrl / Shift while dropping                   |
 | Undo last drop        | click “Undo” in the toast (6 s)                    |
 | Edit a target         | right-click its tile                               |
-| Add a target          | drop a folder/exe onto the “+” tile or the orb     |
+| Add a target          | drop a folder/exe/link onto the “+” tile or the orb |
 | Create a group        | right-click the orb → “New group…”                 |
 | Enter a group         | click its tile, or hover it for 0.5 s while dragging |
 | Sort a sorter now     | middle-click a sorter tile                         |
@@ -150,6 +150,13 @@ on its tile runs it with the dropped files as arguments — the Windows "open wi
 behaviour, shown with a ▶ badge. Scripts the shell would only open in an editor
 (`.ps1`, `.py`, `.jar`) are launched through their interpreter. This is a launch,
 not a file operation, so it isn't undoable.
+
+## Link targets
+
+Drop a link such as `tg://resolve?domain=telegram` or `https://t.me/telegram`
+onto the orb or the “+” tile to create a quick-access target. Clicking that tile
+opens the link through Windows, so Telegram deep links open in Telegram Desktop
+when the `tg://` protocol is registered.
 
 ## Themes
 

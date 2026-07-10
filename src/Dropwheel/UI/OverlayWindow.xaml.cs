@@ -44,6 +44,7 @@ public partial class OverlayWindow : Window
         Orb.MouseLeave += (_, _) => _hoverTimer.Stop();
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
         Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud(); };
+        Orb.DragOver += OnAddTargetDragOver;
         Orb.Drop += OnOrbDrop; // dropping on the orb adds a target
 
         var orbMenu = new System.Windows.Controls.ContextMenu();

@@ -27,7 +27,7 @@ public partial class OverlayWindow
             {
                 Width = 32,
                 Height = 32,
-                Source = IconService.GetIcon(t.Path),
+                Source = IconService.GetIcon(t),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };

@@ -52,7 +52,7 @@ public partial class OverlayWindow
                 e.Handled = true;
                 return;
             }
-            e.Effects = DragDropEffects.Link;
+            e.Effects = CanAddTarget(e.Data) ? AddTargetDropEffect(e) : DragDropEffects.None;
             e.Handled = true;
         };
         panel.Drop += (_, e) =>
