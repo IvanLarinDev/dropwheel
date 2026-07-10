@@ -72,6 +72,15 @@
       background: rgba(255,255,255,.05); color: #9aa5b3; border: 1px solid rgba(255,255,255,.12);
     }
     .themes button.on { background: rgba(124,196,255,.18); color: #cfe6ff; border-color: rgba(124,196,255,.5); }
+    .anno { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .legend { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+    .legend li { display: flex; gap: 10px; font-size: 13.5px; color: #9aa5b3; line-height: 1.4; }
+    .legend .n {
+      flex: 0 0 auto; width: 21px; height: 21px; border-radius: 50%;
+      background: rgba(124,196,255,.18); color: #cfe6ff; border: 1px solid rgba(124,196,255,.45);
+      font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin-top: 1px;
+    }
+    .legend b { color: #cfe6ff; font-weight: 600; }
     .soon {
       opacity: .5;
       font-size: 13px; color: #8b95a4;
@@ -146,6 +155,29 @@
           </div>
           <button class="btn" id="replay-open">▶ Открыть заново</button>
         </div>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage" id="stage-gloss">
+        <canvas id="scene-gloss"></canvas>
+        <canvas id="gloss-anno" class="anno"></canvas>
+      </div>
+      <div class="about">
+        <h2>Элементы интерфейса</h2>
+        <p>Как называются части колеса — пригодится при чтении настроек, отчётов об
+           ошибках и этой документации. Цифры на колесе соответствуют списку:</p>
+        <ol class="legend">
+          <li><span class="n">1</span><span><b>Хаб / орб</b> — центр открытого колеса; в свёрнутом виде это орб, плавающая кнопка на рабочем столе. Бросок на него добавляет цель.</span></li>
+          <li><span class="n">2</span><span><b>Обод</b> — внешнее кольцо, вдоль которого расставлены тайлы.</span></li>
+          <li><span class="n">3</span><span><b>Спицы</b> — направляющие от хаба к тайлам; подсвечиваются при наведении.</span></li>
+          <li><span class="n">4</span><span><b>Тайл-цель</b> — квадратная цель для сброса: папка, приложение (run-цель), группа или сортер.</span></li>
+          <li><span class="n">5</span><span><b>Подпись тайла</b> — имя цели под тайлом.</span></li>
+          <li><span class="n">6</span><span><b>Тайл «Add»</b> — штриховой «+»; создаёт новую цель на текущем уровне.</span></li>
+          <li><span class="n">7</span><span><b>Бейдж</b> — маркер действия или статуса на тайле: копирование ⧉, перемещение ➜, запуск ▶, сортер ⇅.</span></li>
+          <li><span class="n">8</span><span><b>Группа</b> — тайл, открывающий вложенный уровень; показывает число вложенных целей и код.</span></li>
+          <li><span class="n">9</span><span><b>Сортер</b> — папка с правилами (янтарная рамка, ⇅), раскладывает файлы по подпапкам.</span></li>
+        </ol>
       </div>
     </section>
 
@@ -885,6 +917,47 @@
       requestAnimationFrame(orbScene);
     }
     requestAnimationFrame(orbScene);
+
+    // ---- Глоссарий: колесо с пронумерованными маркерами частей интерфейса ----
+    const gloss = new DW.Wheel(document.getElementById("scene-gloss"), ROOT_TILES, { startOpen: true, hover: false });
+    gloss.badges.set(1, "copy"); // показать бейдж на Documents для пункта 7
+    const anno = document.getElementById("gloss-anno");
+    const actx = anno.getContext("2d");
+    function drawAnno() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = anno.clientWidth || 460;
+      anno.width = Math.round(w * dpr); anno.height = Math.round(w * dpr);
+      const k = (anno.width / dpr) / 460;
+      actx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
+      actx.clearRect(0, 0, 460, 460);
+      const NN = ROOT_TILES.length;
+      const A = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / NN;
+      const tc = (i) => ({ x: 230 + 170 * Math.cos(A(i)), y: 230 + 170 * Math.sin(A(i)) - 8 });
+      const midA = A(0) + (Math.PI / NN);
+      const pts = [
+        { n: 1, x: 230, y: 230 },                                                 // хаб
+        { n: 2, x: 230 + 170 * Math.cos(midA), y: 230 + 170 * Math.sin(midA) },   // обод
+        { n: 3, x: 230 + 59 * Math.cos(A(8)), y: 230 + 59 * Math.sin(A(8)) },     // спицы
+        { n: 4, x: tc(0).x, y: tc(0).y },                                         // тайл-цель
+        { n: 5, x: 230, y: 230 + 170 * Math.sin(A(0)) + 40 },                     // подпись
+        { n: 6, x: tc(10).x, y: tc(10).y },                                       // Add
+        { n: 7, x: tc(1).x + 22, y: tc(1).y - 22 },                               // бейдж
+        { n: 8, x: tc(5).x, y: tc(5).y },                                         // группа
+        { n: 9, x: tc(4).x, y: tc(4).y },                                         // сортер
+      ];
+      for (const p of pts) {
+        actx.beginPath(); actx.arc(p.x, p.y, 11, 0, 7);
+        actx.fillStyle = "rgba(18,26,40,.92)"; actx.fill();
+        actx.strokeStyle = "#7cc4ff"; actx.lineWidth = 1.5; actx.stroke();
+        actx.fillStyle = "#cfe6ff"; actx.font = "bold 12px system-ui,-apple-system,Segoe UI,sans-serif";
+        actx.textAlign = "center"; actx.textBaseline = "middle";
+        actx.fillText(String(p.n), p.x, p.y + 0.5);
+      }
+    }
+    drawAnno();
+    window.addEventListener("resize", drawAnno);
+    // перерисовать метки после проигрывания открытия (тайлы встают на места)
+    setTimeout(drawAnno, 900);
   </script>
 </body>
 </html>
