@@ -11,28 +11,11 @@ public partial class OverlayWindow
     /// <summary>How far the arc bows away from the hub, in pixels at its midpoint.</summary>
     private const double PinArcLift = 46;
 
-    private bool _pinRingVisible;
-
-    /// <summary>Shows or hides the accent ring around the orb during an Alt+Shift capture drag: the
-    /// ring lights up while a valid target sits under the cursor, promising that releasing now pins
-    /// it. Guarded by a flag because the move handler fires continuously and would otherwise restart
-    /// the animation on every tick.</summary>
-    private void SetPinRing(bool visible)
-    {
-        if (visible == _pinRingVisible) return;
-        _pinRingVisible = visible;
-
-        var duration = TimeSpan.FromMilliseconds(ScaleTiming(visible ? 140 : 110, AnimationSpeed()));
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-        AnimatePinRing(visible ? 1 : 0, visible ? 1.42 : 1.0, duration, ease);
-    }
-
-    /// <summary>A single outward pulse for a pin that happened while the wheel was closed and no
-    /// tile could fly anywhere. Leaves the ring ready for the next drag.</summary>
+    /// <summary>A single outward pulse of the orb ring — the "captured" confirmation the ghost
+    /// hands off to before the wheel opens.</summary>
     private void PulsePinRing()
     {
-        _pinRingVisible = false;
-        var duration = TimeSpan.FromMilliseconds(ScaleTiming(280, AnimationSpeed()));
+        var duration = TimeSpan.FromMilliseconds(ScaleTiming(300, AnimationSpeed()));
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         var fade = new DoubleAnimation(1, 0, duration);
@@ -40,13 +23,6 @@ public partial class OverlayWindow
         PinRing.BeginAnimation(OpacityProperty, fade);
         PinRingScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.0, 1.9, duration) { EasingFunction = ease });
         PinRingScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.0, 1.9, duration) { EasingFunction = ease });
-    }
-
-    private void AnimatePinRing(double opacity, double scale, TimeSpan duration, IEasingFunction ease)
-    {
-        PinRing.BeginAnimation(OpacityProperty, new DoubleAnimation(opacity, duration) { EasingFunction = ease });
-        PinRingScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(scale, duration) { EasingFunction = ease });
-        PinRingScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(scale, duration) { EasingFunction = ease });
     }
 
     private void ResetPinRing()
