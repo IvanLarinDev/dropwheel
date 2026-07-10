@@ -15,7 +15,7 @@
 </style>
 <main>
   <header>
-    <div><h1>4 · Guided arc</h1><div class="sub">The tile flies from the cursor along a curve, so the link between what you dropped and where it landed is explicit.</div></div>
+    <div><h1>4 · Guided arc</h1><div class="sub">Alt+Shift-drag the orb onto a folder/app/file. The captured tile flies from the release point along a curve, so the link between what you grabbed and where it landed is explicit.</div></div>
     <span class="meta">300&thinsp;ms arc · reuses ArcAnimation</span>
   </header>
   <div class="stage"><svg id="wheel" viewBox="0 0 460 460" width="100%" height="100%"></svg></div>
@@ -87,13 +87,13 @@ async function play() {
     return node;
   });
 
-  phase.textContent = 'Shift held over the orb — ring confirms "pin"';
+  phase.textContent = 'Orb held over a valid target — ring confirms "pin"';
   const ring = el('circle', { cx: CX, cy: CY, r: 28, fill: 'none', stroke: '#7cc4ff', 'stroke-width': 2 });
   svg.appendChild(ring);
   ring.animate([{ r: 28, opacity: 0 }, { r: 40, opacity: 1 }], { duration: 140, easing: EASE, fill: 'forwards' });
   await wait(520);
 
-  phase.textContent = 'Drop — the tile is drawn out of the cursor along a curve';
+  phase.textContent = 'Release — the tile is drawn out of the release point along a curve';
   const target = slot(0, total);
   const mid = arcMid(DROP_POINT, target);
   const guide = el('path', {
@@ -116,7 +116,7 @@ async function play() {
     { duration: ARC_MS, easing: EASE, fill: 'forwards' });
   ring.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' });
   await wait(ARC_MS + 280);
-  phase.textContent = 'Pinned. The curve ties the dropped file to its new tile.';
+  phase.textContent = 'Pinned. The curve ties the captured object to its new tile.';
 }
 
 document.getElementById('replay').addEventListener('click', play);

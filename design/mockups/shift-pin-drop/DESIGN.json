@@ -3,7 +3,7 @@
   "feature": "shift-pin-drop",
   "kind": "animation",
   "fidelity": "js",
-  "example": "Shift+drop on the orb pins a new target: orb feedback ring during drag, then the new tile lands first on the rim",
+  "example": "Alt+Shift-drag the orb onto a folder/app/file: a pin ring lights while the orb is over a valid target, then the captured tile lands first on the rim along a guided arc",
   "variants": [
     {
       "file": "01-direct-ease.html",

@@ -54,13 +54,13 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Undo last drop        | click “Undo” in the toast (6 s)                    |
 | Edit a target         | right-click its tile                               |
 | Add a target          | drop a folder/exe/link onto the “+” tile or the orb |
-| Pin a new target      | hold Shift while dropping it — it lands first, next to the hub |
+| Pin a target from the desktop | Alt+Shift-drag the orb onto a folder, app or file in Explorer or on the desktop — it’s pinned first, next to the hub |
 | Create a group        | right-click the orb → “New group…”                 |
 | Enter a group         | click its tile, or hover it for 0.5 s while dragging |
 | Enter by group code   | hover the orb and type the group's one- or two-digit badge |
 | Sort a sorter now     | middle-click a sorter tile                         |
 | Reorder tiles         | left-drag a target tile onto another tile; drop on “+” to move it last |
-| Move the orb          | Alt + left-drag (any monitor)                      |
+| Move the orb          | Alt + left-drag (any monitor); add Shift to pin instead |
 | Wheel at cursor       | Ctrl+Alt+Space (configurable)                      |
 | Settings              | tray icon or orb context menu                      |
 

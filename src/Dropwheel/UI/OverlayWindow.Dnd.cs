@@ -142,7 +142,7 @@ public partial class OverlayWindow
                 ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
                 : "Nothing to save", saved.Length > 0);
         }
-        else if (AddTargetsFromDrop(e.Data, _currentGroup, pinned: false))
+        else if (AddTargetsFromDrop(e.Data, _currentGroup))
         {
         }
         else if (LinkTargetService.HasSavedMessagesLabel(e.Data))

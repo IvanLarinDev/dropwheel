@@ -11,9 +11,7 @@ public partial class OverlayWindow
     /// the target goes into it; otherwise into the root.</summary>
     private void OnOrbDrop(object sender, DragEventArgs e)
     {
-        SetPinRing(false);
-        if (AddTargetsFromDrop(e.Data, _currentGroup, AddTargetIntent.ShouldPin(e.KeyStates), e.GetPosition(this)))
-            e.Handled = true;
+        if (AddTargetsFromDrop(e.Data, _currentGroup)) e.Handled = true;
     }
 
     /// <summary>A quick drop on a group bubble (before hover-expand fires)
@@ -21,18 +19,12 @@ public partial class OverlayWindow
     private void OnGroupDrop(TargetItem group, DragEventArgs e)
     {
         _groupHover?.Stop();
-        SetPinRing(false);
-        if (AddTargetsFromDrop(e.Data, group, AddTargetIntent.ShouldPin(e.KeyStates), e.GetPosition(this)))
-            e.Handled = true;
+        if (AddTargetsFromDrop(e.Data, group)) e.Handled = true;
     }
 
-    /// <summary>Also decides whether the orb wears its pin ring: the ring is the drag-time promise
-    /// that releasing now pins the target.</summary>
     private void OnAddTargetDragOver(object sender, DragEventArgs e)
     {
-        bool canAdd = CanAddTarget(e.Data);
-        e.Effects = canAdd ? AddTargetDropEffect(e) : DragDropEffects.None;
-        SetPinRing(canAdd && AddTargetIntent.ShouldPin(e.KeyStates));
+        e.Effects = CanAddTarget(e.Data) ? AddTargetDropEffect(e) : DragDropEffects.None;
         e.Handled = true;
     }
 
@@ -46,24 +38,24 @@ public partial class OverlayWindow
         return DragDropEffects.None;
     }
 
-    private bool AddTargetsFromDrop(IDataObject data, TargetItem? group, bool pinned, Point? origin = null)
+    private bool AddTargetsFromDrop(IDataObject data, TargetItem? group)
     {
         if (data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0)
         {
-            AddTargets(paths.Select(TargetFromPath), group, pinned, origin);
+            AddTargets(paths.Select(TargetFromPath), group);
             return true;
         }
 
         if (LinkTargetService.CreateTarget(data) is { } linkTarget)
         {
-            AddTargets(new[] { linkTarget }, group, pinned, origin);
+            AddTargets(new[] { linkTarget }, group);
             return true;
         }
 
         if (LinkTargetService.HasSavedMessagesLabel(data)
             && PromptSavedMessagesTarget() is { } savedMessagesTarget)
         {
-            AddTargets(new[] { savedMessagesTarget }, group, pinned, origin);
+            AddTargets(new[] { savedMessagesTarget }, group);
             return true;
         }
 
@@ -96,8 +88,8 @@ public partial class OverlayWindow
     }
 
     /// <summary>Adds targets to a level. When <paramref name="pinned"/> is set the items are pinned
-    /// back-to-front, so a multi-file drop keeps its original order at the head of the level, and
-    /// they fly from <paramref name="origin"/> to their new slots.</summary>
+    /// back-to-front, so a multi-item batch keeps its original order at the head of the level, and
+    /// they fly in from <paramref name="origin"/> (the orb centre by default).</summary>
     private void AddTargets(IEnumerable<TargetItem> targets, TargetItem? group, bool pinned = false, Point? origin = null)
     {
         var items = targets.ToArray();

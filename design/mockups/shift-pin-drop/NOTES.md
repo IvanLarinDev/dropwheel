@@ -1,7 +1,7 @@
 # Mockups - shift-pin-drop
 
 DESIGN classification: `animation` / `js`.
-Concrete example: Shift+drop on the orb pins a new target: orb feedback ring during drag, then the new tile lands first on the rim.
+Concrete example: Alt+Shift-drag the orb onto a folder/app/file in Explorer or on the desktop. A pin ring lights while the orb is over a valid target; on release the captured tile lands first on the rim along a guided arc.
 
 ## Review rule
 

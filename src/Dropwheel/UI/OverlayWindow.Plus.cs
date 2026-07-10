@@ -3,7 +3,6 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Dropwheel.Models;
-using Dropwheel.Services;
 
 namespace Dropwheel.UI;
 
@@ -53,12 +52,9 @@ public partial class OverlayWindow
                 e.Handled = true;
                 return;
             }
-            bool canAdd = CanAddTarget(e.Data);
-            e.Effects = canAdd ? AddTargetDropEffect(e) : DragDropEffects.None;
-            SetPinRing(canAdd && AddTargetIntent.ShouldPin(e.KeyStates));
+            e.Effects = CanAddTarget(e.Data) ? AddTargetDropEffect(e) : DragDropEffects.None;
             e.Handled = true;
         };
-        panel.DragLeave += (_, _) => SetPinRing(false);
         panel.Drop += (_, e) =>
         {
             if (IsTileReorderDrag(e))

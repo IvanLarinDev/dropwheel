@@ -24,18 +24,25 @@ public partial class OverlayWindow
 
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        switch (OrbGesture.Classify(Keyboard.Modifiers))
         {
-            CloseCloud();
-            _movingOrb = true;
-            DragMove(); // blocks until the button is released
-            _movingOrb = false;
-            TargetStore.Config.OrbX = Left + HalfSize;
-            TargetStore.Config.OrbY = Top + HalfSize;
-            TargetStore.Save();
-            UpdateOrbScreenPos();
+            case OrbDragKind.Capture:
+                BeginOrbCapture(); // Alt+Shift: drag the orb onto a folder/app/file to pin it
+                break;
+            case OrbDragKind.Move:
+                CloseCloud();
+                _movingOrb = true;
+                DragMove(); // blocks until the button is released
+                _movingOrb = false;
+                TargetStore.Config.OrbX = Left + HalfSize;
+                TargetStore.Config.OrbY = Top + HalfSize;
+                TargetStore.Save();
+                UpdateOrbScreenPos();
+                break;
+            default:
+                ToggleCloud();
+                break;
         }
-        else ToggleCloud();
         e.Handled = true;
     }
 

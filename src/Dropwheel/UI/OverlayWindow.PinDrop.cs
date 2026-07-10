@@ -13,9 +13,10 @@ public partial class OverlayWindow
 
     private bool _pinRingVisible;
 
-    /// <summary>Shows or hides the accent ring around the orb while a Shift-drag hovers it: the ring
-    /// is the only sign that dropping now pins the target instead of just adding it. Guarded by a
-    /// flag because DragOver fires continuously and would restart the animation on every tick.</summary>
+    /// <summary>Shows or hides the accent ring around the orb during an Alt+Shift capture drag: the
+    /// ring lights up while a valid target sits under the cursor, promising that releasing now pins
+    /// it. Guarded by a flag because the move handler fires continuously and would otherwise restart
+    /// the animation on every tick.</summary>
     private void SetPinRing(bool visible)
     {
         if (visible == _pinRingVisible) return;
@@ -57,9 +58,9 @@ public partial class OverlayWindow
         PinRingScale.ScaleX = PinRingScale.ScaleY = 1;
     }
 
-    /// <summary>Guided arc: each pinned tile is drawn from the point where the file was dropped to
-    /// its new slot along a curve bowed away from the hub, keeping the dropped file and the tile it
-    /// became visually linked. Falls back to a hub pulse when the wheel is closed.</summary>
+    /// <summary>Guided arc: each pinned tile is drawn from the orb centre to its new slot along a
+    /// curve bowed away from the hub, so the captured object and the tile it became stay visually
+    /// linked. Falls back to a hub pulse when the wheel is closed.</summary>
     private void AnimatePinnedArrival(IReadOnlyList<TargetItem> pinned, Point origin)
     {
         if (!_open) { PulsePinRing(); return; }
