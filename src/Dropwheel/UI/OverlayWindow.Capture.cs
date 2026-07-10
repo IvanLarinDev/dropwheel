@@ -29,7 +29,8 @@ public partial class OverlayWindow
     /// Alt+Shift click doesn't pin whatever sits behind the orb.</summary>
     private const double CaptureMinTravel = 48;
 
-    private const int GhostSize = 46;
+    private const int GhostSize = 96;    // ghost window box; oversized so the glow has room
+    private const double GhostBall = 42; // the visible ball diameter, centred in the box
 
     private DispatcherTimer? _captureTimer;
     private Window? _ghost;
@@ -142,13 +143,21 @@ public partial class OverlayWindow
         };
         _ghostHalo = new Ellipse
         {
+            Width = GhostBall,
+            Height = GhostBall,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
             Fill = new SolidColorBrush(th.Accent),
             IsHitTestVisible = false,
             Opacity = 0,
-            Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 14 },
+            Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 18 },
         };
         var ball = new Ellipse
         {
+            Width = GhostBall,
+            Height = GhostBall,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
             Fill = new SolidColorBrush(th.HubBg),
             Stroke = new SolidColorBrush(th.HubBorder),
             StrokeThickness = 1,
@@ -188,11 +197,11 @@ public partial class OverlayWindow
         if (_ghostCore == null) return;
         var th = Themes.Current;
         _ghostCore.Fill = new SolidColorBrush(ColorLerp(th.HubBorder, th.Accent, _ghostArm));
-        _ghostCore.Width = _ghostCore.Height = 18 + _ghostArm * 12;
+        _ghostCore.Width = _ghostCore.Height = 16 + _ghostArm * 12;
         if (_ghostHalo != null)
         {
-            _ghostHalo.Opacity = _ghostArm * 0.85;
-            _ghostHalo.Width = _ghostHalo.Height = GhostSize * (0.75 + _ghostArm * 0.55);
+            _ghostHalo.Opacity = _ghostArm * 0.9;
+            _ghostHalo.Width = _ghostHalo.Height = GhostBall * (0.9 + _ghostArm * 1.0);
         }
     }
 
