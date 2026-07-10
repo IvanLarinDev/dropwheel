@@ -86,4 +86,61 @@ public sealed class LinkTargetServiceTests
         Assert.Equal("tg://resolve?domain=telegram", target.Path);
         Assert.Equal("Telegram: telegram", target.Name);
     }
+
+    [Fact]
+    public void CreateTarget_uses_browser_drop_title_when_available()
+    {
+        var data = new WpfDataObject();
+        data.SetData("text/x-moz-url", "https://example.com/article\r\nReadable Article");
+
+        var target = LinkTargetService.CreateTarget(data);
+
+        Assert.NotNull(target);
+        Assert.Equal("https://example.com/article", target.Path);
+        Assert.Equal("https://example.com/article", target.SourceUrl);
+        Assert.Equal("Readable Article", target.Name);
+    }
+
+    [Fact]
+    public void CreateTarget_keeps_source_url_for_telegram_web_links()
+    {
+        var data = new WpfDataObject();
+        data.SetData("text/x-moz-url", "https://t.me/c/2669588230/1\r\nGeneral");
+
+        var target = LinkTargetService.CreateTarget(data);
+
+        Assert.NotNull(target);
+        Assert.Equal("tg://privatepost?channel=2669588230&post=1", target.Path);
+        Assert.Equal("https://t.me/c/2669588230/1", target.SourceUrl);
+        Assert.Equal("General", target.Name);
+    }
+
+    [Fact]
+    public void CreateTarget_uses_html_anchor_text_when_title_is_missing()
+    {
+        const string html = "Version:0.9\r\n<html><body><!--StartFragment--><a href=\"https://example.com/x\">Example &amp; Docs</a><!--EndFragment--></body></html>";
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.Html, html);
+
+        var target = LinkTargetService.CreateTarget(data);
+
+        Assert.NotNull(target);
+        Assert.Equal("https://example.com/x", target.Path);
+        Assert.Equal("Example & Docs", target.Name);
+    }
+
+    [Fact]
+    public void CreateTarget_prefers_titled_browser_candidate_over_url_only_candidate()
+    {
+        const string html = "Version:0.9\r\n<html><body><!--StartFragment--><a href=\"https://example.com/x\">Example Docs</a><!--EndFragment--></body></html>";
+        var data = new WpfDataObject();
+        data.SetData("UniformResourceLocatorW", "https://example.com/x");
+        data.SetData(WpfDataFormats.Html, html);
+
+        var target = LinkTargetService.CreateTarget(data);
+
+        Assert.NotNull(target);
+        Assert.Equal("https://example.com/x", target.Path);
+        Assert.Equal("Example Docs", target.Name);
+    }
 }

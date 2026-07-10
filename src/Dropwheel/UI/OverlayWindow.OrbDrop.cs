@@ -100,5 +100,65 @@ public partial class OverlayWindow
             ? $"Targets added: {items.Length}"
             : $"Added to {group.Name}: {items.Length}");
         if (_open) BuildCloud();
+        RefreshLinkMetadata(items);
     }
+
+    private void RefreshLinkMetadata(TargetItem[] items)
+    {
+        var pending = items
+            .Where(item => LinkMetadataService.SourceUri(item) != null)
+            .Select(item => new PendingLinkMetadata(item, item.Name))
+            .ToArray();
+        if (pending.Length == 0) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var updates = new List<(PendingLinkMetadata Pending, LinkMetadataUpdate Update)>();
+                foreach (var item in pending)
+                {
+                    if (await LinkMetadataService.FetchAsync(item.Target) is { } update)
+                        updates.Add((item, update));
+                }
+
+                if (updates.Count == 0) return;
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    var changed = false;
+                    foreach (var (pendingItem, update) in updates)
+                    {
+                        var target = pendingItem.Target;
+                        if (!TargetStore.AllTargets.Any(item => ReferenceEquals(item, target))) continue;
+
+                        if (!string.IsNullOrWhiteSpace(update.Title)
+                            && target.Name == pendingItem.OriginalName
+                            && target.Name != update.Title)
+                        {
+                            target.Name = update.Title;
+                            changed = true;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(update.IconPath)
+                            && target.IconPath != update.IconPath)
+                        {
+                            target.IconPath = update.IconPath;
+                            changed = true;
+                        }
+                    }
+
+                    if (!changed) return;
+                    TargetStore.Save();
+                    if (_open) BuildCloud();
+                });
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write("Could not refresh link metadata", ex);
+            }
+        });
+    }
+
+    private sealed record PendingLinkMetadata(TargetItem Target, string OriginalName);
 }

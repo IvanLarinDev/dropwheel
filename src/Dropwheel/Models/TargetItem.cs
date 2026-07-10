@@ -9,6 +9,13 @@ public class TargetItem
 {
     public string Name { get; set; } = "";
     public string Path { get; set; } = "";
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SourceUrl { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? IconPath { get; set; }
+
     public DropAction Override { get; set; } = DropAction.Inherit;
     public bool Pinned { get; set; }
 

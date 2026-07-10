@@ -9,6 +9,8 @@ namespace Dropwheel.Services;
 /// <summary>Creates quick-access targets from dragged links such as tg:// and https://t.me/...</summary>
 public static class LinkTargetService
 {
+    private sealed record LinkDropCandidate(string Text, string? Title = null);
+
     private static readonly Regex LaunchUri =
         new(@"\b(?:(?:https?://|tg://)[^\s<>'""]+|(?:t\.me|telegram\.me|telegram\.dog)/[^\s<>'""]+|[a-z0-9_]{2,64}\.t\.me(?:/[^\s<>'""]*)?)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -22,10 +24,10 @@ public static class LinkTargetService
         || data.GetDataPresent("UniformResourceLocator")
         || data.GetDataPresent("text/x-moz-url")
         || data.GetDataPresent(DataFormats.Html)
-        || TextDropService.HasText(data);
+        || TextDropService.HasPotentialText(data);
 
     public static TargetItem? CreateTarget(IDataObject data) =>
-        TryGetLaunchUri(data, out var uriText) ? CreateTarget(uriText) : null;
+        TryGetLaunchUri(data, out var candidate) ? CreateTarget(candidate.Text, candidate.Title) : null;
 
     public static bool HasSavedMessagesLabel(IDataObject data) =>
         TextCandidates(data).Any(IsSavedMessagesText);
@@ -59,7 +61,7 @@ public static class LinkTargetService
     internal static TargetItem? CreateTarget(string text)
     {
         if (!TryExtractLaunchUri(text, out var uriText)) return null;
-        return new TargetItem { Name = NameFor(uriText), Path = TargetPathFor(uriText) };
+        return CreateTarget(uriText, titleHint: null);
     }
 
     internal static bool TryExtractLaunchUri(string? text, out string uriText)
@@ -85,24 +87,41 @@ public static class LinkTargetService
             .Any(line => SavedMessagesLabel.IsMatch(line));
     }
 
-    private static bool TryGetLaunchUri(IDataObject data, out string uriText)
+    private static bool TryGetLaunchUri(IDataObject data, out LinkDropCandidate candidate)
     {
-        foreach (var text in TextCandidates(data))
+        LinkDropCandidate? fallback = null;
+        foreach (var text in LinkDropCandidates(data))
         {
-            if (TryExtractLaunchUri(text, out uriText)) return true;
+            if (!TryExtractLaunchUri(text.Text, out var uriText)) continue;
+            var current = text with { Text = uriText };
+            if (!string.IsNullOrWhiteSpace(current.Title))
+            {
+                candidate = current;
+                return true;
+            }
+
+            fallback ??= current;
         }
 
-        uriText = "";
-        return false;
+        candidate = fallback ?? new LinkDropCandidate("");
+        return fallback != null;
     }
 
     private static IEnumerable<string> TextCandidates(IDataObject data)
+        => LinkDropCandidates(data).Select(candidate => candidate.Text);
+
+    private static IEnumerable<LinkDropCandidate> LinkDropCandidates(IDataObject data)
     {
-        if (ReadData(data, "UniformResourceLocatorW", Encoding.Unicode) is { } urlW) yield return urlW;
-        if (ReadData(data, "UniformResourceLocator", Encoding.Default) is { } url) yield return url;
-        if (ReadData(data, "text/x-moz-url", Encoding.Unicode) is { } moz) yield return FirstLine(moz);
-        if (data.GetData(DataFormats.Html) is string html) yield return html;
-        if (TextDropService.GetText(data) is { } text) yield return text;
+        if (ReadData(data, "UniformResourceLocatorW", Encoding.Unicode) is { } urlW)
+            yield return new LinkDropCandidate(urlW);
+        if (ReadData(data, "UniformResourceLocator", Encoding.Default) is { } url)
+            yield return new LinkDropCandidate(url);
+        if (ReadData(data, "text/x-moz-url", Encoding.Unicode) is { } moz)
+            yield return new LinkDropCandidate(FirstLine(moz), SecondLine(moz));
+        if (data.GetData(DataFormats.Html) is string html)
+            yield return new LinkDropCandidate(html, TitleFromHtml(html));
+        if (TextDropService.GetText(data) is { } text)
+            yield return new LinkDropCandidate(text);
     }
 
     private static string? ReadData(IDataObject data, string format, Encoding encoding)
@@ -129,6 +148,9 @@ public static class LinkTargetService
     private static string FirstLine(string text) =>
         text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)[0];
 
+    private static string? SecondLine(string text) =>
+        text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None).Skip(1).FirstOrDefault()?.Trim();
+
     private static string TrimUri(string value) =>
         value.Trim().TrimEnd('\0', '.', ',', ';', '!', ')', ']', '}');
 
@@ -141,11 +163,59 @@ public static class LinkTargetService
         || value.StartsWith("telegram.dog/", StringComparison.OrdinalIgnoreCase)
         || Regex.IsMatch(value, @"^[a-z0-9_]{2,64}\.t\.me(?:/|$)", RegexOptions.IgnoreCase);
 
-    private static string NameFor(string uriText)
+    private static TargetItem CreateTarget(string uriText, string? titleHint)
+    {
+        var path = TargetPathFor(uriText);
+        return new TargetItem
+        {
+            Name = NameFor(uriText, titleHint),
+            Path = path,
+            SourceUrl = IsWebUri(uriText) ? uriText : null,
+        };
+    }
+
+    private static string NameFor(string uriText, string? titleHint)
     {
         if (!Uri.TryCreate(uriText, UriKind.Absolute, out var uri)) return uriText;
+        if (CleanTitle(titleHint, uriText) is { } title) return title;
         if (IsTelegramUri(uri)) return TelegramName(uri);
         return string.IsNullOrWhiteSpace(uri.Host) ? uriText : uri.Host;
+    }
+
+    private static string? CleanTitle(string? title, string uriText)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return null;
+        title = Regex.Replace(title, @"\s+", " ").Trim();
+        return title.Length > 0 && !title.Equals(uriText, StringComparison.OrdinalIgnoreCase)
+            ? title
+            : null;
+    }
+
+    private static string? TitleFromHtml(string html)
+    {
+        var title = Regex.Match(html, @"(?is)<title[^>]*>(.*?)</title>");
+        if (title.Success) return DecodeHtmlText(title.Groups[1].Value);
+
+        var anchor = Regex.Match(HtmlFragment(html), @"(?is)<a\b[^>]*>(.*?)</a>");
+        return anchor.Success ? DecodeHtmlText(anchor.Groups[1].Value) : null;
+    }
+
+    private static string HtmlFragment(string html)
+    {
+        const string startMarker = "<!--StartFragment-->";
+        const string endMarker = "<!--EndFragment-->";
+        var markerStart = html.IndexOf(startMarker, StringComparison.OrdinalIgnoreCase);
+        var markerEnd = html.IndexOf(endMarker, StringComparison.OrdinalIgnoreCase);
+        if (markerStart >= 0 && markerEnd > markerStart)
+            return html[(markerStart + startMarker.Length)..markerEnd];
+
+        return html;
+    }
+
+    private static string DecodeHtmlText(string value)
+    {
+        value = Regex.Replace(value, "<[^>]+>", "");
+        return System.Net.WebUtility.HtmlDecode(value).Trim();
     }
 
     private static string TargetPathFor(string uriText)
@@ -159,6 +229,10 @@ public static class LinkTargetService
     private static bool IsTelegramWebUri(Uri uri) =>
         uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
         || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsWebUri(string uriText) =>
+        Uri.TryCreate(uriText, UriKind.Absolute, out var uri)
+        && IsTelegramWebUri(uri);
 
     private static string? TelegramWebDeepLink(Uri uri)
     {
