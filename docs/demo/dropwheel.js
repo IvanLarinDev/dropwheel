@@ -179,6 +179,13 @@ const DW = (() => {
       ctx.fillStyle = "#0d1017";
       ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, 7); ctx.fill();
     },
+    globe: (ctx) => {
+      ctx.strokeStyle = "#8fb8e6"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 12, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 0, 5, 12, 0, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(12, 0);
+      ctx.moveTo(-10, -6); ctx.lineTo(10, -6); ctx.moveTo(-10, 6); ctx.lineTo(10, 6); ctx.stroke();
+    },
   };
 
   /**
@@ -212,6 +219,8 @@ const DW = (() => {
       this.tileAngles = null;         // массив углов на тайл (перестановка по ободу)
       this.tileMul = null;            // {index: множитель прозрачности} — дим не-совпавших групп
       this.orbBadge = null;           // строка кода на хабе (индикатор группового ввода)
+      this.orbOffset = { x: 0, y: 0 };// смещение хаба от центра (перемещение орба)
+      this.orbAlpha = 1;              // прозрачность хаба (затухание при простое)
       // startOpen: колесо уже раскрыто (для статичных сцен), иначе играем открытие
       this.t0 = opts.startOpen ? performance.now() - 4000 : performance.now();
       this._fit();
@@ -578,6 +587,10 @@ const DW = (() => {
     _drawHub(ctx) {
       // orbPulse (0..1) раздувает ореол при приближении drag'а; orbLook смещает
       // ядро «взглядом» в сторону курсора — как проксимити-реакция в приложении.
+      // orbOffset двигает хаб (перемещение орба), orbAlpha — затухание при простое.
+      ctx.save();
+      ctx.translate(this.orbOffset.x, this.orbOffset.y);
+      ctx.globalAlpha = this.orbAlpha == null ? 1 : this.orbAlpha;
       const pulse = this.orbPulse || 0;
       const look = this.orbLook || { x: 0, y: 0 };
       const haloR = 46 + pulse * 16;
@@ -602,6 +615,7 @@ const DW = (() => {
       for (const [bx, by] of [[0, -19], [0, 19], [-19, 0], [19, 0]]) {
         ctx.beginPath(); ctx.arc(CENTER + bx, CENTER + by, 2, 0, 7); ctx.fill();
       }
+      ctx.restore();
     }
 
     _drawTile(ctx, t, x, y, scale, hot, badge) {
@@ -657,6 +671,13 @@ const DW = (() => {
           ctx.textAlign = "center"; ctx.textBaseline = "middle";
           ctx.fillText(t.num, 0, 1);
         }
+      } else if (t.fav) {
+        // фавикон сайта: цветной квадрат с буквой (после загрузки метаданных)
+        ctx.fillStyle = t.fav.color;
+        roundRect(ctx, -13, -13, 26, 26, 5); ctx.fill();
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 17px system-ui,-apple-system,Segoe UI,sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(t.fav.letter, 0, 1);
       } else {
         (ICONS[t.icon] || ICONS.folder)(ctx);
       }

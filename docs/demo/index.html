@@ -272,6 +272,58 @@
         </p>
       </div>
     </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-link"></canvas></div>
+      <div class="about">
+        <h2>Ссылки, заголовок и фавикон</h2>
+        <p>
+          Ссылку — обычный адрес, <code>tg://</code> или <code>t.me/…</code> — можно
+          бросить на орб или на «+», и появится тайл быстрого доступа. Сначала он
+          показывает просто адрес сайта, а в фоне Dropwheel подтягивает заголовок
+          страницы и фавикон (png/jpg/ico/webp) — тайл обновляется на месте: имя
+          становится названием страницы, а иконкой — значок сайта.
+        </p>
+        <p>
+          Веб-ссылки на Telegram по возможности превращаются в десктопные
+          deep-link'и <code>tg://</code>, так что тайл <code>t.me</code> открывает
+          Telegram Desktop.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-undo"></canvas></div>
+      <div class="about">
+        <h2>Отмена</h2>
+        <p>
+          Почти любое действие можно откатить. После перемещения, копирования,
+          сохранения текста или добавления цели снизу появляется тост со ссылкой
+          «Undo», активной 6 секунд. Клик по ней возвращает файлы на место
+          (копии — в корзину, перемещённые — обратно в источник) или убирает только
+          что добавленный тайл. Запуск программы и фоновая авто-сортировка отмене не
+          подлежат.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-orb"></canvas></div>
+      <div class="about">
+        <h2>Поведение орба</h2>
+        <p>
+          Орб можно перетащить в любое место экрана, зажав <b>Alt</b> и потянув левой
+          кнопкой (на любой монитор; с добавленным Shift вместо перемещения включается
+          закрепление). Его положение запоминается между запусками.
+        </p>
+        <p>
+          Если включено затухание при простое, орб через заданное время бледнеет
+          почти до невидимости, а любое движение мыши поблизости мгновенно его
+          возвращает. Ещё орб сам прячется в полноэкранных приложениях — играх и
+          презентациях — и появляется снова при выходе из них.
+        </p>
+      </div>
+    </section>
   </main>
 
   <script src="dropwheel.js"></script>
@@ -656,6 +708,115 @@
       requestAnimationFrame(reorderScene);
     }
     requestAnimationFrame(reorderScene);
+
+    // ---- Сцена 11: ссылка → заголовок и фавикон ----
+    const LINK_BASE = [
+      { label: "Downloads", icon: "download" }, { label: "Documents", icon: "doc" },
+      { label: "Pictures", icon: "pic" }, { label: "Desktop", icon: "desktop" },
+      { label: "Everything", icon: "search" }, { label: "Add", icon: "plus", add: true },
+    ];
+    const link = new DW.Wheel(document.getElementById("scene-link"), LINK_BASE.slice(), { startOpen: true, hover: false });
+    let lk = { stage: 0, start: performance.now() };
+    function linkReset() { link.tiles = LINK_BASE.slice(); }
+    function linkScene(now) {
+      const el = now - lk.start;
+      const addIdx = link.tiles.length - 1;
+      link.ghost = null; link.forceHot = -1; link.badges.clear(); link.toast = null; link.flash = null;
+      if (lk.stage === 0) {
+        // ссылка-призрак летит на «+»
+        const tgt = link.tileCenter(addIdx);
+        const p = easeOut(clamp01(el / 1000));
+        link.ghost = { x: lerp(START.x, tgt.x, p), y: lerp(START.y, tgt.y, p), mode: "add", label: "example.com", alpha: 1 };
+        if (el > 780) { link.forceHot = addIdx; link.badges.set(addIdx, "add"); }
+        if (el >= 1250) {
+          // вставляем новый тайл перед «+», проигрываем прибытие
+          const t = link.tiles.slice();
+          t.splice(t.length - 1, 0, { label: "example.com", icon: "globe" });
+          link.tiles = t; link.open();
+          lk = { stage: 1, start: now, tileIdx: t.length - 2 };
+        }
+      } else if (lk.stage === 1) {
+        // тайл появился; через паузу приходят метаданные
+        link.forceHot = lk.tileIdx;
+        if (el >= 900) {
+          const nt = link.tiles[lk.tileIdx];
+          nt.label = "Example Domain"; nt.icon = null; nt.fav = { color: "#3b6fd4", letter: "E" };
+          link.flash = { index: lk.tileIdx, p: 0 };
+          lk = { stage: 2, start: now, tileIdx: lk.tileIdx };
+        }
+      } else if (lk.stage === 2) {
+        link.forceHot = lk.tileIdx;
+        if (el < 500) link.flash = { index: lk.tileIdx, p: el / 500 };
+        if (el >= 2200) { linkReset(); lk = { stage: 3, start: now }; }
+      } else {
+        if (el >= 900) lk = { stage: 0, start: now };
+      }
+      requestAnimationFrame(linkScene);
+    }
+    requestAnimationFrame(linkScene);
+
+    // ---- Сцена 12: отмена ----
+    const undo = new DW.Wheel(document.getElementById("scene-undo"), ROOT_TILES, { startOpen: true, hover: false });
+    const UNDO_TARGET = 1; // Documents
+    let ud = { stage: 0, start: performance.now(), cx: 250, cy: 505, click: 0, clicked: false };
+    function undoScene(now) {
+      const el = now - ud.start;
+      const tgt = undo.tileCenter(UNDO_TARGET);
+      undo.forceHot = -1; undo.badges.clear(); undo.ghost = null; undo.flash = null; undo.toast = null; undo.cursor = null;
+      if (ud.stage === 0) {                 // перемещение файла на Documents
+        const p = easeOut(clamp01(el / 1000));
+        undo.ghost = { x: lerp(250, tgt.x, p), y: lerp(505, tgt.y, p), mode: "move", label: "notes.txt", alpha: el < 1100 ? 1 : Math.max(0, 1 - (el - 1100) / 200) };
+        if (el > 780) { undo.forceHot = UNDO_TARGET; undo.badges.set(UNDO_TARGET, "move"); }
+        if (el >= 1100 && el < 1600) undo.flash = { index: UNDO_TARGET, p: (el - 1100) / 500 };
+        undo.toast = { text: "➜ Moved: 1 item → Documents", alpha: clamp01((el - 1200) / 200) };
+        ud.cx += (300 - ud.cx) * 0.12; ud.cy += (423 - ud.cy) * 0.12; // курсор к ссылке Undo
+        undo.cursor = { x: ud.cx, y: ud.cy, click: 0 };
+        if (el >= 2200) ud = { ...ud, stage: 1, start: now, clicked: false };
+      } else if (ud.stage === 1) {          // клик по «Undo»
+        undo.toast = { text: "➜ Moved: 1 item → Documents", alpha: 1 };
+        undo.forceHot = UNDO_TARGET;
+        if (!ud.clicked) { ud.click = 0.001; ud.clicked = true; }
+        if (ud.click > 0) { ud.click += 0.06; if (ud.click >= 1) ud.click = 0; }
+        undo.cursor = { x: 300, y: 423, click: ud.click };
+        if (el >= 500) ud = { ...ud, stage: 2, start: now };
+      } else if (ud.stage === 2) {          // файл возвращается, тост «Undone»
+        const p = easeOut(clamp01(el / 700));
+        undo.ghost = { x: lerp(tgt.x, 250, p), y: lerp(tgt.y, 505, p), mode: "move", label: "notes.txt", alpha: Math.max(0, 1 - p * 0.8) };
+        undo.toast = { text: "↩ Undone", alpha: 1 - clamp01((el - 1200) / 300) };
+        if (el >= 1600) ud = { stage: 3, start: now, cx: 250, cy: 505, click: 0, clicked: false };
+      } else {
+        if (el >= 700) ud = { stage: 0, start: now, cx: 250, cy: 505, click: 0, clicked: false };
+      }
+      requestAnimationFrame(undoScene);
+    }
+    requestAnimationFrame(undoScene);
+
+    // ---- Сцена 13: поведение орба (перемещение + затухание) ----
+    const orb = new DW.Wheel(document.getElementById("scene-orb"), ROOT_TILES, { hover: false });
+    orb.close();
+    function orbScene(now) {
+      const t = now % 6000;
+      orb.cursor = null;
+      if (t < 1600) {
+        // Alt+перетаскивание: орб едет слева направо
+        const p = easeOut(clamp01(t / 1600));
+        orb.orbOffset = { x: lerp(-110, 110, p), y: lerp(40, -30, p) };
+        orb.orbAlpha = 1;
+      } else if (t < 2600) {
+        orb.orbOffset = { x: 110, y: -30 }; orb.orbAlpha = 1;      // осел на месте
+      } else if (t < 3600) {
+        orb.orbAlpha = 1 - 0.72 * clamp01((t - 2600) / 900);      // затухание при простое
+      } else if (t < 4400) {
+        orb.orbAlpha = 0.28;                                       // потускневший орб
+      } else {
+        // курсор приближается — орб просыпается
+        const p = clamp01((t - 4400) / 900);
+        orb.orbAlpha = 0.28 + 0.72 * p;
+        orb.cursor = { x: lerp(360, 300, p), y: lerp(360, 210, p), click: 0 };
+      }
+      requestAnimationFrame(orbScene);
+    }
+    requestAnimationFrame(orbScene);
   </script>
 </body>
 </html>
