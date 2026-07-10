@@ -230,6 +230,104 @@
       requestAnimationFrame(runDropScene);
     }
     requestAnimationFrame(runDropScene);
+
+    // ---- Сцена 3: открытие при приближении ----
+    const prox = new DW.Wheel(document.getElementById("scene-prox"), ROOT_TILES, { hover: false });
+    prox.close();
+    const PROX_FAR = { x: 410, y: 455 }, PROX_NEAR = { x: 230, y: 262 };
+    let px = { stage: 0, start: performance.now() };
+    function proxScene(now) {
+      const el = now - px.start;
+      prox.ghost = null;
+      if (px.stage === 0) {
+        // файл подлетает к закрытому орбу
+        const p = easeOut(clamp01(el / 1400));
+        const gx = lerp(PROX_FAR.x, PROX_NEAR.x, p), gy = lerp(PROX_FAR.y, PROX_NEAR.y, p);
+        prox.ghost = { x: gx, y: gy, mode: "copy", label: "photo.jpg", alpha: 1 };
+        const d = Math.hypot(gx - 230, gy - 230);
+        prox.orbPulse = clamp01((150 - d) / 110);
+        const ux = d > 0 ? (gx - 230) / d : 0, uy = d > 0 ? (gy - 230) / d : 0;
+        prox.orbLook = { x: ux * 4 * prox.orbPulse, y: uy * 4 * prox.orbPulse };
+        if (el >= 1400) { prox.open(); px = { stage: 1, start: now }; }
+      } else if (px.stage === 1) {
+        // колесо раскрылось, ореол спадает
+        prox.ghost = { x: PROX_NEAR.x, y: PROX_NEAR.y, mode: "copy", label: "photo.jpg", alpha: 1 };
+        prox.orbPulse = Math.max(0, 1 - el / 500);
+        prox.orbLook = { x: 0, y: 0 };
+        if (el >= 1700) px = { stage: 2, start: now };
+      } else if (px.stage === 2) {
+        // файл отпущен и гаснет
+        prox.ghost = { x: PROX_NEAR.x, y: PROX_NEAR.y, mode: "copy", label: "photo.jpg", alpha: Math.max(0, 1 - el / 300) };
+        if (el >= 300) { prox.close(); px = { stage: 3, start: now }; }
+      } else {
+        // пауза, орб закрыт
+        prox.orbPulse = 0;
+        if (el >= 900) px = { stage: 0, start: now };
+      }
+      requestAnimationFrame(proxScene);
+    }
+    requestAnimationFrame(proxScene);
+
+    // ---- Сцена 4: вход в группу ----
+    const CHILD_TILES = [
+      { label: "Back", back: true },
+      { label: "web-app", icon: "folder" },
+      { label: "api", icon: "folder" },
+      { label: "docs", icon: "doc" },
+      { label: "Add", icon: "plus", add: true },
+    ];
+    const group = new DW.Wheel(document.getElementById("scene-group"), ROOT_TILES, { startOpen: true, hover: false });
+    let g = { stage: 0, start: performance.now(), cx: 360, cy: 360, click: 0, clicked: false };
+    function groupScene(now) {
+      const el = now - g.start;
+      let desired = { x: 360, y: 360 }, hot = -1;
+      if (g.stage === 0) {
+        desired = group.tileCenter(5);                 // курсор к группе Projects
+        if (el > 750) hot = 5;
+        if (el > 950 && !g.clicked) { g.click = 0.001; g.clicked = true; }
+        if (el >= 1250) { group.tiles = CHILD_TILES; group.open(); g = { ...g, stage: 1, start: now, clicked: false }; }
+      } else if (g.stage === 1) {
+        desired = group.tileCenter(0);                 // курсор к тайлу «Назад»
+        if (el > 1100) hot = 0;
+        if (el > 1300 && !g.clicked) { g.click = 0.001; g.clicked = true; }
+        if (el >= 1650) { group.tiles = ROOT_TILES; group.open(); g = { ...g, stage: 2, start: now, clicked: false }; }
+      } else {
+        desired = { x: 360, y: 360 };                  // назад в исходную, пауза
+        if (el >= 1400) g = { ...g, stage: 0, start: now, clicked: false };
+      }
+      g.cx += (desired.x - g.cx) * 0.14;
+      g.cy += (desired.y - g.cy) * 0.14;
+      if (g.click > 0) { g.click += 0.06; if (g.click >= 1) g.click = 0; }
+      group.forceHot = hot;
+      group.cursor = { x: g.cx, y: g.cy, click: g.click };
+      requestAnimationFrame(groupScene);
+    }
+    requestAnimationFrame(groupScene);
+
+    // ---- Сцена 5: сохранение выделенного текста ----
+    const text = new DW.Wheel(document.getElementById("scene-text"), ROOT_TILES, { startOpen: true, hover: false });
+    const TEXT_TARGET = 1, TEXT_START = { x: 250, y: 505 };
+    const FILENAME = "text_2026-07-10_14-30-11.txt";
+    function textScene(now) {
+      const t = now % 5200;
+      const tgt = text.tileCenter(TEXT_TARGET);
+      text.forceHot = -1; text.badges.clear(); text.ghost = null; text.flash = null; text.toast = null;
+      if (t < 1300) {
+        const p = easeOut(clamp01(t / 1000));
+        text.ghost = { kind: "text", x: lerp(TEXT_START.x, tgt.x, p), y: lerp(TEXT_START.y, tgt.y, p), mode: "txt", label: "выделенный текст", alpha: 1 };
+        if (t > 780) { text.forceHot = TEXT_TARGET; text.badges.set(TEXT_TARGET, "copy"); }
+      } else if (t < 1500) {
+        text.ghost = { kind: "text", x: tgt.x, y: tgt.y, mode: "txt", label: "выделенный текст", alpha: 1 - (t - 1300) / 200 };
+        text.forceHot = TEXT_TARGET; text.badges.set(TEXT_TARGET, "copy");
+      }
+      if (t >= 1300 && t < 1800) text.flash = { index: TEXT_TARGET, p: (t - 1300) / 500 };
+      if (t >= 1400 && t < 4600) {
+        const fi = clamp01((t - 1400) / 150), fo = 1 - clamp01((t - 4400) / 200);
+        text.toast = { text: "Saved " + FILENAME, alpha: Math.min(fi, fo) };
+      }
+      requestAnimationFrame(textScene);
+    }
+    requestAnimationFrame(textScene);
   </script>
 </body>
 </html>
