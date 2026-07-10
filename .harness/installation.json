@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "version": "v0.6.0",
+    "commit": "0527d43134df417284b8969a9ec691576482449c"
+  },
+  "managed": {
+    "hooks/_lib.js": "58818491ad701f09be63a4246a13955c550cac3412d313d2e885db80cdfa19c7",
+    "hooks/verify-core.js": "b05b7a77eeddb2da4c89a9ac7d91f82c6a88a13f65bb52e9e9758de436bc1224",
+    "hooks/verify.js": "905a9334f522cf9293443021e36f1f9013603cdda4f82f6cd07b53b672544f4a",
+    "hooks/design-gate.js": "0dc21685f60994e35a3570bcd51ecf2912a342c289a678733febe1ffb8237fdc",
+    "hooks/doctor.js": "e90ad7e9c1287572d6caf34c61b7fcf4159675a9aab5e665ae0ea8bddd5c9577",
+    "hooks/release-start.js": "1df1bd37d8b900e4e52063935421e026231ba8ce77c1cf68c4e30256053eac06",
+    "hooks/release-config.js": "51ccab9de0be69425f2af71284e051f4b09038be5cc381e122a237e8f9af9d39",
+    "hooks/release-manifest-bump.js": "c4151cfdf6242a30358417630b5c0258a72b5ea6f17d53ba78fb6d1502bf11fb",
+    "hooks/release-preflight.js": "959f7fe256ad117bbe4231d43e677eee02c883db0784de20bf2014b40af8f5cb",
+    "hooks/release-artifacts.js": "b9ae7172993f24333408b5b9f9caf0149cd7ef9531764ef58f609b986b672305",
+    "hooks/branch-state.js": "fefd4550b74f0317b2259f3c877b186279da22ed0cb4521e897db7c6627ce1e7",
+    "hooks/github-branch-cleanup.js": "cc408432c5b68463781442ffed7ebab31d9929b63dbdabd3f88844b2cbdfa90a",
+    "hooks/post-merge-cleanup.js": "dce15cc8c3d59c296a71e3adc9411743de019480d3ed77389ac95d2d856c4d2a",
+    "hooks/release-cleanup.js": "db9b5a486cdb91872485e4be0eae152395b06f0e4d79bb5f6b309b745ac61c36",
+    "hooks/repo-state-audit.js": "c523599cec9a97e48008e15a650e078c2d589f0cb781e35c51d3d0ba4028cfa7",
+    "hooks/new-mockups.js": "6ea0124fb364fb4d0b5430cee3338607e467b21d4cec25ef43cb3614db8424a4",
+    "hooks/apply-ruleset.js": "7d55b7507c3820c06fba3165f23164bcf12786370939e7a5c26fb91080853533",
+    "hooks/branch-guard.js": "8d20ca5b8e2777cb0903c25f34a6f8acef21ef30b0c74479f58965cdee1a5563",
+    "hooks/no-coauthor.js": "617f11157a3d6f7ea8c53e1f74d8fbd9dce0ce2ab69a169e647df728cc463a28",
+    "hooks/agent/_input.js": "105dcb458e215b8516197871c864d885ca403485cbb43d165b50343600ed44ea",
+    "hooks/agent/guard.js": "f44f7fa90f375ffd35fe0f6f25e4ec9b65f2bc08f62671e7c2ec614ea9eac84f",
+    "hooks/agent/stop-reminder.js": "ec6ffe4cd484ffc50edb9455bb9b574ac01a9c2902aa47e55e6c5709c284aa7d",
+    "lefthook.yml": "a75da22548a181b6ba9d9c4ef077790e33f1e342d2b596f6604e7d57e343901d",
+    "settings.example.json": "f5548f84e0ee4051422fccf4330c1d77dc957e48590937f375192dd6fecce6e7"
+  },
+  "ownership": {
+    "managed": [
+      "hooks/_lib.js",
+      "hooks/verify-core.js",
+      "hooks/verify.js",
+      "hooks/design-gate.js",
+      "hooks/doctor.js",
+      "hooks/release-start.js",
+      "hooks/release-config.js",
+      "hooks/release-manifest-bump.js",
+      "hooks/release-preflight.js",
+      "hooks/release-artifacts.js",
+      "hooks/branch-state.js",
+      "hooks/github-branch-cleanup.js",
+      "hooks/post-merge-cleanup.js",
+      "hooks/release-cleanup.js",
+      "hooks/repo-state-audit.js",
+      "hooks/new-mockups.js",
+      "hooks/apply-ruleset.js",
+      "hooks/branch-guard.js",
+      "hooks/no-coauthor.js",
+      "hooks/agent/_input.js",
+      "hooks/agent/guard.js",
+      "hooks/agent/stop-reminder.js",
+      "lefthook.yml",
+      "settings.example.json"
+    ],
+    "projectOwned": [
+      "harness.config.json",
+      "AGENTS.md",
+      "cog.toml",
+      ".gitleaks.toml",
+      ".gitattributes",
+      ".github/**",
+      "CHANGELOG.md"
+    ]
+  }
+}

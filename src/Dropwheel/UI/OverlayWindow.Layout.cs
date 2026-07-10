@@ -100,6 +100,7 @@ public partial class OverlayWindow
         HubBall.Fill = new System.Windows.Media.SolidColorBrush(th.HubBg);
         HubBall.Stroke = new System.Windows.Media.SolidColorBrush(th.HubBorder);
         HubCore.Fill = new System.Windows.Media.RadialGradientBrush(th.Accent, th.HubBg);
+        Halo.Fill = new System.Windows.Media.SolidColorBrush(th.Accent);
         var boltBrush = new System.Windows.Media.SolidColorBrush(th.HubBorder);
         Bolt1.Fill = Bolt2.Fill = Bolt3.Fill = Bolt4.Fill = boltBrush;
         Rim.Stroke = new System.Windows.Media.SolidColorBrush(th.Rim);

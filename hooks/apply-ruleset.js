@@ -10,6 +10,8 @@
 //
 //   node hooks/apply-ruleset.js            # create/replace the "protect-main" ruleset
 //   node hooks/apply-ruleset.js --dry-run  # print what would be sent
+//   node hooks/apply-ruleset.js --check    # read-only live drift check
+//   node hooks/apply-ruleset.js --check --json
 //
 // Exit 0 = applied (or dry-run), 1 = failed.
 
@@ -80,16 +82,55 @@ function compareRuleset(expected, actual) {
   return mismatches;
 }
 
-function main() {
-  const dryRun = process.argv.includes("--dry-run");
+function parseArgs(argv) {
+  const out = { dryRun: false, check: false, json: false, errors: [] };
+  for (const arg of argv) {
+    if (arg === "--dry-run") out.dryRun = true;
+    else if (arg === "--check") out.check = true;
+    else if (arg === "--json") out.json = true;
+    else out.errors.push(`unknown option: ${arg}`);
+  }
+  if (out.dryRun && out.check) out.errors.push("--dry-run and --check are mutually exclusive");
+  return out;
+}
+
+function driftReport(expected, listed, actual, repo = "") {
+  const found = (listed || []).find((r) => r.name === expected.name);
+  if (!found) return { ok: false, mode: "check", repo, name: expected.name, id: "", mismatches: ["ruleset is missing on server"] };
+  const mismatches = compareRuleset(expected, actual || found);
+  return { ok: mismatches.length === 0, mode: "check", repo, name: expected.name, id: String(found.id || ""), mismatches };
+}
+
+function emit(report, json) {
+  if (json) console.log(JSON.stringify(report));
+  else if (report.ok) {
+    console.log(`OK ruleset "${report.name}" ${report.mode === "check" ? "matches" : report.action} on ${report.repo || "target repository"}.`);
+    if (report.mode === "check") console.log("   Live readback matches PR policy, required checks, conditions, and enforcement.");
+  } else {
+    console.error(`FAIL ruleset "${report.name || "unknown"}" ${report.mode === "check" ? "drift check" : "operation"} failed${report.repo ? ` on ${report.repo}` : ""}:`);
+    for (const mismatch of report.mismatches || []) console.error(`   - ${mismatch}`);
+    if (report.error) console.error(`   - ${report.error}`);
+  }
+}
+
+function main(argv = process.argv.slice(2)) {
+  const args = parseArgs(argv);
+  if (args.errors.length) {
+    const report = { ok: false, mode: "invalid", name: "", mismatches: args.errors };
+    emit(report, args.json);
+    process.exit(1);
+  }
   try {
     const raw = JSON.parse(fs.readFileSync(rulesetPath, "utf8"));
     delete raw._comment; // strip the doc comment before sending
     const body = JSON.stringify(raw);
 
-    if (dryRun) {
-      console.log("would apply this ruleset to repos/<owner>/<repo>/rulesets:\n");
-      console.log(JSON.stringify(raw, null, 2));
+    if (args.dryRun) {
+      if (args.json) console.log(JSON.stringify({ ok: true, mode: "dry-run", name: raw.name, ruleset: raw }));
+      else {
+        console.log("would apply this ruleset to repos/<owner>/<repo>/rulesets:\n");
+        console.log(JSON.stringify(raw, null, 2));
+      }
       process.exit(0);
     }
 
@@ -100,6 +141,13 @@ function main() {
     const found = list.find((r) => r.name === raw.name);
     const existingId = found ? String(found.id) : "";
 
+    if (args.check) {
+      const actual = existingId ? JSON.parse(gh(["api", `repos/${repo}/rulesets/${existingId}`])) : null;
+      const report = driftReport(raw, list, actual, repo);
+      emit(report, args.json);
+      process.exit(report.ok ? 0 : 1);
+    }
+
     const apiArgs = existingId
       ? ["api", "-X", "PUT", `repos/${repo}/rulesets/${existingId}`, "--input", "-"]
       : ["api", "-X", "POST", `repos/${repo}/rulesets`, "--input", "-"];
@@ -109,20 +157,21 @@ function main() {
     const applied = id ? JSON.parse(gh(["api", `repos/${repo}/rulesets/${id}`])) : written;
     const mismatches = compareRuleset(raw, applied);
     if (mismatches.length) {
-      console.error(`FAIL ruleset "${raw.name}" was written but readback does not match .github/rulesets/main.json:`);
-      for (const m of mismatches) console.error(`   - ${m}`);
+      emit({ ok: false, mode: "apply", repo, name: raw.name, id, mismatches }, args.json);
       process.exit(1);
     }
-    console.log(`OK ruleset "${raw.name}" ${existingId ? "updated" : "created"} on ${repo} (branches: main/master).`);
-    console.log("   Readback verified: PR policy, required check \"verify\", force-push/delete protection.");
+    emit({ ok: true, mode: "apply", action: existingId ? "updated" : "created", repo, name: raw.name, id, mismatches: [] }, args.json);
     process.exit(0);
   } catch (e) {
-    console.error("FAIL apply-ruleset failed:", e.message);
-    console.error("   Need: gh CLI (authenticated, repo admin) and a plan that supports rulesets");
-    console.error("   (private repos need Pro/Team/Enterprise; or make the repo public). See BACKLOG P0-0.");
+    const report = { ok: false, mode: args.check ? "check" : "apply", name: "", mismatches: [], error: e.message };
+    emit(report, args.json);
+    if (!args.json) {
+      console.error("   Need: gh CLI (authenticated, repo admin) and a plan that supports rulesets");
+      console.error("   (private repos need Pro/Team/Enterprise; or make the repo public). See BACKLOG P0-0.");
+    }
     process.exit(1);
   }
 }
 
-module.exports = { parseRulesetList, compareRuleset };
+module.exports = { parseArgs, parseRulesetList, compareRuleset, driftReport };
 if (require.main === module) main();

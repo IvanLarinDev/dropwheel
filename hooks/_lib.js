@@ -6,7 +6,21 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 
-const DEFAULT_UI_GLOBS = ["**/*.ui", "**/*.qml", "**/*.slint", "**/ui/**", "**/views/**", "**/widgets/**"];
+const DEFAULT_UI_GLOBS = [
+  "**/*.ui", "**/*.qml", "**/*.slint", "**/*.xaml", "**/*.axaml",
+  "**/*.razor", "**/*.cshtml", "**/*.tsx", "**/*.jsx", "**/*.vue",
+  "**/*.svelte", "**/*.html", "**/*.css", "**/*.scss", "**/*.sass",
+  "**/*.less", "**/res/layout/**/*.xml", "**/*View.swift",
+  "**/ui/**", "**/views/**", "**/widgets/**", "**/components/**",
+  "**/pages/**", "**/screens/**", "**/*_window.py", "**/*_dialog.py",
+  "**/*_view.py", "**/*_widget.py",
+];
+const DEFAULT_UI_EXCLUDE = [
+  "**/node_modules/**", "**/vendor/**", "**/dist/**", "**/build/**",
+  "**/bin/**", "**/obj/**", "**/coverage/**", "**/generated/**",
+  "**/*.generated.*", "**/*.g.*", "**/*.test.*", "**/*.spec.*",
+  "**/__tests__/**", "**/test/**", "**/tests/**", "**/fixtures/**",
+];
 const DEFAULT_MOCKUPS = {
   dir: "design/mockups",
   min: 4,
@@ -16,7 +30,7 @@ const DEFAULT_MOCKUPS = {
   waiverFile: "WAIVER.json",
 };
 const DEFAULT_PROTECTED = [
-  "hooks/", "lefthook.yml", "harness.config.json", ".gitleaks.toml", "cog.toml",
+  "hooks/", ".harness/", "lefthook.yml", "harness.config.json", ".gitleaks.toml", "cog.toml",
   ".github/rulesets/", ".github/workflows/", ".claude/settings.json", ".git/",
 ];
 
@@ -52,12 +66,20 @@ function loadConfig(root) {
   let c = {};
   try { c = JSON.parse(fs.readFileSync(path.join(root, "harness.config.json"), "utf8")); } catch {}
   const ui = c.ui || {};
+  const uiDisabled = c.capabilities && c.capabilities.ui === "none";
   return {
-    uiGlobs: ui.globs || DEFAULT_UI_GLOBS,
+    uiGlobs: uiDisabled ? [] : (ui.globs || DEFAULT_UI_GLOBS),
+    uiExclude: ui.exclude || DEFAULT_UI_EXCLUDE,
     mockups: { ...DEFAULT_MOCKUPS, ...(ui.mockups || {}) },
     protected: (c.protected && c.protected.paths) || DEFAULT_PROTECTED,
     lintConfigs: (c.protected && c.protected.lintConfigs) || DEFAULT_LINT_CONFIGS,
   };
+}
+
+function isUiPath(rel, cfg) {
+  const included = (cfg.uiGlobs || DEFAULT_UI_GLOBS).map(globToRe).some((re) => re.test(rel));
+  const excluded = (cfg.uiExclude || DEFAULT_UI_EXCLUDE).map(globToRe).some((re) => re.test(rel));
+  return included && !excluded;
 }
 
 // Absolute/relative path -> normalized repo-relative posix path.
@@ -260,8 +282,8 @@ function mergeFiles(root, ...lists) {
 }
 
 module.exports = {
-  DEFAULT_UI_GLOBS, DEFAULT_MOCKUPS, DEFAULT_PROTECTED, DEFAULT_LINT_CONFIGS,
-  globToRe, loadConfig, normRel, isProtectedPath,
+  DEFAULT_UI_GLOBS, DEFAULT_UI_EXCLUDE, DEFAULT_MOCKUPS, DEFAULT_PROTECTED, DEFAULT_LINT_CONFIGS,
+  globToRe, loadConfig, isUiPath, normRel, isProtectedPath,
   isProtectedShellWrite, isLintConfigShellWrite, isLintConfigPath,
   interpreterProtectedHint,
   changedFiles, workingTreeChangedFiles,

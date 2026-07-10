@@ -16,13 +16,20 @@ approaches the orb.
 
 ## In action
 
+The interface comes to life in an interactive demo, rendered live in your
+browser — no video files:
+
 <p align="center">
-  <img src="docs/media/dropwheel_anim_01.gif" width="220" alt="Dropwheel in action">
-  <img src="docs/media/dropwheel_anim_02.gif" width="220" alt="Dropwheel in action">
-  <br>
-  <img src="docs/media/dropwheel_anim_03.gif" width="220" alt="Dropwheel in action">
-  <img src="docs/media/dropwheel_anim_04.gif" width="220" alt="Dropwheel in action">
+  <a href="https://ivanlarindev.github.io/dropwheel/demo/"><b>▶ Open the live demo</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://ivanlarindev.github.io/dropwheel/demo/index.en.html">English</a>
+  &nbsp;/&nbsp;
+  <a href="https://ivanlarindev.github.io/dropwheel/demo/">Русский</a>
 </p>
+
+It replays the wheel opening, dropping files (copy/move badges), the wheel
+auto-opening as a drag approaches the orb, entering a group, and saving dropped
+text to a file. The demo source lives in [`docs/demo/`](docs/demo/).
 
 ## Install
 
@@ -140,10 +147,6 @@ Undo reverts the whole batch.
 
 ## Text drops
 
-<p align="center">
-  <img src="docs/media/dropwheel_anim_05.gif" width="240" alt="Dropping text creates a file">
-</p>
-
 Drag selected text from a browser, editor, or chat onto a folder tile and
 Dropwheel writes it to `text_YYYY-MM-DD_HH-mm-ss.txt` — or `.md` when the text
 looks like Markdown (headings, code fences, links). Dropped on a sorter, the new
@@ -205,7 +208,8 @@ are tuned per theme.
     tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta,
                  TextDropService, WatcherService, HotkeyService, VirtualFileService,
                  LinkTargetService, LinkMetadataService, TelegramDropService)
-    docs/media/  screenshots and gifs used by this README
+    docs/media/  screenshots used by this README
+    docs/demo/   live interactive JS demo (GitHub Pages), replaces the old gifs
 
 ## Known limitations
 

@@ -23,12 +23,28 @@
         <!-- hub -->
         <Grid x:Name="Orb" Width="56" Height="56" Canvas.Left="202" Canvas.Top="202"
               AllowDrop="True" Cursor="Hand" Background="Transparent">
+            <Ellipse x:Name="Halo" Opacity="0" IsHitTestVisible="False"
+                     RenderTransformOrigin="0.5,0.5">
+                <Ellipse.Effect>
+                    <BlurEffect Radius="18"/>
+                </Ellipse.Effect>
+                <Ellipse.RenderTransform>
+                    <ScaleTransform x:Name="HaloScale" ScaleX="1" ScaleY="1"/>
+                </Ellipse.RenderTransform>
+            </Ellipse>
             <Ellipse x:Name="HubBall" StrokeThickness="1">
                 <Ellipse.Effect>
                     <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.55"/>
                 </Ellipse.Effect>
             </Ellipse>
-            <Ellipse x:Name="HubCore" Width="22" Height="22"/>
+            <Ellipse x:Name="HubCore" Width="22" Height="22" RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="HubCoreScale" ScaleX="1" ScaleY="1"/>
+                        <TranslateTransform x:Name="HubCoreLook" X="0" Y="0"/>
+                    </TransformGroup>
+                </Ellipse.RenderTransform>
+            </Ellipse>
             <Ellipse x:Name="Bolt1" Width="4" Height="4" HorizontalAlignment="Center"
                      VerticalAlignment="Top" Margin="0,7,0,0"/>
             <Ellipse x:Name="Bolt2" Width="4" Height="4" HorizontalAlignment="Center"
