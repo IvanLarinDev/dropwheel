@@ -136,9 +136,12 @@ const DW = (() => {
       // Программное состояние для сценариев (drop файла и т.п.):
       this.forceHot = -1;             // подсвеченный тайл помимо наведения
       this.badges = new Map();        // index → "copy" | "move"
-      this.ghost = null;              // {x, y, label, mode, alpha} — призрак файла
+      this.ghost = null;              // {x, y, label, mode, alpha, kind} — призрак файла/текста
       this.toast = null;              // {text, alpha}
       this.flash = null;              // {index, p} — вспышка при сбросе
+      this.orbPulse = 0;              // 0..1 — раздутие ореола хаба (проксимити)
+      this.orbLook = { x: 0, y: 0 };  // смещение ядра «взглядом» к курсору
+      this.cursor = null;             // {x, y, click} — указатель мыши в сцене
       // startOpen: колесо уже раскрыто (для статичных сцен), иначе играем открытие
       this.t0 = opts.startOpen ? performance.now() - 4000 : performance.now();
       this._fit();
@@ -149,6 +152,8 @@ const DW = (() => {
     }
 
     open() { this.t0 = performance.now(); }
+    /** Свернуть колесо к одному хабу (обод и тайлы становятся невидимыми). */
+    close() { this.t0 = performance.now() + 1e9; }
 
     /** Центр тайла i в логических координатах (460×460). */
     tileCenter(i) {
@@ -247,6 +252,27 @@ const DW = (() => {
       if (this.flash) this._drawFlash(ctx);
       if (this.ghost) this._drawGhost(ctx);
       if (this.toast) this._drawToast(ctx);
+      if (this.cursor) this._drawCursor(ctx);
+    }
+
+    /** Указатель мыши: стрелка с опциональным кольцом-кликом. */
+    _drawCursor(ctx) {
+      const cur = this.cursor;
+      if (cur.click > 0) {
+        ctx.globalAlpha = (1 - cur.click) * 0.7;
+        ctx.strokeStyle = THEME.accent; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(cur.x, cur.y, 6 + cur.click * 16, 0, 7); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      ctx.save();
+      ctx.translate(cur.x, cur.y);
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(0, 17); ctx.lineTo(4.5, 12.5);
+      ctx.lineTo(7.5, 18.5); ctx.lineTo(10, 17.3); ctx.lineTo(7, 11);
+      ctx.lineTo(13, 11); ctx.closePath();
+      ctx.fillStyle = "#f4f7fb"; ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,.65)"; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.restore();
     }
 
     /** Вспышка-кольцо вокруг тайла в момент сброса. */
@@ -262,9 +288,11 @@ const DW = (() => {
       ctx.globalAlpha = 1;
     }
 
-    /** Призрак перетаскиваемого файла: карточка с уголком, подпись и бейдж курсора. */
+    /** Призрак перетаскиваемого файла (карточка) или выделенного текста (полоски
+     * с подсветкой) — с подписью и бейджем режима у курсора. */
     _drawGhost(ctx) {
       const g = this.ghost;
+      if (g.kind === "text") { this._drawTextGhost(ctx, g); return; }
       ctx.save();
       ctx.globalAlpha = g.alpha == null ? 1 : g.alpha;
       ctx.translate(g.x, g.y);
@@ -298,6 +326,39 @@ const DW = (() => {
       ctx.restore();
     }
 
+    /** Призрак выделенного текста: несколько строк с синей подсветкой, как
+     * перетаскиваемое выделение из браузера или редактора. */
+    _drawTextGhost(ctx, g) {
+      ctx.save();
+      ctx.globalAlpha = g.alpha == null ? 1 : g.alpha;
+      ctx.translate(g.x, g.y);
+      ctx.rotate(-0.05);
+      const lines = [30, 44, 24, 40];
+      ctx.shadowColor = "rgba(0,0,0,.4)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
+      ctx.fillStyle = "rgba(60,130,240,.28)";
+      roundRect(ctx, -26, -22, 56, 44, 4); ctx.fill();
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const y = -14 + i * 10;
+        ctx.fillStyle = "rgba(90,150,245,.55)";
+        roundRect(ctx, -22, y - 3, lines[i], 6, 2); ctx.fill();
+      }
+      ctx.rotate(0.05);
+      ctx.fillStyle = "#c9d2de"; ctx.font = "10px system-ui";
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
+      ctx.fillText(g.label || "выделенный текст", 0, 28);
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+      if (g.mode) {
+        ctx.fillStyle = "rgb(0,250,154)";
+        roundRect(ctx, 18, -26, 22, 18, 9); ctx.fill();
+        ctx.fillStyle = "#06210f"; ctx.font = "bold 10px system-ui";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("txt", 29, -17);
+      }
+      ctx.restore();
+    }
+
     /** Тост внизу колеса: сообщение и ссылка Undo. */
     _drawToast(ctx) {
       const t = this.toast;
@@ -317,21 +378,27 @@ const DW = (() => {
     }
 
     _drawHub(ctx) {
-      const halo = ctx.createRadialGradient(CENTER, CENTER, 2, CENTER, CENTER, 46);
-      halo.addColorStop(0, "rgba(157,178,204,.28)");
+      // orbPulse (0..1) раздувает ореол при приближении drag'а; orbLook смещает
+      // ядро «взглядом» в сторону курсора — как проксимити-реакция в приложении.
+      const pulse = this.orbPulse || 0;
+      const look = this.orbLook || { x: 0, y: 0 };
+      const haloR = 46 + pulse * 16;
+      const halo = ctx.createRadialGradient(CENTER, CENTER, 2, CENTER, CENTER, haloR);
+      halo.addColorStop(0, `rgba(157,178,204,${0.28 + pulse * 0.22})`);
       halo.addColorStop(1, "rgba(157,178,204,0)");
       ctx.fillStyle = halo;
-      ctx.beginPath(); ctx.arc(CENTER, CENTER, 46, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(CENTER, CENTER, haloR, 0, 7); ctx.fill();
 
       ctx.fillStyle = THEME.hubBg;
       ctx.beginPath(); ctx.arc(CENTER, CENTER, HUB / 2, 0, 7); ctx.fill();
       ctx.strokeStyle = THEME.hubBorder; ctx.lineWidth = 1; ctx.stroke();
 
-      const core = ctx.createRadialGradient(CENTER, CENTER, 0, CENTER, CENTER, 11);
+      const cx = CENTER + look.x, cy = CENTER + look.y;
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 11);
       core.addColorStop(0, THEME.accent);
       core.addColorStop(1, "rgba(26,32,42,.96)");
       ctx.fillStyle = core;
-      ctx.beginPath(); ctx.arc(CENTER, CENTER, 11, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 11, 0, 7); ctx.fill();
 
       ctx.fillStyle = THEME.hubBorder;
       for (const [bx, by] of [[0, -19], [0, 19], [-19, 0], [19, 0]]) {
@@ -354,6 +421,23 @@ const DW = (() => {
         ctx.beginPath();
         ctx.moveTo(0, -11); ctx.lineTo(0, 11);
         ctx.moveTo(-11, 0); ctx.lineTo(11, 0);
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
+
+      if (t.back) {
+        ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 3;
+        ctx.fillStyle = hot ? THEME.tileHot : THEME.tileBg;
+        roundRect(ctx, -s, -s, s * 2, s * 2, 17); ctx.fill();
+        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        ctx.lineWidth = 1.2; ctx.strokeStyle = THEME.tileBorder;
+        roundRect(ctx, -s, -s, s * 2, s * 2, 17); ctx.stroke();
+        // шеврон «назад»
+        ctx.strokeStyle = THEME.label; ctx.lineWidth = 3.2;
+        ctx.lineCap = "round"; ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(5, -11); ctx.lineTo(-7, 0); ctx.lineTo(5, 11);
         ctx.stroke();
         ctx.restore();
         return;
