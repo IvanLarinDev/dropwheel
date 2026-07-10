@@ -60,20 +60,29 @@ public partial class OverlayWindow
 
     private void CreateGroup()
     {
+        ResetGroupShortcutInput(preserveHover: false);
         var p = new PromptWindow("New group", "Group name:") { Owner = this };
         if (p.ShowDialog() == true && p.Value.Trim() is { Length: > 0 } name)
         {
-            TargetStore.Config.Targets.Add(new TargetItem { Name = name, Children = new() });
+            TargetStore.Config.Targets.Add(new TargetItem
+            {
+                Name = name,
+                Children = new(),
+                GroupCode = TargetStore.NextAvailableGroupCode(),
+            });
             TargetStore.Save();
+            RefreshGroupShortcuts();
             if (_open) BuildCloud();
         }
     }
 
     private void OpenEditor(TargetItem t, TargetItem? preselectGroup = null)
     {
+        ResetGroupShortcutInput(preserveHover: false);
         var dlg = new TargetEditorWindow(t, preselectGroup) { Owner = this };
         dlg.ShowDialog();
         TargetStore.Save();
+        RefreshGroupShortcuts();
         if (_open) BuildCloud();
     }
 

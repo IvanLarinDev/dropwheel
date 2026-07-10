@@ -56,6 +56,27 @@ public partial class OverlayWindow
         var top = new Grid { Width = 70, Height = 66 };
         top.Children.Add(sq);
         top.Children.Add(badge);
+        if (t.IsGroup && GroupShortcutSequence.IsValidCode(t.GroupCode))
+        {
+            top.Children.Add(new Border
+            {
+                Background = new SolidColorBrush(th.Accent),
+                CornerRadius = new CornerRadius(9),
+                MinWidth = 20,
+                Padding = new Thickness(4, 1, 4, 1),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Child = new TextBlock
+                {
+                    Text = t.GroupCode,
+                    Foreground = Brushes.Black,
+                    FontFamily = new FontFamily("Consolas"),
+                    FontWeight = FontWeights.Bold,
+                    FontSize = 11,
+                    TextAlignment = TextAlignment.Center,
+                },
+            });
+        }
         return WireBubble(t, badge, MakeLabel(t.Name), top, sq);
     }
 

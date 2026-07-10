@@ -19,6 +19,7 @@ public partial class TargetEditorWindow : Window
         _target = t;
         _preselect = preselectGroup;
         NameBox.Text = t.Name;
+        GroupShortcutBox.Text = t.GroupCode ?? "";
         PathBox.Text = t.Path;
         ActionBox.SelectedIndex = (int)t.Override;
         PinBox.IsChecked = t.Pinned;
@@ -34,6 +35,7 @@ public partial class TargetEditorWindow : Window
         }
         else
         {
+            GroupShortcutLabel.Visibility = GroupShortcutBox.Visibility = Visibility.Collapsed;
             GroupCombo.Items.Add("— (root)");
             foreach (var g in TargetStore.Groups)
             { _groupChoices.Add(g); GroupCombo.Items.Add(g.Name); }
@@ -67,6 +69,24 @@ public partial class TargetEditorWindow : Window
         {
             MessageBox.Show(this, error, "Rules", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
+        }
+        if (_target.IsGroup)
+        {
+            var code = GroupShortcutBox.Text.Trim();
+            if (code.Length > 0 && !GroupShortcutSequence.IsValidCode(code))
+            {
+                MessageBox.Show(this, "Use one or two digits, or leave the shortcut empty.",
+                    "Group shortcut", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (code.Length > 0 && TargetStore.Groups.Any(group =>
+                    !ReferenceEquals(group, _target) && group.GroupCode == code))
+            {
+                MessageBox.Show(this, $"Shortcut {code} is already assigned to another group.",
+                    "Group shortcut", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            _target.GroupCode = code.Length == 0 ? null : code;
         }
         _target.Name = NameBox.Text.Trim();
         if (!_target.IsGroup)

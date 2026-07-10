@@ -13,6 +13,13 @@ public class AppConfig
     public int HoverDelayMs { get; set; } = 250;
     public string Hotkey { get; set; } = "Ctrl+Alt+Space";
 
+    /// <summary>Maximum pause between digits of a group shortcut.</summary>
+    public int GroupShortcutDelayMs { get; set; } = 400;
+
+    /// <summary>Migration marker: existing groups receive stable codes once, while a code the
+    /// user later clears remains disabled.</summary>
+    public bool GroupShortcutsInitialized { get; set; }
+
     /// <summary>Seconds of inactivity before the orb dims (0 = off).</summary>
     public int IdleFadeSeconds { get; set; } = 0;
 

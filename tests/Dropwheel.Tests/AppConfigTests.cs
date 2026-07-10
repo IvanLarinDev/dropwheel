@@ -37,6 +37,12 @@ public class AppConfigTests : IDisposable
     }
 
     [Fact]
+    public void Default_group_shortcut_delay_is_400_ms()
+    {
+        Assert.Equal(400, new AppConfig().GroupShortcutDelayMs);
+    }
+
+    [Fact]
     public void OrderedForDisplay_without_positions_keeps_legacy_pinned_first_order()
     {
         var first = new TargetItem { Name = "first" };
@@ -282,5 +288,31 @@ public class AppConfigTests : IDisposable
         var saved = File.ReadAllText(configPath);
         Assert.Contains("\"Override\": \"Inherit\"", saved);
         Assert.Contains("\"Name\": \"Archive\"", saved);
+    }
+
+    [Fact]
+    public void Load_assigns_stable_shortcuts_to_existing_groups_once()
+    {
+        File.WriteAllText(TargetStore.FilePath,
+            """
+            {
+              "Targets": [
+                { "Name": "One", "Path": "", "Children": [] },
+                { "Name": "Two", "Path": "", "Children": [] }
+              ]
+            }
+            """);
+
+        TargetStore.Load();
+
+        Assert.Equal(new[] { "1", "2" }, TargetStore.Groups.Select(group => group.GroupCode));
+        Assert.True(TargetStore.Config.GroupShortcutsInitialized);
+
+        TargetStore.Config.Targets[0].GroupCode = null;
+        TargetStore.Save();
+        TargetStore.Load();
+
+        Assert.Null(TargetStore.Config.Targets[0].GroupCode);
+        Assert.Equal("2", TargetStore.Config.Targets[1].GroupCode);
     }
 }

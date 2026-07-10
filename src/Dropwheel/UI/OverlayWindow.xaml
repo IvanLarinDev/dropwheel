@@ -37,6 +37,12 @@
                      VerticalAlignment="Center" Margin="7,0,0,0"/>
             <Ellipse x:Name="Bolt4" Width="4" Height="4" HorizontalAlignment="Right"
                      VerticalAlignment="Center" Margin="0,0,7,0"/>
+            <Border x:Name="ShortcutIndicator" Visibility="Collapsed"
+                    Background="#E61A2230" CornerRadius="12" Padding="6,3"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock x:Name="ShortcutIndicatorText" Foreground="White"
+                           FontFamily="Consolas" FontWeight="Bold" FontSize="14"/>
+            </Border>
         </Grid>
 
         <Border x:Name="Toast" Canvas.Left="90" Canvas.Top="412" Visibility="Collapsed"

@@ -56,6 +56,7 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Add a target          | drop a folder/exe/link onto the “+” tile or the orb |
 | Create a group        | right-click the orb → “New group…”                 |
 | Enter a group         | click its tile, or hover it for 0.5 s while dragging |
+| Enter by group code   | hover the orb and type the group's one- or two-digit badge |
 | Sort a sorter now     | middle-click a sorter tile                         |
 | Reorder tiles         | left-drag a target tile onto another tile; drop on “+” to move it last |
 | Move the orb          | Alt + left-drag (any monitor)                      |
@@ -64,6 +65,11 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 
 The orb hides automatically in full-screen apps (games, presentations) and can
 fade out when idle (see Settings).
+
+Group codes stay attached to their groups when tiles are reordered. If both `1`
+and `11` exist, `1` opens after the configurable sequence timeout, while typing
+the second `1` before that timeout opens `11` immediately. Right-click a group
+to edit or disable its code.
 
 ## Interface names
 
