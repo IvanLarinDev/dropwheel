@@ -6,3 +6,7 @@ dist/
 
 # agent runtime (персональные настройки раннера — не коммитим)
 .claude/settings.local.json
+
+# harness automation output
+inbox/
+reports/
