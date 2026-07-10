@@ -96,12 +96,13 @@ public partial class OverlayWindow
         if (items.Length == 0) return;
 
         var list = group?.Children ?? TargetStore.Config.Targets;
+        RememberAdd(list);
         foreach (var item in items) list.Add(item);
         if (pinned)
             foreach (var item in items.Reverse()) TargetStore.PinToFront(list, item);
 
         TargetStore.Save();
-        ShowToast(ToastForAdd(items.Length, group, pinned));
+        ShowToast(ToastForAdd(items.Length, group, pinned), canUndo: true);
         if (_open) BuildCloud();
         if (pinned && ReferenceEquals(group, _currentGroup))
             AnimatePinnedArrival(items, origin ?? new Point(HalfSize, HalfSize));

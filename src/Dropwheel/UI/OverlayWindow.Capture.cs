@@ -104,11 +104,12 @@ public partial class OverlayWindow
     {
         var target = TargetFromPath(path);
         var list = _currentGroup?.Children ?? TargetStore.Config.Targets;
+        RememberAdd(list);
         list.Add(target);
         TargetStore.PinToFront(list, target);
         TargetStore.Save();
 
-        ShowToast($"Pinned: {target.Name}");
+        ShowToast($"Pinned: {target.Name}", canUndo: true);
         OpenCloud();
         AnimatePinnedArrival(new[] { target }, new Point(HalfSize, HalfSize));
         RefreshLinkMetadata(new[] { target });

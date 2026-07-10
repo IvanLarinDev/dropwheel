@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "undo-add-target",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Undo for adding or pinning a target is a functional change with no new visual language. It reuses the existing toast and its existing \"Undo\" link (already shown for file drops); the only differences are that the toast now appears for adds/pins and that clicking Undo restores the level snapshot. No new screen, control or motion was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-10"
+}
