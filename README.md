@@ -50,10 +50,11 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Drop a file           | drag onto a target tile; badge shows ⧉ copy / ➜ move |
 | Drop text             | drag selected text onto a folder → saves `text_<date>.txt` (`.md` if it looks like Markdown) |
 | Open with an app      | drag files onto an .exe/.bat/.ps1/… target → runs it with them as arguments |
-| Force copy / move     | hold Ctrl / Shift while dropping                   |
+| Force copy / move     | hold Ctrl / Shift while dropping on a target tile   |
 | Undo last drop        | click “Undo” in the toast (6 s)                    |
 | Edit a target         | right-click its tile                               |
 | Add a target          | drop a folder/exe/link onto the “+” tile or the orb |
+| Pin a new target      | hold Shift while dropping it — it lands first, next to the hub |
 | Create a group        | right-click the orb → “New group…”                 |
 | Enter a group         | click its tile, or hover it for 0.5 s while dragging |
 | Enter by group code   | hover the orb and type the group's one- or two-digit badge |

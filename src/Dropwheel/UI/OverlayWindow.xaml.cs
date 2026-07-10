@@ -46,6 +46,7 @@ public partial class OverlayWindow : Window
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
         Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud(); };
         Orb.DragOver += OnAddTargetDragOver;
+        Orb.DragLeave += (_, _) => SetPinRing(false);
         Orb.Drop += OnOrbDrop; // dropping on the orb adds a target
 
         var orbMenu = new System.Windows.Controls.ContextMenu();
@@ -68,7 +69,7 @@ public partial class OverlayWindow : Window
         PreviewDragOver += OnTileReorderPreviewDragOver;
         PreviewDrop += OnTileReorderPreviewDrop;
         DragEnter += (_, _) => _closeTimer.Stop();
-        DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
+        DragLeave += (_, _) => { SetPinRing(false); if (_open) _closeTimer.Start(); };
         Deactivated += (_, _) => CloseCloud();
 
         Loaded += (_, _) =>

@@ -259,7 +259,7 @@ public partial class OverlayWindow
         el.Opacity = 0;
 
         var animation = TargetStore.Config.OpenAnimation;
-        var speed = Math.Clamp(TargetStore.Config.OpenAnimationSpeed, 0.5, 2.0);
+        var speed = AnimationSpeed();
         var delayMs = ScaleTiming(animation switch
         {
             OpenAnimation.ClockSweep => index * 38,
@@ -320,12 +320,16 @@ public partial class OverlayWindow
     private static int ScaleTiming(int milliseconds, double speed)
         => Math.Max(40, (int)Math.Round(milliseconds / speed));
 
+    /// <summary>The user's animation speed, clamped to the range the wheel was tuned for.</summary>
+    private static double AnimationSpeed()
+        => Math.Clamp(TargetStore.Config.OpenAnimationSpeed, 0.5, 2.0);
+
     private void AnimateRim()
     {
         var th = Themes.Current;
         Rim.Stroke = new SolidColorBrush(th.Rim);
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var speed = Math.Clamp(TargetStore.Config.OpenAnimationSpeed, 0.5, 2.0);
+        var speed = AnimationSpeed();
         Rim.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(ScaleTiming(200, speed))));
         RimScale.BeginAnimation(ScaleTransform.ScaleXProperty,
             new DoubleAnimation(0.7, 1, TimeSpan.FromMilliseconds(ScaleTiming(280, speed))) { EasingFunction = ease });
