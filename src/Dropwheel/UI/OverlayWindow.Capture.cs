@@ -39,6 +39,7 @@ public partial class OverlayWindow
     private Window? _hi;             // highlight drawn over the real target object
     private Border? _hiBorder;
     private long _lastProbe;         // throttles the expensive UI Automation hit-test
+    private bool _probing;           // a background bounds probe is in flight
     private long _lastDiag;          // TEMP: throttles capture diagnostics
 
     /// <summary>Starts the Alt+Shift capture. The main orb stays put; a light ghost follows the
@@ -73,7 +74,7 @@ public partial class OverlayWindow
         if (Environment.TickCount64 - _lastDiag > 300)
         {
             _lastDiag = Environment.TickCount64;
-            ErrorLog.Write($"capture probe: armed={armed} class={CursorTargetLocator.DebugRootClassUnderCursor()} bounds={(TargetBounds(p.X, p.Y)?.ToString() ?? "null")}");
+            ErrorLog.Write($"capture probe: armed={armed} class={CursorTargetLocator.DebugRootClassUnderCursor()}");
         }
 
         if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0) FinishOrbCapture();
@@ -213,15 +214,27 @@ public partial class OverlayWindow
     }
 
     /// <summary>Lights a highlight over the real object under the cursor. The item's bounds come from
-    /// UI Automation, which is costly, so the probe is throttled to ~10&#8239;Hz; between probes the
-    /// last highlight simply stays put. Nothing valid, or not over a target window, hides it.</summary>
+    /// UI Automation, which can block for a long time (badly so while the screen is being recorded),
+    /// so the hit-test runs on a background thread and only the result is marshalled back — the UI
+    /// thread never waits on it. One probe at a time, throttled; nothing valid hides the highlight.</summary>
     private void UpdateTargetHighlight(bool armed, POINT p)
     {
         if (!armed) { HideHighlight(); return; }
-        if (Environment.TickCount64 - _lastProbe < 100) return;
+        if (_probing || Environment.TickCount64 - _lastProbe < 120) return;
+        _probing = true;
         _lastProbe = Environment.TickCount64;
-        if (TargetBounds(p.X, p.Y) is { } rect) ShowHighlight(rect);
-        else HideHighlight();
+        int x = p.X, y = p.Y;
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            var bounds = TargetBounds(x, y);
+            Dispatcher.BeginInvoke(() =>
+            {
+                _probing = false;
+                if (_ghost == null) return; // capture ended while the probe was in flight
+                if (bounds is { } rect) ShowHighlight(rect);
+                else HideHighlight();
+            });
+        });
     }
 
     /// <summary>Screen bounds of the element under the point, or null when it can't be read or is an
@@ -316,6 +329,7 @@ public partial class OverlayWindow
     private void DismissGhost()
     {
         CloseHighlight();
+        _probing = false;
         _ghost?.Close();
         _ghost = null;
         _ghostCore = null;
