@@ -24,9 +24,7 @@ public partial class OverlayWindow
 
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)
     {
-        var kind = OrbGesture.Classify(Keyboard.Modifiers);
-        ErrorLog.Write($"orb mousedown: mods={Keyboard.Modifiers} kind={kind}"); // TEMP
-        switch (kind)
+        switch (OrbGesture.Classify(Keyboard.Modifiers))
         {
             case OrbDragKind.Capture:
                 BeginOrbCapture(); // Alt+Shift: drag the orb onto a folder/app/file to pin it

@@ -40,7 +40,6 @@ public partial class OverlayWindow
     private Border? _hiBorder;
     private long _lastProbe;         // throttles the expensive UI Automation hit-test
     private bool _probing;           // a background bounds probe is in flight
-    private long _lastDiag;          // TEMP: throttles capture diagnostics
 
     /// <summary>Starts the Alt+Shift capture. The main orb stays put; a light ghost follows the
     /// cursor while a 60&#8239;Hz timer polls the mouse button and lights the ghost over a valid
@@ -48,9 +47,8 @@ public partial class OverlayWindow
     /// beneath it.</summary>
     private void BeginOrbCapture()
     {
-        ErrorLog.Write("orb capture: begin"); // TEMP
         CloseCloud();
-        if (!GetCursorPos(out var p)) { ErrorLog.Write("orb capture: no cursor"); return; }
+        if (!GetCursorPos(out var p)) return;
 
         SpawnGhost(p.X, p.Y);
         _captureTimer = new DispatcherTimer(DispatcherPriority.Input)
@@ -71,12 +69,6 @@ public partial class OverlayWindow
         _ghostArm += (_ghostArmTarget - _ghostArm) * 0.25;
         ApplyGhostArm();
         UpdateTargetHighlight(armed, p);
-
-        if (Environment.TickCount64 - _lastDiag > 300)
-        {
-            _lastDiag = Environment.TickCount64;
-            ErrorLog.Write($"capture probe: armed={armed} class={CursorTargetLocator.DebugRootClassUnderCursor()}");
-        }
 
         if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0) FinishOrbCapture();
     }
@@ -196,11 +188,11 @@ public partial class OverlayWindow
         if (_ghostCore == null) return;
         var th = Themes.Current;
         _ghostCore.Fill = new SolidColorBrush(ColorLerp(th.HubBorder, th.Accent, _ghostArm));
-        _ghostCore.Width = _ghostCore.Height = 18 + _ghostArm * 6;
+        _ghostCore.Width = _ghostCore.Height = 18 + _ghostArm * 12;
         if (_ghostHalo != null)
         {
-            _ghostHalo.Opacity = _ghostArm * 0.5;
-            _ghostHalo.Width = _ghostHalo.Height = GhostSize * (0.7 + _ghostArm * 0.25);
+            _ghostHalo.Opacity = _ghostArm * 0.85;
+            _ghostHalo.Width = _ghostHalo.Height = GhostSize * (0.75 + _ghostArm * 0.55);
         }
     }
 
