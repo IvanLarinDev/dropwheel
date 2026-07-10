@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "feature": "orb-ghost-aura",
+  "kind": "animation",
+  "fidelity": "js",
+  "example": "The capture ghost hovers a valid target; its aura is alive instead of a static glow",
+  "variants": [
+    {
+      "file": "01-breathing-pulse.html",
+      "focus": "Breathing pulse: the halo swells and fades in a slow rhythm — the same breath the orb uses on the way in."
+    },
+    {
+      "file": "02-radar-ping.html",
+      "focus": "Radar ping: rings expand outward from the ghost in a steady beat, like a sensor locking on."
+    },
+    {
+      "file": "03-orbiting-sparks.html",
+      "focus": "Orbiting sparks: small accent dots circle the ghost, speeding up as it arms over the target."
+    },
+    {
+      "file": "04-sweeping-arc.html",
+      "focus": "Sweeping arc: a bright highlight sweeps around the rim of the aura, a rotating scan."
+    }
+  ]
+}
