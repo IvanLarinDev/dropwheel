@@ -249,6 +249,8 @@
           рабочего стола, зажимают <b>Alt+Shift</b> и тянут орб на цель. За курсором
           летит призрак-орб: над подходящей целью он «вооружается» — ядро наливается
           акцентным цветом, ореол разгорается, а вокруг самой цели появляется рамка.
+          Пока призрак «залочен» на цели, его аура живёт: три радар-кольца ровным
+          ритмом расходятся наружу, и чем сильнее «захват», тем ярче их пульс.
         </p>
         <p>
           На отпускании призрак «сматывается» обратно в орб, тот отбивает
@@ -674,16 +676,16 @@
       const el = now - cap.start;
       capture.ghost = null; capture.highlight = null; capture.pinRing = null; capture.forceHot = -1; capture.toast = null;
       if (cap.stage === 0) {
-        // призрак-орб летит от хаба к цели и «вооружается»
+        // призрак-орб летит от хаба к цели, «вооружается» и держит живую ауру
         const p = easeOut(clamp01(el / 1300));
         const arm = clamp01((el - 700) / 500);
-        capture.ghost = { kind: "orb", x: lerp(HUB.x, capTcx, p), y: lerp(HUB.y, capTcy, p), arm, alpha: 0.92 };
+        capture.ghost = { kind: "orb", x: lerp(HUB.x, capTcx, p), y: lerp(HUB.y, capTcy, p), arm, alpha: 0.92, ringT: el / 1000 };
         capture.highlight = { ...CAP_TARGET, alpha: clamp01((el - 600) / 300) };
-        if (el >= 1500) cap = { stage: 1, start: now };
+        if (el >= 1900) cap = { stage: 1, start: now };
       } else if (cap.stage === 1) {
         // сматывание призрака в хаб + кольцо-пульс
         const p = easeOut(clamp01(el / 300));
-        capture.ghost = { kind: "orb", x: lerp(capTcx, HUB.x, p), y: lerp(capTcy, HUB.y, p), arm: 1 - p, alpha: 0.92 * (1 - p), scale: 1 - 0.5 * p };
+        capture.ghost = { kind: "orb", x: lerp(capTcx, HUB.x, p), y: lerp(capTcy, HUB.y, p), arm: 1 - p, alpha: 0.92 * (1 - p), scale: 1 - 0.5 * p, ringT: (1900 + el) / 1000 };
         capture.highlight = { ...CAP_TARGET, alpha: 1 - clamp01(el / 200) };
         capture.pinRing = { p: clamp01(el / 300) };
         if (el >= 340) cap = { stage: 2, start: now };

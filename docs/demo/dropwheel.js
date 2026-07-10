@@ -536,33 +536,52 @@ const DW = (() => {
       ctx.restore();
     }
 
-    /** Призрак-орб для жеста захвата (Alt+Shift): маленький хаб, который
-     * «вооружается» над целью — ядро наливается акцентом, ореол разгорается.
-     * g.arm 0..1 — степень вооружения, g.scale — усадка при возврате к хабу. */
+    /** Призрак-орб для жеста захвата (Alt+Shift) с «живой аурой». По коду
+     * OverlayWindow.Capture.cs: ядро наливается акцентом и растёт (16+arm*12),
+     * ореол разгорается, и, пока призрак «залочен» на цели, три радар-кольца
+     * пульсируют наружу ровным ритмом (фаза со сдвигом на треть периода),
+     * прозрачность колец зависит от arm. g.ringT — секунды для ритма радара,
+     * g.arm 0..1 — вооружение, g.scale — усадка при возврате к хабу. */
     _drawOrbGhost(ctx, g) {
       const arm = g.arm || 0;
       const sc = g.scale == null ? 1 : g.scale;
+      const rt = g.ringT || 0;
       ctx.save();
       ctx.globalAlpha = g.alpha == null ? 0.9 : g.alpha;
       ctx.translate(g.x, g.y);
       ctx.scale(sc, sc);
-      // ореол
-      const hr = 23 * (0.7 + arm * 0.25);
+      // ореол: диаметр 42*(0.9+arm), прозрачность растёт с arm
+      const hr = 21 * (0.9 + arm);
       const halo = ctx.createRadialGradient(0, 0, 2, 0, 0, hr);
       halo.addColorStop(0, accentA(this.theme, arm * 0.5));
       halo.addColorStop(1, accentA(this.theme, 0));
       ctx.fillStyle = halo;
       ctx.beginPath(); ctx.arc(0, 0, hr, 0, 7); ctx.fill();
-      // тело
+      // радар-кольца: 3 штуки, фаза (rt/0.95 + i/3)%1, r 18→44, толщина 2.6→1
+      const acc = this.theme.accent.match(/\d+/g);
+      for (let i = 0; i < 3; i++) {
+        const phase = (rt / 0.95 + i / 3) % 1;
+        const op = (1 - phase) * 0.7 * arm;
+        if (op <= 0.01) continue;
+        ctx.strokeStyle = `rgba(${acc[0]},${acc[1]},${acc[2]},${op})`;
+        ctx.lineWidth = 2.6 - phase * 1.6;
+        ctx.beginPath(); ctx.arc(0, 0, 18 + phase * 26, 0, 7); ctx.stroke();
+      }
+      // тело (радиус 21)
       ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 1;
       ctx.fillStyle = this.theme.hubBg;
-      ctx.beginPath(); ctx.arc(0, 0, 15, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, 21, 0, 7); ctx.fill();
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
       ctx.strokeStyle = this.theme.hubBorder; ctx.lineWidth = 1; ctx.stroke();
-      // ядро: цвет между hubBorder и accent по arm, размер 9→12
-      const cr = 9 + arm * 3;
-      ctx.fillStyle = arm > 0.5 ? this.theme.accent : this.theme.hubBorder;
+      // ядро: hubBorder, поверх — accent с прозрачностью arm (плавный переход цвета), радиус 8+arm*6
+      const cr = 8 + arm * 6;
+      ctx.fillStyle = this.theme.hubBorder;
       ctx.beginPath(); ctx.arc(0, 0, cr, 0, 7); ctx.fill();
+      if (arm > 0.01) {
+        ctx.globalAlpha = (g.alpha == null ? 0.9 : g.alpha) * arm;
+        ctx.fillStyle = this.theme.accent;
+        ctx.beginPath(); ctx.arc(0, 0, cr, 0, 7); ctx.fill();
+      }
       ctx.restore();
     }
 
