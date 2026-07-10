@@ -48,8 +48,9 @@ public partial class OverlayWindow
     /// beneath it.</summary>
     private void BeginOrbCapture()
     {
+        ErrorLog.Write("orb capture: begin"); // TEMP
         CloseCloud();
-        if (!GetCursorPos(out var p)) return;
+        if (!GetCursorPos(out var p)) { ErrorLog.Write("orb capture: no cursor"); return; }
 
         SpawnGhost(p.X, p.Y);
         _captureTimer = new DispatcherTimer(DispatcherPriority.Input)
