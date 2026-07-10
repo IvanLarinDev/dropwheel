@@ -39,6 +39,7 @@ public partial class OverlayWindow
     private Window? _hi;             // highlight drawn over the real target object
     private Border? _hiBorder;
     private long _lastProbe;         // throttles the expensive UI Automation hit-test
+    private long _lastDiag;          // TEMP: throttles capture diagnostics
 
     /// <summary>Starts the Alt+Shift capture. The main orb stays put; a light ghost follows the
     /// cursor while a 60&#8239;Hz timer polls the mouse button and lights the ghost over a valid
@@ -68,6 +69,12 @@ public partial class OverlayWindow
         _ghostArm += (_ghostArmTarget - _ghostArm) * 0.25;
         ApplyGhostArm();
         UpdateTargetHighlight(armed, p);
+
+        if (Environment.TickCount64 - _lastDiag > 300)
+        {
+            _lastDiag = Environment.TickCount64;
+            ErrorLog.Write($"capture probe: armed={armed} class={CursorTargetLocator.DebugRootClassUnderCursor()} bounds={(TargetBounds(p.X, p.Y)?.ToString() ?? "null")}");
+        }
 
         if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0) FinishOrbCapture();
     }

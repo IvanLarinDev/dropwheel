@@ -75,6 +75,18 @@ public static class CursorTargetLocator
         return ClassName(root) is "Progman" or "WorkerW" or "CabinetWClass";
     }
 
+    /// <summary>Diagnostic: the class name of the root window under the cursor (or a marker when
+    /// there is none). Used to see why a drag isn't recognised as being over a target.</summary>
+    public static string DebugRootClassUnderCursor()
+    {
+        if (!GetCursorPos(out var p)) return "<no-cursor>";
+        var hit = WindowFromPoint(p);
+        if (hit == IntPtr.Zero) return "<no-window>";
+        var root = GetAncestor(hit, GA_ROOT);
+        if (root == IntPtr.Zero) return "<no-root>";
+        return ClassName(root);
+    }
+
     private static string? FolderForWindow(IntPtr root)
     {
         var cls = ClassName(root);
