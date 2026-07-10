@@ -8,6 +8,7 @@ $runRoot = Join-Path $root "run"
 $manifestPath = Join-Path $runRoot "manifest.json"
 $findingPath = Join-Path $root "finding.json"
 $dispositionPath = Join-Path $root "disposition.json"
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
 
 function Invoke-ManifestProcess {
   param([string[]]$Arguments)
@@ -56,6 +57,21 @@ try {
 
   $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
   Assert-True ($manifest.status -eq "complete") "Manifest status is not complete"
+  Assert-True ($manifest.roots.agents -eq "C:\Users\poweruser\projects\llms\agents") `
+    "Manifest does not use the canonical agents root"
+  Assert-True ($null -eq $manifest.roots.PSObject.Properties["agentsAccepted"]) `
+    "Manifest still declares a duplicate agents accepted root"
+  $singleRootFiles = @(
+    (Join-Path $PSScriptRoot "harness-canary.ps1"),
+    (Join-Path $PSScriptRoot "harness-negative-canary.ps1"),
+    (Join-Path $repositoryRoot ".codex\automation-prompts\dropwheel-auto-fix.md"),
+    (Join-Path $repositoryRoot ".codex\automation-prompts\dropwheel-pipeline-orchestrator.md")
+  )
+  foreach ($singleRootFile in $singleRootFiles) {
+    $singleRootText = Get-Content -Raw -LiteralPath $singleRootFile
+    Assert-True ($singleRootText -notmatch 'projects\\llms\\agents-main') `
+      "Persistent agents-main dependency returned in $singleRootFile"
+  }
   Assert-True ($manifest.findings[0].status -eq "fixed") "Finding disposition status was not persisted"
   Assert-True (-not [string]::IsNullOrWhiteSpace($manifest.findings[0].dispositionAt)) `
     "Finding disposition timestamp was not persisted"

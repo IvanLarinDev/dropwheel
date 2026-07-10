@@ -86,7 +86,7 @@ output, create or update an agents handoff using
 5. For `dropwheel-harness-update`, run:
 
    ```powershell
-   node C:\Users\poweruser\projects\llms\agents-main\install.js --target <fix-root> --force --json
+   node C:\Users\poweruser\projects\llms\agents\install.js --target <fix-root> --force --json
    git add -A
    node hooks\doctor.js --json
    node hooks\verify.js

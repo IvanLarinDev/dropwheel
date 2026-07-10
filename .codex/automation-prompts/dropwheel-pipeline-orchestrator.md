@@ -2,7 +2,7 @@
 
 Run the whole Dropwheel/agents harness pipeline as one coordinated workflow.
 Parallelize read-only discovery and isolated fix work when multi-agent tools are
-available; keep accepted-main mutation and merge commits serialized.
+available; keep accepted-state mutation and PR merges serialized.
 
 This replaces separate scheduled cards. Keep the UI simple: this automation is
 the single recurring entry point, while the other prompt files are subroutines.
@@ -15,8 +15,6 @@ the single recurring entry point, while the other prompt files are subroutines.
   `C:\Users\poweruser\projects\csharp\dropwheel-release`
 - Agents harness development/config root:
   `C:\Users\poweruser\projects\llms\agents`
-- Agents harness accepted main worktree:
-  `C:\Users\poweruser\projects\llms\agents-main`
 - Automation state root for generated reports and memory:
   `C:\Users\poweruser\.codex\automations\dropwheel-pipeline-orchestrator`
 
@@ -25,8 +23,13 @@ relative `scripts\...` commands. The versioned accepted-main checkout is the
 source of truth for automation code; do not depend on untracked files in a
 development branch.
 
+The agents root is the only persistent agents checkout and stays on clean
+`main` when idle. Never create an `agents-main` sibling. Agents fixes use
+temporary isolated worktrees, merge through GitHub PRs, and remove those
+worktrees after server cleanup.
+
 When running canaries for the accepted state, use the scripts from the pipeline
-root and pass `-AgentsRoot C:\Users\poweruser\projects\llms\agents-main`
+root and pass `-AgentsRoot C:\Users\poweruser\projects\llms\agents`
 and `-DropwheelRoot C:\Users\poweruser\projects\csharp\dropwheel-release`.
 Also pass explicit `-ReportRoot` and `-WorktreeRoot` paths outside
 `dropwheel-release`; generated reports and temporary worktrees must not make the
@@ -107,7 +110,7 @@ calling it. The manifest rejects completion until every finding has received
 - Verification workers: verify a committed fix branch and write report SHA,
   branch SHA, command results, and canary paths into the manifest.
 - Merge arbiter: the only role allowed to mutate `dropwheel-release/main` or
-  `agents-main/main`. It processes verified fixes one at a time.
+  merge an Agents GitHub PR. It processes verified fixes one at a time.
 
 Finding dedupe uses a stable fingerprint:
 
@@ -161,9 +164,9 @@ The product discovery worker must record `sliceKind`, `coverageKey`,
 - `.codex/automation-prompts/dropwheel-review-handoff.md`
 - `.codex/automation-prompts/dropwheel-regression-mining.md`
 - `.codex/automation-prompts/dropwheel-product-discovery.md`
-- `C:\Users\poweruser\projects\llms\agents-main\.codex\automation-prompts\agents-dropwheel-inbox-triage.md`
-- `C:\Users\poweruser\projects\llms\agents-main\.codex\automation-prompts\agents-harness-regression-mining.md`
-- `C:\Users\poweruser\projects\llms\agents-main\.codex\automation-prompts\agents-harness-discovery-review.md`
+- `C:\Users\poweruser\projects\llms\agents\.codex\automation-prompts\agents-dropwheel-inbox-triage.md`
+- `C:\Users\poweruser\projects\llms\agents\.codex\automation-prompts\agents-harness-regression-mining.md`
+- `C:\Users\poweruser\projects\llms\agents\.codex\automation-prompts\agents-harness-discovery-review.md`
 
 ## Sequence
 
@@ -172,7 +175,7 @@ The product discovery worker must record `sliceKind`, `coverageKey`,
    snapshot:
    - `git status --short --branch` and `git rev-parse HEAD` for
      `dropwheel-release`.
-   - `git status --short --branch` and `git rev-parse HEAD` for `agents-main`.
+   - `git status --short --branch` and `git rev-parse HEAD` for `agents`.
    Accepted roots must be clean except for generated artifacts explicitly moved
    into the automation state root.
 
@@ -180,7 +183,7 @@ The product discovery worker must record `sliceKind`, `coverageKey`,
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File .\scripts\harness-canary.ps1 `
-     -AgentsRoot C:\Users\poweruser\projects\llms\agents-main `
+     -AgentsRoot C:\Users\poweruser\projects\llms\agents `
      -DropwheelRoot C:\Users\poweruser\projects\csharp\dropwheel-release `
      -ReportRoot (Join-Path $runRoot "health\reports") `
      -WorktreeRoot (Join-Path ([System.IO.Path]::GetTempPath()) "dw-canary") `
@@ -205,7 +208,7 @@ The product discovery worker must record `sliceKind`, `coverageKey`,
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File .\scripts\harness-negative-canary.ps1 `
-     -AgentsRoot C:\Users\poweruser\projects\llms\agents-main `
+     -AgentsRoot C:\Users\poweruser\projects\llms\agents `
      -DropwheelRoot C:\Users\poweruser\projects\csharp\dropwheel-release `
      -ReportRoot (Join-Path $runRoot "negative\reports") `
      -WorktreeRoot (Join-Path ([System.IO.Path]::GetTempPath()) "dw-neg-canary") `
@@ -271,66 +274,57 @@ The product discovery worker must record `sliceKind`, `coverageKey`,
    remove those generated artifacts after preserving the report under the
    automation state root; do not commit generated reports into Dropwheel.
 
-8. Auto-merge verified local fixes into the Agents accepted main worktree when
-   all of these are true:
+8. Publish a verified Agents fix through GitHub when all of these are true:
    - the fix branch is local and clean;
    - `node hooks/verify.js` is green for the fix root;
    - a Dropwheel health canary using `-AgentsRoot <fix root>` is green;
    - the canary report's Agents SHA equals the verified fix branch `HEAD`;
-   - `C:\Users\poweruser\projects\llms\agents-main` is clean;
+   - `C:\Users\poweruser\projects\llms\agents` is clean `main` and matches
+     `origin/main` before publication;
    - the merge is a test/harness maintenance fix and does not require product
      judgment.
 
-   Merge into `C:\Users\poweruser\projects\llms\agents-main` with hooks
-   enabled. If branch-guard blocks a direct main commit, use the same scoped
-   main-commit exception only for this merge commit:
+   Push the fix branch, create a PR to `main`, wait for required PR checks, and
+   merge it through GitHub. Never commit or merge directly into the canonical
+   `agents/main` checkout and never create `agents-main`. After server-side
+   `MERGED`, wait for the resulting `main` verify and `branch-cleanup` workflows.
+   Confirm the remote fix branch is absent, then fast-forward the canonical root:
 
    ```powershell
-   $env:HARNESS_ALLOW_MAIN = "1"
-   git commit -m "<conventional merge message>"
-   Remove-Item Env:\HARNESS_ALLOW_MAIN
+   git -C C:\Users\poweruser\projects\llms\agents fetch --prune origin
+   git -C C:\Users\poweruser\projects\llms\agents switch main
+   git -C C:\Users\poweruser\projects\llms\agents merge --ff-only origin/main
+   node C:\Users\poweruser\projects\llms\agents\hooks\post-merge-cleanup.js `
+     --root <fix-root> --branch <verified-fix-branch> `
+     --base origin/main --no-fetch --apply
    ```
 
-   Do not use `--no-verify`, do not push, and do not release. After the merge,
-   rerun `node hooks/verify.js` in `agents-main` and a Dropwheel health canary
-   using `-AgentsRoot C:\Users\poweruser\projects\llms\agents-main`; the canary
-   report's Agents SHA must equal the new `agents-main` `HEAD`.
-
-   After verification, synchronize the development `main` without rewriting
-   history, then clean the exact pipeline-owned fix branch:
-
-   ```powershell
-   git -C C:\Users\poweruser\projects\llms\agents fetch C:\Users\poweruser\projects\llms\agents-main main
-   git -C C:\Users\poweruser\projects\llms\agents checkout main
-   git -C C:\Users\poweruser\projects\llms\agents merge --ff-only FETCH_HEAD
-   node C:\Users\poweruser\projects\llms\agents-main\hooks\post-merge-cleanup.js `
-     --root C:\Users\poweruser\projects\llms\agents `
-     --branch <verified-fix-branch> --base main --no-fetch --apply
-   ```
-
-   Run these commands only from a clean development checkout. If it contains
-   unrelated user work or cannot fast-forward, leave the finding open and do
-   not complete the run; never reset or discard it.
+   Remove the temporary fix worktree after exact cleanup. Rerun `verify` in the
+   canonical `agents` root and a Dropwheel health canary using
+   `-AgentsRoot C:\Users\poweruser\projects\llms\agents`; the report's Agents
+   SHA must equal canonical `HEAD`. If the canonical root is dirty, not on
+   `main`, or cannot fast-forward, leave the finding open and do not complete
+   the run; never reset or discard it.
 
 9. If discovery creates a Dropwheel auto-fix item, run Dropwheel auto-fix in the
    same orchestrator run. If discovery creates an agents handoff or agents
    regression fix, run agents inbox triage or agents auto-fix in the same
-   orchestrator run, then apply the Agents accepted-main auto-merge rule above
-   when verification is green.
+   orchestrator run, then apply the Agents PR merge rule above when verification
+   is green.
 
 10. Give every finding an `UpdateFindingDisposition` record. Then run the
     terminal topology gate:
 
     ```powershell
-    node C:\Users\poweruser\projects\llms\agents-main\hooks\repo-state-audit.js `
+    node C:\Users\poweruser\projects\llms\agents\hooks\repo-state-audit.js `
       --root C:\Users\poweruser\projects\llms\agents `
-      --accepted-root C:\Users\poweruser\projects\llms\agents-main `
-      --base main --strict
+      --base main --remote origin --fetch --strict
     ```
 
-    The run cannot complete while main SHAs differ, a worktree is dirty, or an
-    extra branch/worktree remains. Preserve unmerged or dirty user work and
-    report the run as blocked instead of deleting it.
+    The run cannot complete while canonical HEAD differs from local/fetched
+    `main`, the worktree is dirty, or an extra local/remote/orphaned branch or
+    worktree remains. Preserve unmerged or dirty user work and report the run as
+    blocked instead of deleting it.
 
 11. Finish with a compact summary, write the coordinator discovery/run summary,
     then mark the manifest complete:
@@ -338,7 +332,7 @@ The product discovery worker must record `sliceKind`, `coverageKey`,
    - owner classifications;
    - worker scopes and no-finding reasons;
    - branches/commits created;
-   - merge commits created on local main;
+   - PRs and server merge commits;
    - verification commands and pass/fail counts;
    - active inbox items left open;
    - whether current main checkout is blocked only because a local branch has
