@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "group-hotkeys",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Sequential numeric group shortcuts are a functional addition, not a redesign. The only visual change is a small one- or two-digit code badge reusing the existing badge slot, style and palette on group tiles; wheel geometry, layout, colours and animations are untouched. The rest of the diff is keyboard-hook plumbing, settings plumbing and the group-code field in the target editor. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-10"
+}
