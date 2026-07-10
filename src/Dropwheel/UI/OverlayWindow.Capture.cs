@@ -35,6 +35,8 @@ public partial class OverlayWindow
     private DispatcherTimer? _captureTimer;
     private Window? _ghost;
     private Ellipse? _ghostCore, _ghostHalo;
+    private Ellipse[]? _ghostRings;              // radar rings that ping outward while armed
+    private long _captureStart;                  // start tick, for the radar's steady rhythm
     private double _ghostArm, _ghostArmTarget;   // 0..1 arming as the ghost nears a valid target
 
     private Window? _hi;             // highlight drawn over the real target object
@@ -69,6 +71,7 @@ public partial class OverlayWindow
         SetGhostArmed(armed);
         _ghostArm += (_ghostArmTarget - _ghostArm) * 0.25;
         ApplyGhostArm();
+        UpdateGhostRings((Environment.TickCount64 - _captureStart) / 1000.0);
         UpdateTargetHighlight(armed, p);
 
         if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0) FinishOrbCapture();
@@ -164,8 +167,22 @@ public partial class OverlayWindow
             Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 12, ShadowDepth = 1, Opacity = 0.5 },
         };
         _ghostArm = _ghostArmTarget = 0;
+        _captureStart = Environment.TickCount64;
+        _ghostRings = new Ellipse[3];
+        for (int i = 0; i < _ghostRings.Length; i++)
+            _ghostRings[i] = new Ellipse
+            {
+                Fill = null,
+                Stroke = new SolidColorBrush(th.Accent),
+                StrokeThickness = 2,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                IsHitTestVisible = false,
+                Opacity = 0,
+            };
         var grid = new System.Windows.Controls.Grid { Opacity = 0.9 };
         grid.Children.Add(_ghostHalo);
+        foreach (var ring in _ghostRings) grid.Children.Add(ring);
         grid.Children.Add(ball);
         grid.Children.Add(_ghostCore);
 
@@ -202,6 +219,24 @@ public partial class OverlayWindow
         {
             _ghostHalo.Opacity = _ghostArm * 0.9;
             _ghostHalo.Width = _ghostHalo.Height = GhostBall * (0.9 + _ghostArm * 1.0);
+        }
+    }
+
+    /// <summary>Radar aura: three rings ping outward from the ghost on a steady beat, staggered a
+    /// third of a cycle apart. Their opacity rides the arm level, so the radar only pulses while the
+    /// ghost is locked over a valid target and fades out over empty space.</summary>
+    private void UpdateGhostRings(double elapsedSec)
+    {
+        if (_ghostRings == null) return;
+        int n = _ghostRings.Length;
+        for (int i = 0; i < n; i++)
+        {
+            double phase = (elapsedSec / 0.95 + (double)i / n) % 1;
+            double r = 18 + phase * 26;
+            var ring = _ghostRings[i];
+            ring.Width = ring.Height = r * 2;
+            ring.Opacity = (1 - phase) * 0.7 * _ghostArm;
+            ring.StrokeThickness = 2.6 - phase * 1.6;
         }
     }
 
@@ -336,6 +371,7 @@ public partial class OverlayWindow
         _ghost = null;
         _ghostCore = null;
         _ghostHalo = null;
+        _ghostRings = null;
     }
 
     private bool MovedFarEnough(POINT cursor)

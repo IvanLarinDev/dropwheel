@@ -1,0 +1,2 @@
+2026-07-10 work/main-follow approved 02-radar-ping.html (radar rings) for the capture ghost's aura: while the ghost is armed over a valid target, three rings ping outward on a steady beat, their opacity riding the arm level.
+ui: src/Dropwheel/UI/**
