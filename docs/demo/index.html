@@ -45,6 +45,10 @@
 
     .about h2 { margin: 0 0 10px; font-size: 20px; color: #eef2f8; }
     .about p { margin: 0 0 14px; line-height: 1.55; color: #9aa5b3; font-size: 14.5px; }
+    .about code {
+      font-family: ui-monospace, Consolas, monospace; font-size: 12.5px;
+      background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 4px; color: #c9d2de;
+    }
     .btn {
       font: inherit; font-size: 13px;
       padding: 8px 16px; border-radius: 9px;
@@ -98,6 +102,47 @@
           зажатым Shift). После сброса файл «улетает» в цель, тайл вспыхивает, и
           снизу всплывает тост с возможностью отменить. Сцена играет по кругу:
           сначала копирование на Downloads, затем перемещение на Documents.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-prox"></canvas></div>
+      <div class="about">
+        <h2>Открытие при приближении</h2>
+        <p>
+          Колесо открывать вручную не обязательно. Когда перетаскиваемый файл
+          подходит к орбу, тот оживает: ореол разгорается, а «ядро» ведёт взглядом
+          за курсором. Стоит подойти вплотную — колесо само раскрывается, и цели
+          уже под рукой. Отпустили файл — орб снова сворачивается и ждёт.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-group"></canvas></div>
+      <div class="about">
+        <h2>Вход в группу</h2>
+        <p>
+          Группа — это тайл, который открывает вложенный уровень колеса вместо
+          приёма файлов. Клик по группе Projects перестраивает обод: корневые цели
+          сменяются содержимым группы, а первым тайлом появляется «Назад». Клик по
+          нему возвращает на корневой уровень. Перестроение — та же анимация «Pop»,
+          что и при открытии.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-text"></canvas></div>
+      <div class="about">
+        <h2>Сохранение текста</h2>
+        <p>
+          На тайл-папку можно бросить не только файл, но и выделенный текст из
+          браузера или редактора. Dropwheel сохранит его в файл
+          <code>text_ГГГГ-ММ-ДД_ЧЧ-мм-сс.txt</code> (или <code>.md</code>, если
+          текст похож на Markdown). Бейдж показывает «txt», а тост подтверждает имя
+          созданного файла с возможностью отменить.
         </p>
       </div>
     </section>
