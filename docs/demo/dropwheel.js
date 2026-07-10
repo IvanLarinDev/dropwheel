@@ -133,7 +133,14 @@ const DW = (() => {
       this.hoverEnabled = opts.hover !== false;
       this.dpr = Math.min(window.devicePixelRatio || 1, 2);
       this.hover = -1;
-      this.t0 = performance.now();
+      // Программное состояние для сценариев (drop файла и т.п.):
+      this.forceHot = -1;             // подсвеченный тайл помимо наведения
+      this.badges = new Map();        // index → "copy" | "move"
+      this.ghost = null;              // {x, y, label, mode, alpha} — призрак файла
+      this.toast = null;              // {text, alpha}
+      this.flash = null;              // {index, p} — вспышка при сбросе
+      // startOpen: колесо уже раскрыто (для статичных сцен), иначе играем открытие
+      this.t0 = opts.startOpen ? performance.now() - 4000 : performance.now();
       this._fit();
       window.addEventListener("resize", () => this._fit());
       if (this.hoverEnabled) this._wireHover();
@@ -142,6 +149,12 @@ const DW = (() => {
     }
 
     open() { this.t0 = performance.now(); }
+
+    /** Центр тайла i в логических координатах (460×460). */
+    tileCenter(i) {
+      const s = slot(i, this.tiles.length);
+      return { x: s.x, y: s.y - 8 };
+    }
 
     _fit() {
       const w = this.canvas.clientWidth || SIZE;
@@ -219,9 +232,9 @@ const DW = (() => {
         const sy = -24 * Math.sin(s.a);
         const x = s.x + sx * (1 - p);
         const y = s.y - 8 + sy * (1 - p);
-        const hot = this.hoverEnabled && this.hover === i;
+        const hot = (this.hoverEnabled && this.hover === i) || this.forceHot === i;
         ctx.globalAlpha = op;
-        this._drawTile(ctx, t, x, y, scale * (hot ? 1.06 : 1), hot);
+        this._drawTile(ctx, t, x, y, scale * (hot ? 1.06 : 1), hot, this.badges.get(i));
         ctx.fillStyle = THEME.label;
         ctx.font = "11.5px system-ui,-apple-system,Segoe UI,sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -230,6 +243,77 @@ const DW = (() => {
         ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
         ctx.globalAlpha = 1;
       }
+
+      if (this.flash) this._drawFlash(ctx);
+      if (this.ghost) this._drawGhost(ctx);
+      if (this.toast) this._drawToast(ctx);
+    }
+
+    /** Вспышка-кольцо вокруг тайла в момент сброса. */
+    _drawFlash(ctx) {
+      const c = this.tileCenter(this.flash.index);
+      const p = this.flash.p; // 0..1
+      ctx.globalAlpha = (1 - p) * 0.9;
+      ctx.strokeStyle = THEME.accent;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 34 + p * 22, 0, 7);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    /** Призрак перетаскиваемого файла: карточка с уголком, подпись и бейдж курсора. */
+    _drawGhost(ctx) {
+      const g = this.ghost;
+      ctx.save();
+      ctx.globalAlpha = g.alpha == null ? 1 : g.alpha;
+      ctx.translate(g.x, g.y);
+      ctx.rotate(-0.06);
+      ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = 16; ctx.shadowOffsetY = 6;
+      ctx.fillStyle = "#eef2f8";
+      roundRect(ctx, -22, -28, 44, 56, 5); ctx.fill();
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      // загнутый уголок
+      ctx.fillStyle = "#c7d0dc";
+      ctx.beginPath(); ctx.moveTo(10, -28); ctx.lineTo(22, -16); ctx.lineTo(10, -16); ctx.closePath(); ctx.fill();
+      // строки текста
+      ctx.strokeStyle = "#aab4c2"; ctx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath(); ctx.moveTo(-14, -4 + i * 7); ctx.lineTo(14, -4 + i * 7); ctx.stroke();
+      }
+      ctx.rotate(0.06);
+      // подпись файла под карточкой
+      ctx.fillStyle = "#c9d2de"; ctx.font = "10px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
+      ctx.fillText(g.label || "report.pdf", 0, 32);
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+      // бейдж режима (copy/move) у курсора
+      if (g.mode) {
+        ctx.fillStyle = "rgb(0,250,154)";
+        roundRect(ctx, 14, -30, 20, 18, 9); ctx.fill();
+        ctx.fillStyle = "#06210f"; ctx.font = "bold 13px system-ui";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(g.mode === "move" ? "➜" : "⧉", 24, -21);
+      }
+      ctx.restore();
+    }
+
+    /** Тост внизу колеса: сообщение и ссылка Undo. */
+    _drawToast(ctx) {
+      const t = this.toast;
+      ctx.globalAlpha = t.alpha == null ? 1 : t.alpha;
+      ctx.font = "12px system-ui";
+      const gap = "  ";
+      const w = Math.min(300, ctx.measureText(t.text + gap + "Undo").width + 24);
+      const x = CENTER - w / 2, y = 408, h = 30;
+      ctx.fillStyle = "rgba(22,30,44,.92)";
+      roundRect(ctx, x, y, w, h, 8); ctx.fill();
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(t.text, x + 12, y + h / 2);
+      ctx.fillStyle = "#7cc4ff"; ctx.font = "600 12px system-ui";
+      ctx.fillText("Undo", x + 12 + ctx.measureText(t.text + gap).width, y + h / 2);
+      ctx.globalAlpha = 1;
     }
 
     _drawHub(ctx) {
@@ -255,7 +339,7 @@ const DW = (() => {
       }
     }
 
-    _drawTile(ctx, t, x, y, scale, hot) {
+    _drawTile(ctx, t, x, y, scale, hot, badge) {
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(scale, scale);
@@ -303,6 +387,16 @@ const DW = (() => {
         ctx.font = "bold 11px Consolas,monospace";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(t.code, -s - 2 + w / 2, -s - 6 + 9);
+      }
+
+      // бейдж копирования/перемещения (верхний правый угол тайла)
+      if (badge) {
+        ctx.fillStyle = "rgb(0,250,154)";
+        roundRect(ctx, s - 16, -s - 8, 22, 18, 9); ctx.fill();
+        ctx.fillStyle = "#06210f";
+        ctx.font = "bold 13px system-ui,-apple-system,Segoe UI,sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(badge === "move" ? "➜" : "⧉", s - 5, -s + 1);
       }
 
       ctx.restore();

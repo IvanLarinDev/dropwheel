@@ -89,10 +89,16 @@
     </section>
 
     <section class="scene">
-      <div class="soon">Перетаскивание файла → скоро</div>
+      <div class="stage"><canvas id="scene-drop"></canvas></div>
       <div class="about">
         <h2>Перетаскивание файла</h2>
-        <p>Копирование и перемещение файла на тайл с бейджем ⧉ / ➜. В работе.</p>
+        <p>
+          Тянем файл на тайл-цель. Пока курсор над тайлом, он подсвечивается, а в
+          углу появляется бейдж операции: ⧉ — копирование, ➜ — перемещение (с
+          зажатым Shift). После сброса файл «улетает» в цель, тайл вспыхивает, и
+          снизу всплывает тост с возможностью отменить. Сцена играет по кругу:
+          сначала копирование на Downloads, затем перемещение на Documents.
+        </p>
       </div>
     </section>
   </main>
@@ -116,6 +122,69 @@
 
     const wheel = new DW.Wheel(document.getElementById("scene-open"), ROOT_TILES);
     document.getElementById("replay-open").onclick = () => wheel.open();
+
+    // ---- Сцена 2: перетаскивание файла (самоиграющаяся) ----
+    const drop = new DW.Wheel(document.getElementById("scene-drop"), ROOT_TILES,
+      { startOpen: true, hover: false });
+
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const easeOut = (t) => 1 - (1 - t) * (1 - t) * (1 - t);
+    const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
+
+    // Два прохода: копирование на Downloads(0) и перемещение на Documents(1).
+    const PASSES = [
+      { index: 0, mode: "copy", label: "report.pdf", toast: "Copied to Downloads" },
+      { index: 1, mode: "move", label: "notes.txt",  toast: "Moved to Documents" },
+    ];
+    const PASS_MS = 4200;
+    const START = { x: 250, y: 505 };
+
+    function runDropScene(now) {
+      const total = now % (PASS_MS * PASSES.length);
+      const pass = PASSES[Math.floor(total / PASS_MS)];
+      const t = total % PASS_MS;
+      const target = drop.tileCenter(pass.index);
+
+      // сброс состояния кадра
+      drop.forceHot = -1;
+      drop.badges.clear();
+      drop.ghost = null;
+      drop.flash = null;
+      drop.toast = null;
+
+      if (t < 1300) {
+        // подлёт файла к тайлу
+        const p = easeOut(clamp01(t / 1000));
+        drop.ghost = {
+          x: lerp(START.x, target.x, p),
+          y: lerp(START.y, target.y, p),
+          mode: pass.mode, label: pass.label, alpha: 1,
+        };
+        if (t > 780) { drop.forceHot = pass.index; drop.badges.set(pass.index, pass.mode); }
+      } else if (t < 1500) {
+        // сброс: файл гаснет, тайл ещё горит
+        drop.ghost = {
+          x: target.x, y: target.y, mode: pass.mode, label: pass.label,
+          alpha: 1 - (t - 1300) / 200,
+        };
+        drop.forceHot = pass.index;
+        drop.badges.set(pass.index, pass.mode);
+      }
+      // кольцо-вспышка расходится от тайла после сброса
+      if (t >= 1300 && t < 1800) {
+        drop.flash = { index: pass.index, p: (t - 1300) / 500 };
+      }
+
+      // тост с отменой
+      if (t >= 1400 && t < 3500) {
+        const fadeIn = clamp01((t - 1400) / 150);
+        const fadeOut = 1 - clamp01((t - 3300) / 200);
+        drop.toast = { text: pass.toast, alpha: Math.min(fadeIn, fadeOut) };
+      }
+
+      requestAnimationFrame(runDropScene);
+    }
+    requestAnimationFrame(runDropScene);
   </script>
 </body>
 </html>
