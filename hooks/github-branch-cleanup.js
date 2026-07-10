@@ -4,7 +4,7 @@
 
 const path = require("path");
 const { execFileSync } = require("child_process");
-const { isPostMergeBranch } = require("./release-cleanup");
+const { isPostMergeBranch, isRetainedBranch, loadBranchPolicy } = require("./release-cleanup");
 
 function parseArgs(argv) {
   const out = {
@@ -109,6 +109,7 @@ function main(argv = process.argv.slice(2)) {
   if (report.errors.length) return finish(report, args.json);
 
   const pr = prs[0];
+  const branchPolicy = loadBranchPolicy(args.root, args.base);
   report.pr = { number: pr.number, url: pr.html_url || "", headSha: pr.head && pr.head.sha || "" };
   report.branch = pr.head && pr.head.ref || "";
   const headRepo = pr.head && pr.head.repo && pr.head.repo.full_name || "";
@@ -119,11 +120,11 @@ function main(argv = process.argv.slice(2)) {
     return finish(report, args.json);
   }
   if (!/^[0-9a-f]{40}$/i.test(report.pr.headSha)) report.errors.push("merged PR is missing a full reviewed head SHA");
-  if (!isPostMergeBranch(report.branch)) {
-    if (/^(?:release|hotfix)\//.test(report.branch)) {
+  if (!isPostMergeBranch(report.branch, branchPolicy)) {
+    if (isRetainedBranch(report.branch, branchPolicy)) {
       report.ok = true;
       report.skipped = true;
-      report.skipReason = "release/hotfix branch is retained until artifact smoke testing";
+      report.skipReason = "branch matches a retained prefix and is kept until artifact smoke testing";
       return finish(report, args.json);
     }
     report.errors.push(`PR head branch is outside the managed development prefixes: ${report.branch}`);

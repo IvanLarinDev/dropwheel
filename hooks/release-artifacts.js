@@ -1,29 +1,95 @@
 #!/usr/bin/env node
 // release-artifacts.js - execute project-owned build/smoke/version contracts.
 // Commands receive HARNESS_RELEASE_TAG, HARNESS_RELEASE_VERSION, and
-// HARNESS_ARTIFACT_PATH. Artifact paths stay repository-confined.
+// HARNESS_ARTIFACT_PATH. Artifact paths stay repository-confined. Workflow-owned
+// phase-all checks consume downloaded release-evidence.json plus asset/checksum.
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { spawnSync } = require("child_process");
 const { loadReleaseConfig } = require("./release-config.js");
 
 function parseArgs(argv) {
-  const out = { root: process.cwd(), tag: "", phase: "all", json: false, errors: [] };
+  const out = { root: process.cwd(), tag: "", phase: "all", evidence: "", json: false, errors: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (["--root", "--tag", "--phase"].includes(arg)) {
+    if (["--root", "--tag", "--phase", "--evidence"].includes(arg)) {
       if (!argv[i + 1] || argv[i + 1].startsWith("--")) out.errors.push(`${arg} requires a value`);
       else if (arg === "--root") out.root = argv[++i];
       else if (arg === "--tag") out.tag = argv[++i];
-      else out.phase = argv[++i];
+      else if (arg === "--phase") out.phase = argv[++i];
+      else out.evidence = argv[++i];
     } else if (arg === "--json") out.json = true;
     else out.errors.push(`unknown option: ${arg}`);
   }
   out.root = path.resolve(out.root);
+  if (out.evidence) out.evidence = path.resolve(out.root, out.evidence);
   if (!/^v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(out.tag)) out.errors.push("--tag must look like vX.Y.Z");
   if (!["build", "smoke", "version", "all"].includes(out.phase)) out.errors.push("--phase must be build, smoke, version, or all");
   return out;
+}
+
+function loadEvidence(file, tag) {
+  if (!file) return { ok: false, error: "workflow-owned artifacts require --evidence <release-evidence.json> for phase all", dir: "", entries: new Map() };
+  let value;
+  try { value = JSON.parse(fs.readFileSync(file, "utf8")); }
+  catch (e) { return { ok: false, error: `cannot read release evidence: ${e.message}`, dir: path.dirname(file), entries: new Map() }; }
+  if (!value || value.schemaVersion !== 1 || value.tag !== tag || !Array.isArray(value.artifacts)) {
+    return { ok: false, error: "release evidence requires schemaVersion 1, the exact tag, and an artifacts array", dir: path.dirname(file), entries: new Map() };
+  }
+  const entries = new Map();
+  for (const entry of value.artifacts) {
+    if (!entry || typeof entry.id !== "string" || !entry.id || entries.has(entry.id)) {
+      return { ok: false, error: "release evidence artifact ids must be non-empty and unique", dir: path.dirname(file), entries: new Map() };
+    }
+    entries.set(entry.id, entry);
+  }
+  return { ok: true, error: "", dir: path.dirname(file), entries };
+}
+
+function isHttpsUrl(value) {
+  try { return new URL(String(value)).protocol === "https:"; } catch { return false; }
+}
+
+function sha256File(file) {
+  return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
+function verifyWorkflowEvidence(item, evidence, version) {
+  const entry = evidence.entries.get(String(item.id));
+  if (!entry) return { ok: false, error: `release evidence is missing artifact ${item.id}` };
+  if (!isHttpsUrl(entry.workflowUrl) || !isHttpsUrl(entry.releaseUrl)) {
+    return { ok: false, error: `artifact ${item.id} evidence requires HTTPS workflowUrl and releaseUrl` };
+  }
+  if (entry.smokePassed !== true || entry.version !== version) {
+    return { ok: false, error: `artifact ${item.id} evidence must attest smokePassed=true and version ${version}` };
+  }
+  const asset = path.resolve(evidence.dir, String(entry.assetPath || ""));
+  const checksum = path.resolve(evidence.dir, String(entry.checksumPath || ""));
+  if (!entry.assetPath || !entry.checksumPath || !fs.existsSync(asset) || !fs.existsSync(checksum)) {
+    return { ok: false, error: `artifact ${item.id} downloaded asset or checksum file is missing` };
+  }
+  let expected = "";
+  let listedName = "";
+  try {
+    const match = fs.readFileSync(checksum, "utf8").trim().match(/^([0-9a-f]{64})\s+\*?(.+)$/i);
+    if (match) [, expected, listedName] = match;
+  } catch {}
+  if (!expected || path.basename(listedName.trim()) !== path.basename(asset)) {
+    return { ok: false, error: `artifact ${item.id} checksum file is invalid or names a different asset` };
+  }
+  let actual;
+  try { actual = sha256File(asset); }
+  catch (e) { return { ok: false, error: `cannot hash artifact ${item.id}: ${e.message}` }; }
+  if (actual.toLowerCase() !== expected.toLowerCase()) {
+    return { ok: false, error: `artifact ${item.id} SHA-256 does not match its published checksum` };
+  }
+  return {
+    ok: true, id: String(item.id), assetPath: asset, checksumPath: checksum,
+    sha256: actual, workflowUrl: entry.workflowUrl, releaseUrl: entry.releaseUrl,
+    smokePassed: true, version,
+  };
 }
 
 function add(report, level, message, extra = {}) {
@@ -63,8 +129,9 @@ function versionMatches(output, version, pattern) {
 function runContract(args) {
   const version = args.tag.slice(1);
   const contract = loadReleaseConfig(args.root);
-  const report = { ok: true, root: args.root, tag: args.tag, version, phase: args.phase, artifacts: [], results: [] };
+  const report = { ok: true, root: args.root, tag: args.tag, version, phase: args.phase, evidence: args.evidence || "", artifacts: [], results: [] };
   let runnable = 0;
+  const workflowEvidence = args.phase === "all" ? loadEvidence(args.evidence, args.tag) : null;
 
   if (contract.provider === "none") {
     add(report, "FAIL", "release capability is disabled in harness.config.json");
@@ -78,7 +145,20 @@ function runContract(args) {
       continue;
     }
     if (item.workflowOwned === true) {
-      add(report, "PASS", `artifact ${item.id} is verified by the project release workflow`);
+      if (args.phase !== "all") {
+        add(report, "WARN", `artifact ${item.id} is workflow-owned; verification is deferred to phase all`);
+        continue;
+      }
+      if (!workflowEvidence.ok) {
+        add(report, "FAIL", workflowEvidence.error);
+        continue;
+      }
+      const verified = verifyWorkflowEvidence(item, workflowEvidence, version);
+      if (!verified.ok) add(report, "FAIL", verified.error);
+      else {
+        report.artifacts.push(verified);
+        add(report, "PASS", `artifact ${item.id} published evidence passed with SHA-256 ${verified.sha256}`);
+      }
       continue;
     }
     runnable++;
@@ -132,7 +212,7 @@ function runContract(args) {
   }
 
   if (!contract.artifacts.length) add(report, "FAIL", "release.artifacts is empty; project artifact evidence is not configured");
-  else if (!runnable) add(report, "WARN", "all artifact contracts are workflow-owned; no local artifact command was run");
+  else if (!runnable && args.phase !== "all") add(report, "WARN", "all artifact contracts are workflow-owned; published evidence is checked in phase all");
   report.ok = !report.results.some((result) => result.level === "FAIL");
   return report;
 }
@@ -157,5 +237,5 @@ function main(argv = process.argv.slice(2)) {
   process.exit(report.ok ? 0 : 1);
 }
 
-module.exports = { parseArgs, artifactPath, versionMatches, runContract };
+module.exports = { artifactPath, loadEvidence, parseArgs, runContract, verifyWorkflowEvidence, versionMatches };
 if (require.main === module) main();

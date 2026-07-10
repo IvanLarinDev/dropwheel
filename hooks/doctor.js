@@ -197,6 +197,9 @@ function checkReleaseWorkflowContract(workflowPath) {
     { name: "exact-tag git archive", re: /git\s+archive\b/i },
     { name: "SHA-256", re: /Get-FileHash[^\n]*SHA256/i },
     { name: "archive smoke test", re: /Expand-Archive/i },
+    { name: "published evidence file", re: /release-evidence\.json/i },
+    { name: "published evidence links", re: /workflowUrl[\s\S]*releaseUrl/i },
+    { name: "published smoke evidence", re: /smokePassed/i },
     { name: "GitHub Release publication", re: /gh\s+release\s+(?:create|upload)/i },
   ];
   const missing = checks.filter((check) => !check.re.test(text)).map((check) => check.name);
@@ -376,6 +379,15 @@ if (fs.existsSync(cfgPath)) {
       fail(`harness.config.json: unsupported server-policy provider ${serverProvider}`);
     if (!["solo", "team"].includes(serverProfile))
       fail(`harness.config.json: unsupported server-policy profile ${serverProfile}`);
+    const lifecycle = cfg.branchLifecycle;
+    if (lifecycle) {
+      for (const field of ["managedPrefixes", "protectedBranches", "retainedPrefixes"]) {
+        const values = lifecycle[field];
+        if (!Array.isArray(values) || !values.length || values.some((value) => typeof value !== "string" || !value.trim())) {
+          fail(`harness.config.json: branchLifecycle.${field} must be a non-empty string array`);
+        }
+      }
+    }
     if (releaseProvider === "cocogitto") {
       const release = cfg.release || {};
       const versioning = release.versioning || {};

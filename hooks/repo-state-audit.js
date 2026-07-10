@@ -199,10 +199,11 @@ function audit(argv = process.argv.slice(2)) {
       issue(report, "branch_list_failed", `cannot list local branches: ${localRefs.error}`, { root: probe });
       continue;
     }
-    const baseRef = args.base.startsWith("refs/") ? args.base : `refs/heads/${args.base}`;
+    const baseRef = baseRefName(args.base);
+    const localBaseRef = `refs/heads/${baseBranch(args.base)}`;
     for (const line of String(localRefs.out || "").split(/\r?\n/).filter(Boolean)) {
       const [branch, oid] = line.split("\t");
-      if (`refs/heads/${branch}` === baseRef) continue;
+      if (`refs/heads/${branch}` === localBaseRef) continue;
       const ancestor = result(probe, ["merge-base", "--is-ancestor", oid, baseRef]).ok;
       const entry = { root: probe, branch, oid };
       if (ancestor) {

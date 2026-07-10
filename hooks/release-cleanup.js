@@ -4,7 +4,7 @@
 // mode powers post-merge cleanup for one development branch.
 //
 // Dry-run is the default. --apply authorizes deletion, but only for branches
-// with a known development prefix whose commits are ancestors of --base.
+// with a configured development prefix whose commits are ancestors of --base.
 // Provider-confirmed squash/rebase cleanup may add --include-equivalent.
 // Dirty worktrees and unique/ambiguous refs block cleanup. Unmerged branches
 // block exact mode and are reported-but-skipped in release-wide mode. Tags are
@@ -16,16 +16,39 @@
 //     [--include-equivalent] [--apply] [--json]
 
 const path = require("path");
+const fs = require("fs");
 const { execFileSync } = require("child_process");
 const { classifyRef } = require("./branch-state");
 
-const BRANCH_PREFIXES = [
+const DEFAULT_BRANCH_PREFIXES = [
   "codex/", "feat/", "feature/", "fix/", "bugfix/", "docs/", "chore/",
   "refactor/", "perf/", "build/", "style/", "release/", "hotfix/",
-  "test/", "ci/", "improvement/", "dependabot/", "renovate/", "automation/",
+  "test/", "ci/", "task/", "story/", "improvement/", "dependabot/",
+  "renovate/", "automation/",
 ];
-const PROTECTED_BRANCHES = new Set(["main", "master"]);
-const RELEASE_PREFIXES = ["release/", "hotfix/"];
+const DEFAULT_PROTECTED_BRANCHES = ["main", "master"];
+const DEFAULT_RETAINED_PREFIXES = ["release/", "hotfix/"];
+
+function configuredList(value, fallback) {
+  if (!Array.isArray(value) || !value.length || value.some((item) => typeof item !== "string" || !item.trim())) {
+    return [...fallback];
+  }
+  return [...new Set(value.map((item) => item.trim()))];
+}
+
+function loadBranchPolicy(root, base = "") {
+  let config = {};
+  try { config = JSON.parse(fs.readFileSync(path.join(root, "harness.config.json"), "utf8")); } catch {}
+  const lifecycle = config.branchLifecycle || {};
+  const protectedBranches = configuredList(lifecycle.protectedBranches, DEFAULT_PROTECTED_BRANCHES);
+  const baseBranch = String(base || "").replace(/^refs\/heads\//, "").replace(/^refs\/remotes\/[^/]+\//, "").replace(/^[^/]+\//, "");
+  if (baseBranch && !protectedBranches.includes(baseBranch)) protectedBranches.push(baseBranch);
+  return {
+    managedPrefixes: configuredList(lifecycle.managedPrefixes, DEFAULT_BRANCH_PREFIXES),
+    protectedBranches,
+    retainedPrefixes: configuredList(lifecycle.retainedPrefixes, DEFAULT_RETAINED_PREFIXES),
+  };
+}
 
 function parseArgs(argv) {
   const a = {
@@ -69,12 +92,16 @@ function lines(text) {
   return String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 }
 
-function isManagedBranch(name) {
-  return !PROTECTED_BRANCHES.has(name) && BRANCH_PREFIXES.some((prefix) => name.startsWith(prefix));
+function isManagedBranch(name, policy = loadBranchPolicy(process.cwd())) {
+  return !policy.protectedBranches.includes(name) && policy.managedPrefixes.some((prefix) => name.startsWith(prefix));
 }
 
-function isPostMergeBranch(name) {
-  return isManagedBranch(name) && !RELEASE_PREFIXES.some((prefix) => name.startsWith(prefix));
+function isRetainedBranch(name, policy = loadBranchPolicy(process.cwd())) {
+  return policy.retainedPrefixes.some((prefix) => name.startsWith(prefix));
+}
+
+function isPostMergeBranch(name, policy = loadBranchPolicy(process.cwd())) {
+  return isManagedBranch(name, policy) && !isRetainedBranch(name, policy);
 }
 
 function parseWorktrees(text) {
@@ -99,6 +126,7 @@ function samePath(a, b) {
 
 function main(argv = process.argv.slice(2), options = {}) {
   const a = parseArgs(argv);
+  const branchPolicy = loadBranchPolicy(a.root, a.base);
   const label = options.label || (a.branch ? "post-merge cleanup" : "release cleanup");
   const report = {
     ok: true,
@@ -121,7 +149,7 @@ function main(argv = process.argv.slice(2), options = {}) {
 
   report.errors.push(...a.argErrors);
   if (options.requireBranch && !a.branch) report.errors.push("--branch is required for post-merge cleanup");
-  if (a.branch && !isPostMergeBranch(a.branch)) {
+  if (a.branch && !isPostMergeBranch(a.branch, branchPolicy)) {
     report.errors.push(`branch is not eligible for post-merge cleanup: ${a.branch}`);
   }
 
@@ -157,7 +185,7 @@ function main(argv = process.argv.slice(2), options = {}) {
     const localMap = new Map(localRefs.map((item) => [item.name, item]));
     const remoteMap = new Map(remoteRefs.map((item) => [item.name, item]));
     const names = new Set([...localRefs.map((item) => item.name), ...remoteRefs.map((item) => item.name)]);
-    const scopedNames = a.branch ? [a.branch] : [...names].filter(isManagedBranch).sort();
+    const scopedNames = a.branch ? [a.branch] : [...names].filter((name) => isManagedBranch(name, branchPolicy)).sort();
 
     for (const name of scopedNames) {
       const local = localMap.get(name);
@@ -269,4 +297,4 @@ function main(argv = process.argv.slice(2), options = {}) {
 
 if (require.main === module) main();
 
-module.exports = { main, parseArgs, isManagedBranch, isPostMergeBranch };
+module.exports = { isManagedBranch, isPostMergeBranch, isRetainedBranch, loadBranchPolicy, main, parseArgs };
