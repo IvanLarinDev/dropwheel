@@ -206,6 +206,9 @@ const DW = (() => {
       this.orbPulse = 0;              // 0..1 — раздутие ореола хаба (проксимити)
       this.orbLook = { x: 0, y: 0 };  // смещение ядра «взглядом» к курсору
       this.cursor = null;             // {x, y, click} — указатель мыши в сцене
+      this.chips = null;              // [{x, y, label, color, alpha, scale}] — летящие метки (веер сортера)
+      this.highlight = null;          // {x, y, w, h, alpha} — рамка вокруг цели (захват)
+      this.pinRing = null;            // {p} — расходящееся кольцо-пульс у хаба (0..1)
       // startOpen: колесо уже раскрыто (для статичных сцен), иначе играем открытие
       this.t0 = opts.startOpen ? performance.now() - 4000 : performance.now();
       this._fit();
@@ -267,6 +270,8 @@ const DW = (() => {
 
       const n = this.tiles.length;
 
+      if (this.highlight) this._drawHighlight(ctx);
+
       // обод: opacity 200мс, scale .7→1 280мс, rotate −10°→0 (масштаб скорости)
       const rimP = cubicOut(clamp01(el / (280 / sp)));
       const rimO = clamp01(el / (200 / sp));
@@ -294,6 +299,7 @@ const DW = (() => {
       ctx.globalAlpha = 1;
 
       this._drawHub(ctx);
+      if (this.pinRing) this._drawPinRing(ctx);
 
       // тайлы: параметры по выбранной анимации открытия, тайминги делятся на speed
       const A = OPEN_ANIM[this.animation] || OPEN_ANIM.pop;
@@ -318,9 +324,58 @@ const DW = (() => {
       }
 
       if (this.flash) this._drawFlash(ctx);
+      if (this.chips) this._drawChips(ctx);
       if (this.ghost) this._drawGhost(ctx);
       if (this.toast) this._drawToast(ctx);
       if (this.cursor) this._drawCursor(ctx);
+    }
+
+    /** Рамка-подсветка вокруг внешней цели (жест захвата Alt+Shift), с
+     * опциональной подписью-именем цели внутри. */
+    _drawHighlight(ctx) {
+      const h = this.highlight;
+      ctx.globalAlpha = h.alpha == null ? 1 : h.alpha;
+      ctx.fillStyle = "rgba(255,255,255,.05)";
+      roundRect(ctx, h.x, h.y, h.w, h.h, 6); ctx.fill();
+      ctx.strokeStyle = this.theme.accent; ctx.lineWidth = 2.5;
+      roundRect(ctx, h.x, h.y, h.w, h.h, 6); ctx.stroke();
+      if (h.label) {
+        ctx.fillStyle = "#dbe7f5"; ctx.font = "11px system-ui,-apple-system,Segoe UI,sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(h.label, h.x + h.w / 2, h.y + h.h / 2);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /** Кольцо-пульс у хаба (PulsePinRing): scale 1→1.9, opacity 1→0. */
+    _drawPinRing(ctx) {
+      const p = this.pinRing.p; // 0..1
+      ctx.globalAlpha = 1 - p;
+      ctx.strokeStyle = this.theme.accent; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(CENTER, CENTER, (HUB / 2) * (1 + 0.9 * p), 0, 7); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    /** Летящие метки-чипсы: маленькие пилюли с подписью (веер сортера). */
+    _drawChips(ctx) {
+      for (const c of this.chips) {
+        if (c.alpha != null && c.alpha <= 0) continue;
+        ctx.globalAlpha = c.alpha == null ? 1 : c.alpha;
+        const sc = c.scale == null ? 1 : c.scale;
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.scale(sc, sc);
+        ctx.font = "10px system-ui,-apple-system,Segoe UI,sans-serif";
+        const w = ctx.measureText(c.label).width + 14;
+        ctx.fillStyle = c.color || "rgba(40,48,60,.95)";
+        roundRect(ctx, -w / 2, -9, w, 18, 9); ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = 1;
+        roundRect(ctx, -w / 2, -9, w, 18, 9); ctx.stroke();
+        ctx.fillStyle = "#eef2f8"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(c.label, 0, 0);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
     }
 
     /** Подпись под тайлом: светлый текст с тенью, либо тёмный текст на светлой
@@ -380,6 +435,7 @@ const DW = (() => {
     _drawGhost(ctx) {
       const g = this.ghost;
       if (g.kind === "text") { this._drawTextGhost(ctx, g); return; }
+      if (g.kind === "orb") { this._drawOrbGhost(ctx, g); return; }
       ctx.save();
       ctx.globalAlpha = g.alpha == null ? 1 : g.alpha;
       ctx.translate(g.x, g.y);
@@ -402,13 +458,14 @@ const DW = (() => {
       ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 3;
       ctx.fillText(g.label || "report.pdf", 0, 32);
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
-      // бейдж режима (copy/move) у курсора
+      // бейдж режима у курсора (copy/move/run/sorter…) по общей карте
       if (g.mode) {
-        ctx.fillStyle = "rgb(0,250,154)";
+        const b = BADGES[g.mode] || BADGES.copy;
+        ctx.fillStyle = b.color;
         roundRect(ctx, 14, -30, 20, 18, 9); ctx.fill();
-        ctx.fillStyle = "#06210f"; ctx.font = "bold 13px system-ui";
+        ctx.fillStyle = "#0c1420"; ctx.font = "bold 13px system-ui";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(g.mode === "move" ? "➜" : "⧉", 24, -21);
+        ctx.fillText(b.glyph, 24, -21);
       }
       ctx.restore();
     }
@@ -443,6 +500,36 @@ const DW = (() => {
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText("txt", 29, -17);
       }
+      ctx.restore();
+    }
+
+    /** Призрак-орб для жеста захвата (Alt+Shift): маленький хаб, который
+     * «вооружается» над целью — ядро наливается акцентом, ореол разгорается.
+     * g.arm 0..1 — степень вооружения, g.scale — усадка при возврате к хабу. */
+    _drawOrbGhost(ctx, g) {
+      const arm = g.arm || 0;
+      const sc = g.scale == null ? 1 : g.scale;
+      ctx.save();
+      ctx.globalAlpha = g.alpha == null ? 0.9 : g.alpha;
+      ctx.translate(g.x, g.y);
+      ctx.scale(sc, sc);
+      // ореол
+      const hr = 23 * (0.7 + arm * 0.25);
+      const halo = ctx.createRadialGradient(0, 0, 2, 0, 0, hr);
+      halo.addColorStop(0, accentA(this.theme, arm * 0.5));
+      halo.addColorStop(1, accentA(this.theme, 0));
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(0, 0, hr, 0, 7); ctx.fill();
+      // тело
+      ctx.shadowColor = "rgba(0,0,0,.5)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 1;
+      ctx.fillStyle = this.theme.hubBg;
+      ctx.beginPath(); ctx.arc(0, 0, 15, 0, 7); ctx.fill();
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = this.theme.hubBorder; ctx.lineWidth = 1; ctx.stroke();
+      // ядро: цвет между hubBorder и accent по arm, размер 9→12
+      const cr = 9 + arm * 3;
+      ctx.fillStyle = arm > 0.5 ? this.theme.accent : this.theme.hubBorder;
+      ctx.beginPath(); ctx.arc(0, 0, cr, 0, 7); ctx.fill();
       ctx.restore();
     }
 

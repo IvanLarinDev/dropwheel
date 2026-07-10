@@ -184,6 +184,61 @@
         </p>
       </div>
     </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-run"></canvas></div>
+      <div class="about">
+        <h2>Запуск: «открыть с помощью»</h2>
+        <p>
+          Если цель — это программа или скрипт (<code>.exe</code>, <code>.bat</code>,
+          <code>.ps1</code>, <code>.py</code>, <code>.jar</code> и подобные), файлы,
+          брошенные на её тайл, не копируются, а передаются программе как аргументы —
+          поведение Windows «открыть с помощью». Бейдж при этом синий с треугольником
+          ▶. Скрипты, которые оболочка открыла бы в редакторе, запускаются через
+          интерпретатор (например, <code>.py</code> через <code>py</code>). Это
+          запуск, а не файловая операция, поэтому отмене он не подлежит.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-sort"></canvas></div>
+      <div class="about">
+        <h2>Сортер: раскладка по правилам</h2>
+        <p>
+          Сортер — это папка-цель с правилами (тайл с янтарной рамкой и бейджем ⇅).
+          Брошенная на него пачка файлов расходится по подпапкам: первое правило,
+          все условия которого совпали, забирает файл. Условия — расширение, имя
+          (подстрока или регулярное выражение), размер и возраст; правило без условий
+          работает как «всё остальное».
+        </p>
+        <p>
+          Назначение может собирать имя подпапки из файла через токены
+          <code>${name}</code>, так что одно правило и находит файл, и раскладывает
+          его в датированную или именованную структуру. Тот же движок работает при
+          «наблюдении за папкой» — сортер сам раскладывает появившиеся файлы в фоне.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage" id="stage-capture"><canvas id="scene-capture"></canvas></div>
+      <div class="about">
+        <h2>Захват цели орбом (Alt+Shift)</h2>
+        <p>
+          Чтобы закрепить папку, приложение или файл прямо из Проводника или с
+          рабочего стола, зажимают <b>Alt+Shift</b> и тянут орб на цель. За курсором
+          летит призрак-орб: над подходящей целью он «вооружается» — ядро наливается
+          акцентным цветом, ореол разгорается, а вокруг самой цели появляется рамка.
+        </p>
+        <p>
+          На отпускании призрак «сматывается» обратно в орб, тот отбивает
+          подтверждающее кольцо, выдерживает короткую паузу — и колесо открывается с
+          новым закреплённым тайлом впереди, рядом с хабом. Тост «Pinned: …» позволяет
+          отменить добавление.
+        </p>
+      </div>
+    </section>
   </main>
 
   <script src="dropwheel.js"></script>
@@ -383,6 +438,118 @@
       requestAnimationFrame(textScene);
     }
     requestAnimationFrame(textScene);
+
+    // ---- Сцена 6: запуск (открыть с помощью) ----
+    const run = new DW.Wheel(document.getElementById("scene-run"), ROOT_TILES, { startOpen: true, hover: false });
+    const RUN_TARGET = 6; // Scripts
+    function runScene(now) {
+      const t = now % 4600;
+      const tgt = run.tileCenter(RUN_TARGET);
+      run.forceHot = -1; run.badges.clear(); run.ghost = null; run.flash = null; run.toast = null;
+      if (t < 1300) {
+        const p = easeOut(clamp01(t / 1000));
+        run.ghost = { x: lerp(START.x, tgt.x, p), y: lerp(START.y, tgt.y, p), mode: "run", label: "data.csv", alpha: 1 };
+        if (t > 780) { run.forceHot = RUN_TARGET; run.badges.set(RUN_TARGET, "run"); }
+      } else if (t < 1500) {
+        run.ghost = { x: tgt.x, y: tgt.y, mode: "run", label: "data.csv", alpha: 1 - (t - 1300) / 200 };
+        run.forceHot = RUN_TARGET; run.badges.set(RUN_TARGET, "run");
+      }
+      if (t >= 1300 && t < 1800) run.flash = { index: RUN_TARGET, p: (t - 1300) / 500 };
+      if (t >= 1400 && t < 3800) {
+        const fi = clamp01((t - 1400) / 150), fo = 1 - clamp01((t - 3600) / 200);
+        run.toast = { text: "▶ Ran Scripts with data.csv", alpha: Math.min(fi, fo) };
+      }
+      requestAnimationFrame(runScene);
+    }
+    requestAnimationFrame(runScene);
+
+    // ---- Сцена 7: сортер (раскладка по подпапкам) ----
+    const sortW = new DW.Wheel(document.getElementById("scene-sort"), ROOT_TILES, { startOpen: true, hover: false });
+    const SORT_TARGET = 4; // Inbox
+    const SUBF = [
+      { x: 140, y: 380, label: "Images/ 3", color: "rgba(232,166,72,.28)" },
+      { x: 230, y: 380, label: "Docs/ 2",   color: "rgba(232,166,72,.28)" },
+      { x: 320, y: 380, label: "Archive/ 1",color: "rgba(232,166,72,.28)" },
+    ];
+    const SORT_FILES = [
+      { s: 0, l: "a.png" }, { s: 0, l: "b.jpg" }, { s: 0, l: "c.gif" },
+      { s: 1, l: "d.pdf" }, { s: 1, l: "e.doc" }, { s: 2, l: "f.zip" },
+    ];
+    function sortScene(now) {
+      const t = now % 5600;
+      const tgt = sortW.tileCenter(SORT_TARGET);
+      sortW.forceHot = -1; sortW.badges.clear(); sortW.ghost = null; sortW.chips = null; sortW.toast = null;
+      if (t < 1200) {
+        const p = easeOut(clamp01(t / 1000));
+        sortW.ghost = { x: lerp(START.x, tgt.x, p), y: lerp(START.y, tgt.y, p), mode: "sorter", label: "6 files", alpha: 1 };
+        if (t > 780) { sortW.forceHot = SORT_TARGET; sortW.badges.set(SORT_TARGET, "sorter"); }
+      } else if (t < 4200) {
+        sortW.forceHot = SORT_TARGET;
+        const ft = t - 1200;
+        const chips = SUBF.map((s) => ({ x: s.x, y: s.y, label: s.label, color: s.color }));
+        for (let i = 0; i < SORT_FILES.length; i++) {
+          const sub = SUBF[SORT_FILES[i].s];
+          const p = easeOut(clamp01((ft - i * 170) / 620));
+          if (p <= 0) continue;
+          const alpha = Math.max(0, 1 - Math.max(0, ft - i * 170 - 620) / 300);
+          chips.push({ x: lerp(tgt.x, sub.x, p), y: lerp(tgt.y, sub.y, p), label: SORT_FILES[i].l, color: "rgba(52,64,82,.96)", alpha, scale: 0.92 });
+        }
+        sortW.chips = chips;
+        sortW.toast = { text: "⇅ Sorted: 6 items → Inbox", alpha: clamp01((ft - 200) / 200) };
+      } else {
+        sortW.chips = SUBF.map((s) => ({ x: s.x, y: s.y, label: s.label, color: s.color }));
+        sortW.toast = { text: "⇅ Sorted: 6 items → Inbox", alpha: 1 - clamp01((t - 5000) / 300) };
+      }
+      requestAnimationFrame(sortScene);
+    }
+    requestAnimationFrame(sortScene);
+
+    // ---- Сцена 8: захват цели орбом (Alt+Shift) ----
+    const CAP_TILES = [
+      { label: "report.pdf", icon: "doc" },   // захваченный, встаёт первым у хаба
+      { label: "Downloads", icon: "download" },
+      { label: "Documents", icon: "doc" },
+      { label: "Pictures", icon: "pic" },
+      { label: "Desktop", icon: "desktop" },
+      { label: "Add", icon: "plus", add: true },
+    ];
+    const capture = new DW.Wheel(document.getElementById("scene-capture"), ROOT_TILES, { hover: false });
+    capture.close();
+    const HUB = { x: 230, y: 230 };
+    const CAP_TARGET = { x: 296, y: 84, w: 100, h: 26, label: "report.pdf" };
+    const capTcx = CAP_TARGET.x + CAP_TARGET.w / 2, capTcy = CAP_TARGET.y + CAP_TARGET.h / 2;
+    let cap = { stage: 0, start: performance.now() };
+    function captureScene(now) {
+      const el = now - cap.start;
+      capture.ghost = null; capture.highlight = null; capture.pinRing = null; capture.forceHot = -1; capture.toast = null;
+      if (cap.stage === 0) {
+        // призрак-орб летит от хаба к цели и «вооружается»
+        const p = easeOut(clamp01(el / 1300));
+        const arm = clamp01((el - 700) / 500);
+        capture.ghost = { kind: "orb", x: lerp(HUB.x, capTcx, p), y: lerp(HUB.y, capTcy, p), arm, alpha: 0.92 };
+        capture.highlight = { ...CAP_TARGET, alpha: clamp01((el - 600) / 300) };
+        if (el >= 1500) cap = { stage: 1, start: now };
+      } else if (cap.stage === 1) {
+        // сматывание призрака в хаб + кольцо-пульс
+        const p = easeOut(clamp01(el / 300));
+        capture.ghost = { kind: "orb", x: lerp(capTcx, HUB.x, p), y: lerp(capTcy, HUB.y, p), arm: 1 - p, alpha: 0.92 * (1 - p), scale: 1 - 0.5 * p };
+        capture.highlight = { ...CAP_TARGET, alpha: 1 - clamp01(el / 200) };
+        capture.pinRing = { p: clamp01(el / 300) };
+        if (el >= 340) cap = { stage: 2, start: now };
+      } else if (cap.stage === 2) {
+        // короткая пауза-«бит», затем открываем колесо с закреплённым тайлом
+        if (el >= 280) { capture.tiles = CAP_TILES; capture.open(); cap = { stage: 3, start: now }; }
+      } else if (cap.stage === 3) {
+        if (el < 600) capture.forceHot = 0;
+        const fi = clamp01((el - 200) / 150), fo = 1 - clamp01((el - 2200) / 200);
+        capture.toast = { text: "Pinned: report.pdf", alpha: Math.min(fi, fo) };
+        if (el >= 2600) { capture.close(); cap = { stage: 4, start: now }; }
+      } else {
+        if (el >= 900) { capture.tiles = ROOT_TILES; cap = { stage: 0, start: now }; }
+      }
+      requestAnimationFrame(captureScene);
+    }
+    requestAnimationFrame(captureScene);
   </script>
 </body>
 </html>
