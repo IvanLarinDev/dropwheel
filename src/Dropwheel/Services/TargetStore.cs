@@ -187,6 +187,14 @@ public static class TargetStore
         return true;
     }
 
+    /// <summary>Mark a target pinned and move it first on its level. The flag alone only orders
+    /// tiles while no manual order exists, so the move is what keeps the pin visible afterwards.</summary>
+    public static void PinToFront(IList<TargetItem> targets, TargetItem source)
+    {
+        source.Pinned = true;
+        MoveTileToIndex(targets, source, 0);
+    }
+
     public static bool MoveTileToEnd(IList<TargetItem> targets, TargetItem source)
     {
         var ordered = OrderedForDisplay(targets).ToList();

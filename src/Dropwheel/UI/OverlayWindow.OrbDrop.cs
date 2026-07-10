@@ -11,7 +11,7 @@ public partial class OverlayWindow
     /// the target goes into it; otherwise into the root.</summary>
     private void OnOrbDrop(object sender, DragEventArgs e)
     {
-        if (AddTargetsFromDrop(e.Data, _currentGroup)) e.Handled = true;
+        if (AddTargetsFromDrop(e.Data, _currentGroup, AddTargetIntent.ShouldPin(e.KeyStates))) e.Handled = true;
     }
 
     /// <summary>A quick drop on a group bubble (before hover-expand fires)
@@ -19,7 +19,7 @@ public partial class OverlayWindow
     private void OnGroupDrop(TargetItem group, DragEventArgs e)
     {
         _groupHover?.Stop();
-        if (AddTargetsFromDrop(e.Data, group)) e.Handled = true;
+        if (AddTargetsFromDrop(e.Data, group, AddTargetIntent.ShouldPin(e.KeyStates))) e.Handled = true;
     }
 
     private void OnAddTargetDragOver(object sender, DragEventArgs e)
@@ -38,24 +38,24 @@ public partial class OverlayWindow
         return DragDropEffects.None;
     }
 
-    private bool AddTargetsFromDrop(IDataObject data, TargetItem? group)
+    private bool AddTargetsFromDrop(IDataObject data, TargetItem? group, bool pinned)
     {
         if (data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0)
         {
-            AddTargets(paths.Select(TargetFromPath), group);
+            AddTargets(paths.Select(TargetFromPath), group, pinned);
             return true;
         }
 
         if (LinkTargetService.CreateTarget(data) is { } linkTarget)
         {
-            AddTargets(new[] { linkTarget }, group);
+            AddTargets(new[] { linkTarget }, group, pinned);
             return true;
         }
 
         if (LinkTargetService.HasSavedMessagesLabel(data)
             && PromptSavedMessagesTarget() is { } savedMessagesTarget)
         {
-            AddTargets(new[] { savedMessagesTarget }, group);
+            AddTargets(new[] { savedMessagesTarget }, group, pinned);
             return true;
         }
 
@@ -87,20 +87,28 @@ public partial class OverlayWindow
         return new TargetItem { Name = name, Path = target };
     }
 
-    private void AddTargets(IEnumerable<TargetItem> targets, TargetItem? group)
+    /// <summary>Adds targets to a level. When <paramref name="pinned"/> is set the items are pinned
+    /// back-to-front, so a multi-file drop keeps its original order at the head of the level.</summary>
+    private void AddTargets(IEnumerable<TargetItem> targets, TargetItem? group, bool pinned = false)
     {
         var items = targets.ToArray();
         if (items.Length == 0) return;
 
         var list = group?.Children ?? TargetStore.Config.Targets;
         foreach (var item in items) list.Add(item);
+        if (pinned)
+            foreach (var item in items.Reverse()) TargetStore.PinToFront(list, item);
 
         TargetStore.Save();
-        ShowToast(group == null
-            ? $"Targets added: {items.Length}"
-            : $"Added to {group.Name}: {items.Length}");
+        ShowToast(ToastForAdd(items.Length, group, pinned));
         if (_open) BuildCloud();
         RefreshLinkMetadata(items);
+    }
+
+    private static string ToastForAdd(int count, TargetItem? group, bool pinned)
+    {
+        if (group != null) return pinned ? $"Pinned in {group.Name}: {count}" : $"Added to {group.Name}: {count}";
+        return pinned ? $"Pinned: {count}" : $"Targets added: {count}";
     }
 
     private void RefreshLinkMetadata(TargetItem[] items)
