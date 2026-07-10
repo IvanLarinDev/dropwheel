@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Nodes;
 using Dropwheel.Models;
 
 namespace Dropwheel.Services;
@@ -38,7 +39,9 @@ public static class TargetStore
         {
             try
             {
-                Config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), Opts) ?? new();
+                var configText = File.ReadAllText(FilePath);
+                Config = DeserializeConfig(configText, out var sanitizedInvalidEnums) ?? new();
+                if (sanitizedInvalidEnums) Save();
                 if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); Save(); }
                 return;
             }
@@ -192,6 +195,93 @@ public static class TargetStore
     {
         if (Config.Targets.Contains(item)) return Config.Targets;
         return Groups.Select(g => (IList<TargetItem>)g.Children!).FirstOrDefault(children => children.Contains(item));
+    }
+
+    private static AppConfig? DeserializeConfig(string json, out bool sanitizedInvalidEnums)
+    {
+        try
+        {
+            sanitizedInvalidEnums = false;
+            return JsonSerializer.Deserialize<AppConfig>(json, Opts);
+        }
+        catch (JsonException ex) when (TrySanitizeInvalidEnums(json, out var sanitizedJson))
+        {
+            ErrorLog.Write("Config contains unknown enum values; falling back only for those fields.", ex);
+            sanitizedInvalidEnums = true;
+            return JsonSerializer.Deserialize<AppConfig>(sanitizedJson, Opts);
+        }
+    }
+
+    private static bool TrySanitizeInvalidEnums(string json, out string sanitizedJson)
+    {
+        sanitizedJson = json;
+        JsonNode? root;
+        try
+        {
+            root = JsonNode.Parse(json);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (root is not JsonObject rootObject)
+            return false;
+
+        var changed = false;
+        changed |= RemoveInvalidEnum<DropAction>(rootObject, nameof(AppConfig.GlobalAction));
+        changed |= RemoveInvalidEnum<OpenAnimation>(rootObject, nameof(AppConfig.OpenAnimation));
+
+        if (rootObject[nameof(AppConfig.Targets)] is JsonArray targets)
+            changed |= SanitizeTargets(targets);
+
+        if (!changed)
+            return false;
+
+        sanitizedJson = rootObject.ToJsonString();
+        return true;
+    }
+
+    private static bool SanitizeTargets(JsonArray targets)
+    {
+        var changed = false;
+        foreach (var targetNode in targets)
+        {
+            if (targetNode is not JsonObject targetObject)
+                continue;
+
+            changed |= RemoveInvalidEnum<DropAction>(targetObject, nameof(TargetItem.Override));
+
+            if (targetObject[nameof(TargetItem.Children)] is JsonArray children)
+                changed |= SanitizeTargets(children);
+        }
+
+        return changed;
+    }
+
+    private static bool RemoveInvalidEnum<TEnum>(JsonObject obj, string propertyName)
+        where TEnum : struct, Enum
+    {
+        if (!obj.TryGetPropertyValue(propertyName, out var valueNode) || valueNode is null)
+            return false;
+
+        if (valueNode is not JsonValue value)
+            return false;
+
+        if (value.TryGetValue<string>(out var enumToken))
+        {
+            if (Enum.TryParse<TEnum>(enumToken, ignoreCase: true, out _))
+                return false;
+
+            obj.Remove(propertyName);
+            return true;
+        }
+
+        if (value.TryGetValue<int>(out var enumValue) && Enum.IsDefined(typeof(TEnum), enumValue))
+            return false;
+
+        obj.Remove(propertyName);
+        return true;
     }
 
     private static AppConfig Defaults()

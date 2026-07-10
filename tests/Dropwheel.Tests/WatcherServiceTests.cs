@@ -1,4 +1,6 @@
 using System.IO;
+using System.Reflection;
+using System.Windows.Threading;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -48,7 +50,7 @@ public sealed class WatcherServiceTests : IDisposable
                 { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } } } },
         };
         var folder = SortService.Plan(t, new[] { file }).Keys.Single();
-        Assert.True(WatcherService.SameFolder(folder, file)); // stays in its own folder — don't move
+        Assert.True(WatcherService.SameFolder(folder, file)); // stays in its own folder - don't move
     }
 
     [Fact]
@@ -63,7 +65,82 @@ public sealed class WatcherServiceTests : IDisposable
                 { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } } } },
         };
         var folder = SortService.Plan(t, new[] { file }).Keys.Single();
-        Assert.False(WatcherService.SameFolder(folder, file)); // routed into a subfolder — move it
+        Assert.False(WatcherService.SameFolder(folder, file)); // routed into a subfolder - move it
+    }
+
+    [Fact]
+    public void Auto_sort_skips_move_when_destination_already_has_a_conflicting_file()
+    {
+        var file = Path.Combine(_root, "a.jpg");
+        var destFolder = Path.Combine(_root, "Images");
+        Directory.CreateDirectory(destFolder);
+        File.WriteAllText(file, "source");
+        File.WriteAllText(Path.Combine(destFolder, "a.jpg"), "existing");
+
+        var target = new TargetItem
+        {
+            Path = _root,
+            Rules = new() { new SortRule { Dest = "Images", All = { new RuleCondition
+                { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } } } },
+        };
+
+        var service = new WatcherService(Dispatcher.CurrentDispatcher, _ => { });
+        InvokeSortOne(service, target, file);
+
+        Assert.True(File.Exists(file));
+        Assert.Equal("source", File.ReadAllText(file));
+        Assert.Equal("existing", File.ReadAllText(Path.Combine(destFolder, "a.jpg")));
+    }
+
+    [Fact]
+    public async Task Wait_until_ready_returns_false_when_cancelled_before_file_is_ready()
+    {
+        var file = Path.Combine(_root, "locked.mov");
+        File.WriteAllBytes(file, Array.Empty<byte>());
+
+        using var cts = new CancellationTokenSource();
+        var waitTask = WatcherService.WaitUntilReadyAsync(
+            file,
+            _ => false,
+            pollMs: 1,
+            maxWaitTicks: 1000,
+            cts.Token);
+
+        cts.CancelAfter(TimeSpan.FromMilliseconds(10));
+
+        Assert.False(await waitTask);
+    }
+
+    [Fact]
+    public async Task Wait_until_ready_checks_cancellation_before_readiness()
+    {
+        var file = Path.Combine(_root, "ready.mov");
+        File.WriteAllBytes(file, Array.Empty<byte>());
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var ready = await WatcherService.WaitUntilReadyAsync(
+            file,
+            _ => true,
+            pollMs: 1,
+            maxWaitTicks: 1,
+            cts.Token);
+
+        Assert.False(ready);
+    }
+
+    private static void InvokeSortOne(WatcherService service, TargetItem target, string file)
+    {
+        var entryType = typeof(WatcherService).GetNestedType("Entry", BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("WatcherService.Entry not found.");
+        var entry = Activator.CreateInstance(entryType, nonPublic: true)
+            ?? throw new InvalidOperationException("WatcherService.Entry could not be created.");
+        entryType.GetProperty("Target", BindingFlags.Instance | BindingFlags.Public)?.SetValue(entry, target);
+
+        var sortOne = typeof(WatcherService).GetMethod("SortOne", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("WatcherService.SortOne not found.");
+        sortOne.Invoke(service, new[] { entry, file, CancellationToken.None });
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-# .gitleaks.toml — gitleaks config (replaces hooks/secret-scan.js).
+# .gitleaks.toml - gitleaks config (replaces hooks/secret-scan.js).
 # Uses the full default ruleset (100+ high-precision detectors) and layers a small allowlist.
 # Inline exception on a line:  gitleaks:allow   (legacy `secret-scan:allow` also honored below).
 

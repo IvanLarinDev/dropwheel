@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Dropwheel.Models;
 
 namespace Dropwheel.Services;
 
@@ -28,15 +29,40 @@ public static class IconService
 
     private static readonly Dictionary<string, ImageSource?> _cache = new();
 
+    public static ImageSource? GetIcon(TargetItem target) =>
+        !string.IsNullOrWhiteSpace(target.IconPath) && System.IO.File.Exists(target.IconPath)
+            ? GetIcon(target.IconPath)
+            : GetIcon(target.Path);
+
     public static ImageSource? GetIcon(string path)
     {
         if (_cache.TryGetValue(path, out var cached)) return cached;
-        var icon = Extract(path);
+        var icon = ExtractBitmap(path) ?? ExtractShellIcon(path);
         _cache[path] = icon;
         return icon;
     }
 
-    private static ImageSource? Extract(string path)
+    private static ImageSource? ExtractBitmap(string path)
+    {
+        if (!System.IO.File.Exists(path)) return null;
+
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.UriSource = new Uri(path, UriKind.Absolute);
+            bitmap.EndInit();
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static ImageSource? ExtractShellIcon(string path)
     {
         var info = new SHFILEINFO();
         SHGetFileInfo(path, 0, ref info, (uint)Marshal.SizeOf(info), SHGFI_ICON | SHGFI_LARGEICON);

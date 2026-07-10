@@ -53,7 +53,7 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Force copy / move     | hold Ctrl / Shift while dropping                   |
 | Undo last drop        | click “Undo” in the toast (6 s)                    |
 | Edit a target         | right-click its tile                               |
-| Add a target          | drop a folder/exe onto the “+” tile or the orb     |
+| Add a target          | drop a folder/exe/link onto the “+” tile or the orb |
 | Create a group        | right-click the orb → “New group…”                 |
 | Enter a group         | click its tile, or hover it for 0.5 s while dragging |
 | Sort a sorter now     | middle-click a sorter tile                         |
@@ -151,6 +151,20 @@ behaviour, shown with a ▶ badge. Scripts the shell would only open in an edito
 (`.ps1`, `.py`, `.jar`) are launched through their interpreter. This is a launch,
 not a file operation, so it isn't undoable.
 
+## Link targets
+
+Drop a link such as `https://example.com`, `tg://resolve?domain=telegram`, or
+`https://t.me/c/4379453334/1` onto the orb or the “+” tile to create a
+quick-access target. Browser URL drags keep the page title when the drag payload
+includes one, and Dropwheel fetches a favicon in the background when the page
+exposes a PNG/JPG/ICO/WEBP icon.
+
+Telegram web links are converted to desktop deep links where possible, so
+clicking a `t.me` tile opens Telegram Desktop when the `tg://` protocol is
+registered. Dropping files or selected text onto a Telegram tile copies the
+payload to the clipboard, opens the chat or topic, and pastes it once Telegram is
+foreground; review and press Send in Telegram.
+
 ## Themes
 
 Four themes — chosen in Settings. Each carries a full palette: the wheel, the
@@ -176,12 +190,14 @@ are tuned per theme.
                  VirtualFileService, TextDropService, SortService, SortMigration,
                  WatcherService (auto-sort watched folders), FileMeta, PresetService,
                  ShortcutResolver, MouseHook, HotkeyService, LaunchService,
-                 IconService, StartupService, FullscreenDetector
+                 IconService, LinkTargetService, LinkMetadataService,
+                 TelegramDropService, StartupService, FullscreenDetector
       UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
                  TargetEditorWindow (+ .Rules master-detail), SettingsWindow,
                  Themes, Palette (per-theme widget colours), MenuTheme.xaml
     tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta,
-                 TextDropService, WatcherService, HotkeyService, VirtualFileService)
+                 TextDropService, WatcherService, HotkeyService, VirtualFileService,
+                 LinkTargetService, LinkMetadataService, TelegramDropService)
     docs/media/  screenshots and gifs used by this README
 
 ## Known limitations
