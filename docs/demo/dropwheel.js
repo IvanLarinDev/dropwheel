@@ -209,6 +209,9 @@ const DW = (() => {
       this.chips = null;              // [{x, y, label, color, alpha, scale}] — летящие метки (веер сортера)
       this.highlight = null;          // {x, y, w, h, alpha} — рамка вокруг цели (захват)
       this.pinRing = null;            // {p} — расходящееся кольцо-пульс у хаба (0..1)
+      this.tileAngles = null;         // массив углов на тайл (перестановка по ободу)
+      this.tileMul = null;            // {index: множитель прозрачности} — дим не-совпавших групп
+      this.orbBadge = null;           // строка кода на хабе (индикатор группового ввода)
       // startOpen: колесо уже раскрыто (для статичных сцен), иначе играем открытие
       this.t0 = opts.startOpen ? performance.now() - 4000 : performance.now();
       this._fit();
@@ -230,6 +233,25 @@ const DW = (() => {
     tileCenter(i) {
       const s = slot(i, this.tiles.length);
       return { x: s.x, y: s.y - 8 };
+    }
+
+    /** Слот тайла i с учётом углового оверрайда (перестановка по ободу). */
+    _slotOf(i, n) {
+      if (this.tileAngles && this.tileAngles[i] != null) {
+        const a = this.tileAngles[i];
+        return { a, x: CENTER + RING * Math.cos(a), y: CENTER + RING * Math.sin(a) };
+      }
+      return slot(i, n);
+    }
+
+    /** Пилюля-индикатор кода на хабе (ShortcutIndicator при вводе группы). */
+    _drawOrbBadge(ctx) {
+      ctx.font = "bold 14px Consolas,monospace";
+      const w = Math.max(24, ctx.measureText(this.orbBadge).width + 12);
+      ctx.fillStyle = "rgba(26,34,48,.90)";
+      roundRect(ctx, CENTER - w / 2, CENTER - 11, w, 22, 12); ctx.fill();
+      ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(this.orbBadge, CENTER, CENTER);
     }
 
     _fit() {
@@ -287,7 +309,7 @@ const DW = (() => {
       // спицы (проявляются с ободом)
       ctx.globalAlpha = rimO;
       for (let i = 0; i < n; i++) {
-        const s = slot(i, n);
+        const s = this._slotOf(i, n);
         const lit = (this.hoverEnabled && this.hover === i) || this.forceHot === i;
         ctx.strokeStyle = lit ? th.accent : th.spoke;
         ctx.lineWidth = lit ? 2.5 : 2;
@@ -304,11 +326,12 @@ const DW = (() => {
       // тайлы: параметры по выбранной анимации открытия, тайминги делятся на speed
       const A = OPEN_ANIM[this.animation] || OPEN_ANIM.pop;
       for (let i = 0; i < n; i++) {
-        const s = slot(i, n);
+        const s = this._slotOf(i, n);
         const t = this.tiles[i];
         const tt = el - (i * A.stagger) / sp;
         const p = A.ease(clamp01(tt / (A.dur / sp)));
-        const op = clamp01(tt / (A.opacity / sp));
+        let op = clamp01(tt / (A.opacity / sp));
+        if (this.tileMul && this.tileMul[i] != null) op *= this.tileMul[i];
         const scale = A.scale + (1 - A.scale) * p;
         // радиальное или касательное стартовое смещение
         const off = A.offMode === "tangential"
@@ -323,6 +346,7 @@ const DW = (() => {
         ctx.globalAlpha = 1;
       }
 
+      if (this.orbBadge) this._drawOrbBadge(ctx);
       if (this.flash) this._drawFlash(ctx);
       if (this.chips) this._drawChips(ctx);
       if (this.ghost) this._drawGhost(ctx);

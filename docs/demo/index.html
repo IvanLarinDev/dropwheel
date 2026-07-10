@@ -239,6 +239,39 @@
         </p>
       </div>
     </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-codes"></canvas></div>
+      <div class="about">
+        <h2>Групповые коды</h2>
+        <p>
+          У каждой группы есть код из одной-двух цифр. Наведя курсор на орб (или при
+          открытом колесе) и набрав код, попадаешь прямо в нужную группу. Пока код
+          набирается, на хабе показывается введённое, совпадающие группы остаются
+          яркими, остальные тайлы гаснут.
+        </p>
+        <p>
+          Если есть и <code>1</code>, и <code>11</code>, то <code>1</code> открывается
+          после короткого тайм-аута ожидания второй цифры, а вторая <code>1</code>,
+          набранная до истечения тайм-аута, сразу открывает <code>11</code>. Коды
+          закрепляются за группами и не сбиваются при перестановке тайлов.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-reorder"></canvas></div>
+      <div class="about">
+        <h2>Перестановка тайлов</h2>
+        <p>
+          Тайл можно перетащить в другое место обода: схватить левой кнопкой и вести
+          вдоль кольца. Перетаскиваемый тайл скользит по дуге за курсором, а тайлы,
+          мимо которых он проходит, плавно сдвигаются, освобождая слот. Порядок
+          запоминается; тайл «Add» всегда остаётся последним. Отпускание на «+»
+          отправляет тайл в самый конец.
+        </p>
+      </div>
+    </section>
   </main>
 
   <script src="dropwheel.js"></script>
@@ -550,6 +583,79 @@
       requestAnimationFrame(captureScene);
     }
     requestAnimationFrame(captureScene);
+
+    // ---- Сцена 9: групповые коды (1 vs 11) ----
+    const CODE_TILES = [
+      { label: "Downloads", icon: "download" },
+      { label: "Documents", icon: "doc" },
+      { label: "Projects", icon: "group", group: true, num: "3", code: "1" },
+      { label: "Pictures", icon: "pic" },
+      { label: "Media", icon: "group", group: true, num: "2", code: "11" },
+      { label: "Scripts", icon: "gear" },
+      { label: "Archive", icon: "folder" },
+      { label: "Everything", icon: "search" },
+      { label: "Desktop", icon: "desktop" },
+      { label: "Add", icon: "plus", add: true },
+    ];
+    const codes = new DW.Wheel(document.getElementById("scene-codes"), CODE_TILES, { startOpen: true, hover: false });
+    function candidates(input) {
+      const set = {};
+      CODE_TILES.forEach((t, i) => { if (t.code && t.code.indexOf(input) === 0) set[i] = true; });
+      return set;
+    }
+    function dimExcept(cand) {
+      const mul = {};
+      CODE_TILES.forEach((_, i) => { mul[i] = cand[i] ? 1 : 0.28; });
+      return mul;
+    }
+    function codeScene(now) {
+      const t = now % 4600;
+      codes.forceHot = -1; codes.tileMul = null; codes.orbBadge = null; codes.flash = null;
+      if (t >= 200 && t < 1200) {                 // набрана «1» — кандидаты 1 и 11
+        codes.orbBadge = "1…"; codes.tileMul = dimExcept(candidates("1"));
+      } else if (t >= 1200 && t < 1700) {         // тайм-аут вышел → открывается «1»
+        codes.forceHot = 2; codes.flash = { index: 2, p: (t - 1200) / 500 };
+      } else if (t >= 2300 && t < 2600) {         // снова «1…»
+        codes.orbBadge = "1…"; codes.tileMul = dimExcept(candidates("1"));
+      } else if (t >= 2600 && t < 3300) {         // быстрая вторая цифра → «11»
+        codes.orbBadge = "11"; codes.tileMul = dimExcept(candidates("11"));
+      } else if (t >= 3300 && t < 3800) {         // сразу открывается «11»
+        codes.forceHot = 4; codes.flash = { index: 4, p: (t - 3300) / 500 };
+      }
+      requestAnimationFrame(codeScene);
+    }
+    requestAnimationFrame(codeScene);
+
+    // ---- Сцена 10: перестановка тайлов по ободу ----
+    const reorder = new DW.Wheel(document.getElementById("scene-reorder"), ROOT_TILES, { startOpen: true, hover: false });
+    const RN = ROOT_TILES.length;               // 11 (Add — последний, не двигается)
+    const baseA = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / RN;
+    const DRAG = 2;                              // тянем «Pictures»
+    let curA = ROOT_TILES.map((_, i) => baseA(i));
+    function reorderScene(now) {
+      const frac = (now % 6000) / 6000;
+      const s = 0.5 * (1 - Math.cos(frac * 2 * Math.PI)); // 0→1→0
+      const insF = 2 + (7 - 2) * s;                       // непрерывная позиция вставки 2..7
+      const insIdx = Math.max(0, Math.min(9, Math.round(insF)));
+      const movable = [];
+      for (let i = 0; i < 10; i++) if (i !== DRAG) movable.push(i);
+      movable.splice(insIdx, 0, DRAG);
+      const target = new Array(RN);
+      for (let pos = 0; pos < movable.length; pos++) target[movable[pos]] = baseA(pos);
+      target[10] = baseA(10);                    // Add фиксирован
+      target[DRAG] = baseA(insF);                // тянущийся тайл — по непрерывной позиции
+      for (let i = 0; i < RN; i++) {
+        if (i === DRAG) curA[i] = target[i];
+        else curA[i] += (target[i] - curA[i]) * 0.2;
+      }
+      reorder.tileAngles = curA.slice();
+      reorder.forceHot = DRAG;
+      reorder.badges.clear(); reorder.badges.set(DRAG, "reorder");
+      const a = baseA(insF);
+      reorder.cursor = { x: 230 + 170 * Math.cos(a), y: 230 + 170 * Math.sin(a) - 8, click: 0 };
+      requestAnimationFrame(reorderScene);
+    }
+    requestAnimationFrame(reorderScene);
   </script>
 </body>
 </html>
