@@ -5,7 +5,11 @@
 //
 // Usage:
 //   node hooks/post-merge-cleanup.js --branch feat/name [--root <dir>]
-//     [--base origin/main] [--remote origin] [--no-fetch] [--apply] [--json]
+//     [--base origin/main] [--remote origin] [--no-fetch]
+//     [--include-equivalent] [--apply] [--json]
+//
+// --include-equivalent is reserved for provider-confirmed squash/rebase heads;
+// use github-branch-cleanup.js instead of asserting that evidence by hand.
 
 const { main } = require("./release-cleanup");
 

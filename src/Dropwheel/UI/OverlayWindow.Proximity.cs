@@ -13,7 +13,7 @@ public partial class OverlayWindow
     {
         UpdateOrbScreenPos();
         MouseHook.MouseMoved += OnGlobalMouse;
-        Closed += (_, _) => { MouseHook.MouseMoved -= OnGlobalMouse; MouseHook.Stop(); };
+        Closed += (_, _) => { MouseHook.MouseMoved -= OnGlobalMouse; MouseHook.Stop(); StopBreathing(); };
         MouseHook.Start(); // hook is installed from the UI thread → callback runs there too
     }
 
@@ -23,7 +23,9 @@ public partial class OverlayWindow
         var p = Orb.PointToScreen(new Point(23, 23)); // orb center, device px
         _orbSX = p.X; _orbSY = p.Y;
         double m = ct.TransformToDevice.M11;
-        _openR2 = 150 * m * 150 * m;  // open radius
+        _openR = 150 * m;
+        _outerR = 300 * m;             // outer edge of the anticipation zone
+        _openR2 = _openR * _openR;     // open radius
         _closeR2 = 340 * m * 340 * m;  // close radius
     }
 
@@ -34,10 +36,9 @@ public partial class OverlayWindow
         if (_movingOrb) return;
         double dx = x - _orbSX, dy = y - _orbSY, d2 = dx * dx + dy * dy;
         WakeIdle(d2);
-        if (!leftDown) { _proximityOpened = false; return; }
-        if (!_open && d2 < _openR2 && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
-        { _proximityOpened = true; OpenCloud(); }
-        else if (_open && _proximityOpened && d2 > _closeR2)
+        if (!leftDown) _proximityOpened = false;
+        UpdateCharge(x, y, d2, leftDown); // charges the orb and, at the threshold, opens the wheel
+        if (_open && _proximityOpened && d2 > _closeR2)
         { _proximityOpened = false; CloseCloud(); }
     }
 }

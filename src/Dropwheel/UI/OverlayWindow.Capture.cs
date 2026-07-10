@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -27,11 +29,20 @@ public partial class OverlayWindow
     /// Alt+Shift click doesn't pin whatever sits behind the orb.</summary>
     private const double CaptureMinTravel = 48;
 
-    private const int GhostSize = 46;
+    private const int GhostSize = 96;    // ghost window box; oversized so the glow has room
+    private const double GhostBall = 42; // the visible ball diameter, centred in the box
 
     private DispatcherTimer? _captureTimer;
     private Window? _ghost;
-    private Ellipse? _ghostCore;
+    private Ellipse? _ghostCore, _ghostHalo;
+    private Ellipse[]? _ghostRings;              // radar rings that ping outward while armed
+    private long _captureStart;                  // start tick, for the radar's steady rhythm
+    private double _ghostArm, _ghostArmTarget;   // 0..1 arming as the ghost nears a valid target
+
+    private Window? _hi;             // highlight drawn over the real target object
+    private Border? _hiBorder;
+    private long _lastProbe;         // throttles the expensive UI Automation hit-test
+    private bool _probing;           // a background bounds probe is in flight
 
     /// <summary>Starts the Alt+Shift capture. The main orb stays put; a light ghost follows the
     /// cursor while a 60&#8239;Hz timer polls the mouse button and lights the ghost over a valid
@@ -55,7 +66,13 @@ public partial class OverlayWindow
 
         _ghost.Left = p.X - GhostSize / 2.0;
         _ghost.Top = p.Y - GhostSize / 2.0;
-        SetGhostArmed(CursorTargetLocator.LooksLikeTargetWindow(IsOwnWindow));
+
+        bool armed = CursorTargetLocator.LooksLikeTargetWindow(IsOwnWindow);
+        SetGhostArmed(armed);
+        _ghostArm += (_ghostArmTarget - _ghostArm) * 0.25;
+        ApplyGhostArm();
+        UpdateGhostRings((Environment.TickCount64 - _captureStart) / 1000.0);
+        UpdateTargetHighlight(armed, p);
 
         if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0) FinishOrbCapture();
     }
@@ -67,6 +84,7 @@ public partial class OverlayWindow
     {
         _captureTimer?.Stop();
         _captureTimer = null;
+        CloseHighlight(); // gone before the still probe so it can't shadow the target
         if (_ghost == null) return;
 
         string? path = null;
@@ -126,14 +144,45 @@ public partial class OverlayWindow
             VerticalAlignment = VerticalAlignment.Center,
             Fill = new SolidColorBrush(th.Accent),
         };
+        _ghostHalo = new Ellipse
+        {
+            Width = GhostBall,
+            Height = GhostBall,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Fill = new SolidColorBrush(th.Accent),
+            IsHitTestVisible = false,
+            Opacity = 0,
+            Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 18 },
+        };
         var ball = new Ellipse
         {
+            Width = GhostBall,
+            Height = GhostBall,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
             Fill = new SolidColorBrush(th.HubBg),
             Stroke = new SolidColorBrush(th.HubBorder),
             StrokeThickness = 1,
             Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 12, ShadowDepth = 1, Opacity = 0.5 },
         };
+        _ghostArm = _ghostArmTarget = 0;
+        _captureStart = Environment.TickCount64;
+        _ghostRings = new Ellipse[3];
+        for (int i = 0; i < _ghostRings.Length; i++)
+            _ghostRings[i] = new Ellipse
+            {
+                Fill = null,
+                Stroke = new SolidColorBrush(th.Accent),
+                StrokeThickness = 2,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                IsHitTestVisible = false,
+                Opacity = 0,
+            };
         var grid = new System.Windows.Controls.Grid { Opacity = 0.9 };
+        grid.Children.Add(_ghostHalo);
+        foreach (var ring in _ghostRings) grid.Children.Add(ring);
         grid.Children.Add(ball);
         grid.Children.Add(_ghostCore);
 
@@ -156,12 +205,134 @@ public partial class OverlayWindow
         SetClickThrough(_ghost, true);
     }
 
-    private void SetGhostArmed(bool armed)
+    private void SetGhostArmed(bool armed) => _ghostArmTarget = armed ? 1 : 0;
+
+    /// <summary>Draws the eased arm level onto the ghost: the core swells and colours from the hub
+    /// border toward the accent, and the halo blooms — the same "charge" the orb shows on the way in.</summary>
+    private void ApplyGhostArm()
     {
         if (_ghostCore == null) return;
         var th = Themes.Current;
-        _ghostCore.Fill = new SolidColorBrush(armed ? th.Accent : th.HubBorder);
-        _ghostCore.Width = _ghostCore.Height = armed ? 22 : 18;
+        _ghostCore.Fill = new SolidColorBrush(ColorLerp(th.HubBorder, th.Accent, _ghostArm));
+        _ghostCore.Width = _ghostCore.Height = 16 + _ghostArm * 12;
+        if (_ghostHalo != null)
+        {
+            _ghostHalo.Opacity = _ghostArm * 0.9;
+            _ghostHalo.Width = _ghostHalo.Height = GhostBall * (0.9 + _ghostArm * 1.0);
+        }
+    }
+
+    /// <summary>Radar aura: three rings ping outward from the ghost on a steady beat, staggered a
+    /// third of a cycle apart. Their opacity rides the arm level, so the radar only pulses while the
+    /// ghost is locked over a valid target and fades out over empty space.</summary>
+    private void UpdateGhostRings(double elapsedSec)
+    {
+        if (_ghostRings == null) return;
+        int n = _ghostRings.Length;
+        for (int i = 0; i < n; i++)
+        {
+            double phase = (elapsedSec / 0.95 + (double)i / n) % 1;
+            double r = 18 + phase * 26;
+            var ring = _ghostRings[i];
+            ring.Width = ring.Height = r * 2;
+            ring.Opacity = (1 - phase) * 0.7 * _ghostArm;
+            ring.StrokeThickness = 2.6 - phase * 1.6;
+        }
+    }
+
+    private static Color ColorLerp(Color a, Color b, double t)
+    {
+        t = Math.Clamp(t, 0, 1);
+        return Color.FromArgb(
+            (byte)(a.A + (b.A - a.A) * t),
+            (byte)(a.R + (b.R - a.R) * t),
+            (byte)(a.G + (b.G - a.G) * t),
+            (byte)(a.B + (b.B - a.B) * t));
+    }
+
+    /// <summary>Lights a highlight over the real object under the cursor. The item's bounds come from
+    /// UI Automation, which can block for a long time (badly so while the screen is being recorded),
+    /// so the hit-test runs on a background thread and only the result is marshalled back — the UI
+    /// thread never waits on it. One probe at a time, throttled; nothing valid hides the highlight.</summary>
+    private void UpdateTargetHighlight(bool armed, POINT p)
+    {
+        if (!armed) { HideHighlight(); return; }
+        if (_probing || Environment.TickCount64 - _lastProbe < 120) return;
+        _probing = true;
+        _lastProbe = Environment.TickCount64;
+        int x = p.X, y = p.Y;
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            var bounds = TargetBounds(x, y);
+            Dispatcher.BeginInvoke(() =>
+            {
+                _probing = false;
+                if (_ghost == null) return; // capture ended while the probe was in flight
+                if (bounds is { } rect) ShowHighlight(rect);
+                else HideHighlight();
+            });
+        });
+    }
+
+    /// <summary>Screen bounds of the element under the point, or null when it can't be read or is an
+    /// implausible size (empty, a sliver, or a whole-window hit that would frame nothing useful).</summary>
+    private static Rect? TargetBounds(int x, int y)
+    {
+        try
+        {
+            var element = AutomationElement.FromPoint(new Point(x, y));
+            if (element == null) return null;
+            var r = element.Current.BoundingRectangle;
+            if (r.IsEmpty || r.Width < 8 || r.Height < 8 || r.Width > 1600 || r.Height > 1200) return null;
+            return r;
+        }
+        catch (Exception e) when (e is ElementNotAvailableException or COMException or TimeoutException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private void ShowHighlight(Rect r)
+    {
+        var th = Themes.Current;
+        if (_hi == null)
+        {
+            _hiBorder = new Border
+            {
+                BorderThickness = new Thickness(2.5),
+                CornerRadius = new CornerRadius(6),
+                Background = Brushes.Transparent,
+            };
+            _hi = new Window
+            {
+                WindowStyle = WindowStyle.None,
+                AllowsTransparency = true,
+                Background = Brushes.Transparent,
+                ShowInTaskbar = false,
+                ShowActivated = false,
+                Topmost = true,
+                ResizeMode = ResizeMode.NoResize,
+                Content = _hiBorder,
+            };
+            _hi.Show();
+            SetClickThrough(_hi, true);
+        }
+        _hiBorder!.BorderBrush = new SolidColorBrush(th.Accent);
+        _hi.Left = r.X - 3; _hi.Top = r.Y - 3;
+        _hi.Width = r.Width + 6; _hi.Height = r.Height + 6;
+        _hi.Visibility = Visibility.Visible;
+    }
+
+    private void HideHighlight()
+    {
+        if (_hi != null) _hi.Visibility = Visibility.Hidden;
+    }
+
+    private void CloseHighlight()
+    {
+        _hi?.Close();
+        _hi = null;
+        _hiBorder = null;
     }
 
     /// <summary>Tweens the ghost from where it was released back to the orb centre, shrinking as it
@@ -194,9 +365,13 @@ public partial class OverlayWindow
 
     private void DismissGhost()
     {
+        CloseHighlight();
+        _probing = false;
         _ghost?.Close();
         _ghost = null;
         _ghostCore = null;
+        _ghostHalo = null;
+        _ghostRings = null;
     }
 
     private bool MovedFarEnough(POINT cursor)
@@ -209,7 +384,8 @@ public partial class OverlayWindow
 
     private bool IsOwnWindow(IntPtr hwnd)
         => hwnd == new WindowInteropHelper(this).Handle
-           || (_ghost != null && hwnd == new WindowInteropHelper(_ghost).Handle);
+           || (_ghost != null && hwnd == new WindowInteropHelper(_ghost).Handle)
+           || (_hi != null && hwnd == new WindowInteropHelper(_hi).Handle);
 
     /// <summary>Toggles a window's click-through (WS_EX_TRANSPARENT) so WindowFromPoint reads what
     /// is beneath it, not the window itself.</summary>

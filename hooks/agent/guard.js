@@ -28,7 +28,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { execSync } = require("child_process");
 const { parse } = require(path.join(__dirname, "_input.js"));
-const { globToRe, loadConfig, normRel, isProtectedPath, isProtectedShellWrite,
+const { loadConfig, isUiPath, normRel, isProtectedPath, isProtectedShellWrite,
   isLintConfigShellWrite, isLintConfigPath, interpreterProtectedHint } = require(path.join(__dirname, "..", "_lib.js"));
 
 const TTL_MS = 2 * 60 * 60 * 1000;
@@ -344,7 +344,7 @@ function run(ctx, env = process.env) {
       if (isFile) {
         const mockRoot = cfg.mockups.dir.replace(/\\/g, "/").replace(/\/$/, "");
         if (checkEnabled("design-note", env) &&
-            !rel.startsWith(mockRoot + "/") && cfg.uiGlobs.map(globToRe).some((re) => re.test(rel)))
+            !rel.startsWith(mockRoot + "/") && isUiPath(rel, cfg))
           notes.push(`guard: GUI file edit (${rel}). Classify the DESIGN evidence as existing-ui, new-ui, or animation, ` +
             `then create >=${cfg.mockups.min} matching variants plus APPROVED (node hooks/new-mockups.js <feature> --kind ...). ` +
             `Backend-only diffs outside ui.globs skip automatically. The hard gate is design-gate.js in pre-push/CI.`);

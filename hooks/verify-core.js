@@ -150,9 +150,18 @@ function isHarnessChangedFile(file) {
 }
 
 function harnessTarget(root) {
-  const steps = [];
-  if (fs.existsSync(path.join(root, "hooks", "test.js"))) steps.push({ name: "self-test", run: "node test.js", cwdRel: "hooks" });
-  return { stack: { id: "harness", steps }, dir: root, rel: "." };
+  return { stack: { id: "source-harness", steps: [{ name: "self-test", run: "node test.js", cwdRel: "hooks" }] }, dir: root, rel: "." };
+}
+
+function isSourceHarness(root) {
+  return fs.existsSync(path.join(root, "install.js")) &&
+    fs.existsSync(path.join(root, "hooks", "verify.js"));
+}
+
+function ensureSourceHarnessTarget(root, targets) {
+  if (!isSourceHarness(root)) return targets;
+  const filtered = targets.filter((target) => !new Set(["harness", "source-harness"]).has(target.stack && target.stack.id));
+  return filtered.concat([harnessTarget(root)]);
 }
 
 function harnessSyntaxTarget(root) {
@@ -185,9 +194,10 @@ function maybeAddHarnessTarget(root, targets, files) {
   if (!files.some(isHarnessChangedFile)) return targets;
   if (!fs.existsSync(path.join(root, "hooks", "verify.js"))) return targets;
   targets = ensureHarnessSyntaxTarget(root, targets);
+  if (isSourceHarness(root)) return ensureSourceHarnessTarget(root, targets);
   if (!fs.existsSync(path.join(root, "hooks", "test.js"))) return targets;
   if (targets.some((t) => t.stack && t.stack.id === "harness")) return targets;
-  return targets.concat([harnessTarget(root)]);
+  return targets.concat([{ ...harnessTarget(root), stack: { ...harnessTarget(root).stack, id: "harness" } }]);
 }
 
 function fnMatch(pattern, name) {
@@ -221,7 +231,7 @@ function planVerifyTargets(root, stacks, opts = {}) {
     const cf = workingTreeChangedFiles(opts.base, root, opts.files);
     if (cf.error) {
       return {
-        targets: maybeAddHarnessTarget(root, targets, ["hooks/verify.js"]),
+        targets: ensureSourceHarnessTarget(root, maybeAddHarnessTarget(root, targets, ["hooks/verify.js"])),
         scope: cf,
         warning: `verify --changed: ${cf.error}; filter not applied, checking all detected stacks. Pass --base <ref> to choose a base.`,
       };
@@ -229,8 +239,10 @@ function planVerifyTargets(root, stacks, opts = {}) {
     const files = cf.files.map((f) => String(f).replace(/\\/g, "/"));
     targets = files.length ? targets.filter((t) => files.some((f) => fileUnder(t.rel, f))) : [];
     targets = maybeAddHarnessTarget(root, targets, files);
+    targets = ensureSourceHarnessTarget(root, targets);
     return { targets, scope: cf, files };
   }
+  targets = ensureSourceHarnessTarget(root, targets);
   targets = ensureHarnessSyntaxTarget(root, targets);
   targets = ensureGitHygieneTarget(root, targets);
   return { targets, scope: null, files: null };
@@ -240,5 +252,6 @@ module.exports = {
   DEBUG_HARD, DEBUG_SOFT, DEFAULT_STACKS,
   fileUnder, loadDebugAudit, scanFileForDebug, debugAudit,
   loadStacks, detect, planVerifyTargets,
+  isSourceHarness, ensureSourceHarnessTarget,
   ensureHarnessSyntaxTarget, ensureGitHygieneTarget, maybeAddHarnessTarget,
 };
