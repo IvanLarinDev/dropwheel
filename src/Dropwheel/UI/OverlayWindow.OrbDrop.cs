@@ -87,20 +87,31 @@ public partial class OverlayWindow
         return new TargetItem { Name = name, Path = target };
     }
 
-    private void AddTargets(IEnumerable<TargetItem> targets, TargetItem? group)
+    /// <summary>Adds targets to a level. When <paramref name="pinned"/> is set the items are pinned
+    /// back-to-front, so a multi-item batch keeps its original order at the head of the level, and
+    /// they fly in from <paramref name="origin"/> (the orb centre by default).</summary>
+    private void AddTargets(IEnumerable<TargetItem> targets, TargetItem? group, bool pinned = false, Point? origin = null)
     {
         var items = targets.ToArray();
         if (items.Length == 0) return;
 
         var list = group?.Children ?? TargetStore.Config.Targets;
         foreach (var item in items) list.Add(item);
+        if (pinned)
+            foreach (var item in items.Reverse()) TargetStore.PinToFront(list, item);
 
         TargetStore.Save();
-        ShowToast(group == null
-            ? $"Targets added: {items.Length}"
-            : $"Added to {group.Name}: {items.Length}");
+        ShowToast(ToastForAdd(items.Length, group, pinned));
         if (_open) BuildCloud();
+        if (pinned && ReferenceEquals(group, _currentGroup))
+            AnimatePinnedArrival(items, origin ?? new Point(HalfSize, HalfSize));
         RefreshLinkMetadata(items);
+    }
+
+    private static string ToastForAdd(int count, TargetItem? group, bool pinned)
+    {
+        if (group != null) return pinned ? $"Pinned in {group.Name}: {count}" : $"Added to {group.Name}: {count}";
+        return pinned ? $"Pinned: {count}" : $"Targets added: {count}";
     }
 
     private void RefreshLinkMetadata(TargetItem[] items)

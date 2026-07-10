@@ -37,6 +37,12 @@
                      VerticalAlignment="Center" Margin="7,0,0,0"/>
             <Ellipse x:Name="Bolt4" Width="4" Height="4" HorizontalAlignment="Right"
                      VerticalAlignment="Center" Margin="0,0,7,0"/>
+            <Ellipse x:Name="PinRing" Width="56" Height="56" StrokeThickness="2"
+                     Opacity="0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <ScaleTransform x:Name="PinRingScale" ScaleX="1" ScaleY="1"/>
+                </Ellipse.RenderTransform>
+            </Ellipse>
             <Border x:Name="ShortcutIndicator" Visibility="Collapsed"
                     Background="#E61A2230" CornerRadius="12" Padding="6,3"
                     HorizontalAlignment="Center" VerticalAlignment="Center">

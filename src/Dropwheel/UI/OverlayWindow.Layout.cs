@@ -24,18 +24,25 @@ public partial class OverlayWindow
 
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        switch (OrbGesture.Classify(Keyboard.Modifiers))
         {
-            CloseCloud();
-            _movingOrb = true;
-            DragMove(); // blocks until the button is released
-            _movingOrb = false;
-            TargetStore.Config.OrbX = Left + HalfSize;
-            TargetStore.Config.OrbY = Top + HalfSize;
-            TargetStore.Save();
-            UpdateOrbScreenPos();
+            case OrbDragKind.Capture:
+                BeginOrbCapture(); // Alt+Shift: drag the orb onto a folder/app/file to pin it
+                break;
+            case OrbDragKind.Move:
+                CloseCloud();
+                _movingOrb = true;
+                DragMove(); // blocks until the button is released
+                _movingOrb = false;
+                TargetStore.Config.OrbX = Left + HalfSize;
+                TargetStore.Config.OrbY = Top + HalfSize;
+                TargetStore.Save();
+                UpdateOrbScreenPos();
+                break;
+            default:
+                ToggleCloud();
+                break;
         }
-        else ToggleCloud();
         e.Handled = true;
     }
 
@@ -96,5 +103,6 @@ public partial class OverlayWindow
         var boltBrush = new System.Windows.Media.SolidColorBrush(th.HubBorder);
         Bolt1.Fill = Bolt2.Fill = Bolt3.Fill = Bolt4.Fill = boltBrush;
         Rim.Stroke = new System.Windows.Media.SolidColorBrush(th.Rim);
+        PinRing.Stroke = new System.Windows.Media.SolidColorBrush(th.Accent);
     }
 }
