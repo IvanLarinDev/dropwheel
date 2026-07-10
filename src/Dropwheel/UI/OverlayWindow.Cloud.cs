@@ -36,9 +36,13 @@ public partial class OverlayWindow
 
     private void CloseCloud()
     {
-        ResetGroupShortcutInput();
-        if (!_open) return;
+        if (!_open)
+        {
+            ResetGroupShortcutInput();
+            return;
+        }
         _open = false;
+        ResetGroupShortcutInput();
         _currentGroup = null;
         _groupHover?.Stop();
         Cloud.Children.Clear();
