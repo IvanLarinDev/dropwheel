@@ -325,6 +325,50 @@ public static class TargetStore
         return true;
     }
 
+    /// <summary>A comparison key for duplicate detection: the same folder, app or link yields the same
+    /// key regardless of letter case, trailing slash or slash direction. A dropped .lnk is already
+    /// resolved to its real path before this runs, so two shortcuts to one app collapse too. Groups and
+    /// pathless items have no key (null) and are never treated as duplicates.</summary>
+    internal static string? DedupKey(TargetItem item)
+    {
+        if (item.IsGroup) return null;
+        var path = item.Path;
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        if (item.IsUri) return path.Trim().ToLowerInvariant();
+
+        string full;
+        try { full = Path.GetFullPath(path); }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        {
+            full = path;
+        }
+        return full.Replace('/', '\\').TrimEnd('\\').ToLowerInvariant();
+    }
+
+    /// <summary>Splits a batch of candidates into the ones new for <paramref name="level"/> and the ones
+    /// that duplicate a target already there — or an earlier candidate in the same batch. Each duplicate
+    /// is paired with the existing target it collided with, so the caller can highlight that tile. Groups
+    /// and pathless items are always kept as new. The incoming order is preserved.</summary>
+    internal static (List<TargetItem> New, List<TargetItem> Existing) SplitNewAndDuplicates(
+        IEnumerable<TargetItem> level, IEnumerable<TargetItem> candidates)
+    {
+        var byKey = new Dictionary<string, TargetItem>(StringComparer.Ordinal);
+        foreach (var item in level)
+            if (DedupKey(item) is { } key) byKey.TryAdd(key, item);
+
+        var fresh = new List<TargetItem>();
+        var collided = new List<TargetItem>();
+        foreach (var candidate in candidates)
+        {
+            var key = DedupKey(candidate);
+            if (key == null) { fresh.Add(candidate); continue; }
+            if (byKey.TryGetValue(key, out var existing)) { collided.Add(existing); continue; }
+            byKey[key] = candidate;
+            fresh.Add(candidate);
+        }
+        return (fresh, collided);
+    }
+
     private static AppConfig Defaults()
     {
         static string P(Environment.SpecialFolder f) => Environment.GetFolderPath(f);

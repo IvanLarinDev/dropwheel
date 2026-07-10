@@ -37,6 +37,7 @@ public partial class SettingsWindow : Window
         IdleBox.Text = c.IdleFadeSeconds.ToString();
         HotkeyBox.Text = c.Hotkey;
         GroupShortcutDelayBox.Text = c.GroupShortcutDelayMs.ToString();
+        DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
     }
 
@@ -64,6 +65,7 @@ public partial class SettingsWindow : Window
         if (int.TryParse(GroupShortcutDelayBox.Text, out int sequenceDelay))
             c.GroupShortcutDelayMs = Math.Clamp(sequenceDelay, 150, 1500);
         if (hk.Length > 0) c.Hotkey = hk;
+        c.DeduplicateTargets = DeduplicateBox.IsChecked == true;
         TargetStore.Save();
         try { StartupService.SetEnabled(AutostartBox.IsChecked == true); } catch { }
         (Owner as OverlayWindow)?.ApplySettings();

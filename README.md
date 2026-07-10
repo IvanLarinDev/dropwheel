@@ -70,6 +70,11 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 The orb hides automatically in full-screen apps (games, presentations) and can
 fade out when idle (see Settings).
 
+Turn on **Skip duplicate targets** in Settings and dropping a folder, app or link
+that already sits on the current wheel level won't add a second tile — a toast says
+it's already there and the existing tile gives a quick pulse so you can spot it. The
+same folder can still live on different group levels. Off by default.
+
 Group codes stay attached to their groups when tiles are reordered. If both `1`
 and `11` exist, `1` opens after the configurable sequence timeout, while typing
 the second `1` before that timeout opens `11` immediately. Right-click a group

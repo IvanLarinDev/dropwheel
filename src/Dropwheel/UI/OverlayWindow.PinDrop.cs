@@ -100,6 +100,36 @@ public partial class OverlayWindow
         }
     }
 
+    /// <summary>Briefly pulses the tiles a duplicate drop collided with, so the eye finds the target
+    /// that is already on the wheel. Only the level currently on screen has tiles, so a collision on
+    /// another level (or a closed wheel) falls back to the toast alone.</summary>
+    private void PulseExistingTiles(IReadOnlyList<TargetItem> targets, TargetItem? group)
+    {
+        if (!_open || !ReferenceEquals(group, _currentGroup) || targets.Count == 0) return;
+
+        var elements = Cloud.Children
+            .OfType<FrameworkElement>()
+            .Where(el => el.Tag is TargetItem)
+            .GroupBy(el => (TargetItem)el.Tag!)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        foreach (var target in targets.Distinct())
+            if (elements.TryGetValue(target, out var element))
+                PulseTile(element);
+    }
+
+    /// <summary>One scale bounce on a tile: it swells and settles back, matching the wheel's existing
+    /// tile emphasis. Reuses the tile's own ScaleTransform so nothing else on the rim moves.</summary>
+    private void PulseTile(FrameworkElement element)
+    {
+        if (TileScale(element) is not { } scale) return;
+        var duration = TimeSpan.FromMilliseconds(ScaleTiming(360, AnimationSpeed()));
+        var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.35 };
+        var pulse = new DoubleAnimation(1.18, 1, duration) { EasingFunction = ease };
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, pulse);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, pulse);
+    }
+
     /// <summary>Drops the opening animation's transform so the arc starts from a clean tile.</summary>
     private static void ClearTileTransform(FrameworkElement element)
     {

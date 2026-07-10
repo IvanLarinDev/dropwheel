@@ -53,6 +53,8 @@
         <TextBlock Text="Group shortcut sequence timeout, ms"/>
         <TextBox x:Name="GroupShortcutDelayBox" Margin="0,4,0,10"
                  ToolTip="Maximum pause between digits. Range: 150–1500 ms."/>
+        <CheckBox x:Name="DeduplicateBox" Content="Skip duplicate targets on the wheel" Margin="0,4,0,4"
+                  ToolTip="When on, dropping a folder, app or link already on the current level highlights the existing tile instead of adding a copy."/>
         <CheckBox x:Name="AutostartBox" Content="Start with Windows" Margin="0,4,0,14"/>
         <Button Content="Save" Width="100" Padding="8,4"
                 HorizontalAlignment="Right" Click="OnSave"/>

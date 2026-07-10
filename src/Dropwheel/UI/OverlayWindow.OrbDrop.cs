@@ -96,23 +96,47 @@ public partial class OverlayWindow
         if (items.Length == 0) return;
 
         var list = group?.Children ?? TargetStore.Config.Targets;
+
+        IReadOnlyList<TargetItem> duplicates = Array.Empty<TargetItem>();
+        if (TargetStore.Config.DeduplicateTargets)
+        {
+            var (fresh, existing) = TargetStore.SplitNewAndDuplicates(list, items);
+            duplicates = existing;
+            if (fresh.Count == 0)
+            {
+                ShowToast(ToastAllDuplicates(existing.Count, group));
+                PulseExistingTiles(existing, group);
+                return;
+            }
+            items = fresh.ToArray();
+        }
+
         RememberAdd(list);
         foreach (var item in items) list.Add(item);
         if (pinned)
             foreach (var item in items.Reverse()) TargetStore.PinToFront(list, item);
 
         TargetStore.Save();
-        ShowToast(ToastForAdd(items.Length, group, pinned), canUndo: true);
+        ShowToast(ToastForAdd(items.Length, group, pinned, duplicates.Count), canUndo: true);
         if (_open) BuildCloud();
         if (pinned && ReferenceEquals(group, _currentGroup))
             AnimatePinnedArrival(items, origin ?? new Point(HalfSize, HalfSize));
+        if (duplicates.Count > 0) PulseExistingTiles(duplicates, group);
         RefreshLinkMetadata(items);
     }
 
-    private static string ToastForAdd(int count, TargetItem? group, bool pinned)
+    private static string ToastForAdd(int count, TargetItem? group, bool pinned, int skipped = 0)
     {
-        if (group != null) return pinned ? $"Pinned in {group.Name}: {count}" : $"Added to {group.Name}: {count}";
-        return pinned ? $"Pinned: {count}" : $"Targets added: {count}";
+        var text = group != null
+            ? (pinned ? $"Pinned in {group.Name}: {count}" : $"Added to {group.Name}: {count}")
+            : (pinned ? $"Pinned: {count}" : $"Targets added: {count}");
+        return skipped > 0 ? $"{text} · {skipped} already there" : text;
+    }
+
+    private static string ToastAllDuplicates(int count, TargetItem? group)
+    {
+        var where = group != null ? $" in {group.Name}" : "";
+        return count > 1 ? $"Already on the wheel{where}: {count}" : $"Already on the wheel{where}";
     }
 
     private void RefreshLinkMetadata(TargetItem[] items)

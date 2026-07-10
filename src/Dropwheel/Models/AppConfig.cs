@@ -26,6 +26,11 @@ public class AppConfig
     /// <summary>UI theme: Fluent, Dark, Light, Neon.</summary>
     public string Theme { get; set; } = "Fluent";
 
+    /// <summary>When true, dropping a folder, app or link that already sits on the current wheel
+    /// level does not add a duplicate tile; the existing tile is highlighted instead. Off by
+    /// default so existing behaviour is unchanged until the user opts in.</summary>
+    public bool DeduplicateTargets { get; set; }
+
     /// <summary>How target tiles animate when the wheel opens.</summary>
     public OpenAnimation OpenAnimation { get; set; } = OpenAnimation.Pop;
 
