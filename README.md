@@ -153,10 +153,17 @@ not a file operation, so it isn't undoable.
 
 ## Link targets
 
-Drop a link such as `tg://resolve?domain=telegram` or `https://t.me/telegram`
-onto the orb or the “+” tile to create a quick-access target. Clicking that tile
-opens the link through Windows, so Telegram deep links open in Telegram Desktop
-when the `tg://` protocol is registered.
+Drop a link such as `https://example.com`, `tg://resolve?domain=telegram`, or
+`https://t.me/c/4379453334/1` onto the orb or the “+” tile to create a
+quick-access target. Browser URL drags keep the page title when the drag payload
+includes one, and Dropwheel fetches a favicon in the background when the page
+exposes a PNG/JPG/ICO/WEBP icon.
+
+Telegram web links are converted to desktop deep links where possible, so
+clicking a `t.me` tile opens Telegram Desktop when the `tg://` protocol is
+registered. Dropping files or selected text onto a Telegram tile copies the
+payload to the clipboard, opens the chat or topic, and pastes it once Telegram is
+foreground; review and press Send in Telegram.
 
 ## Themes
 
@@ -183,12 +190,14 @@ are tuned per theme.
                  VirtualFileService, TextDropService, SortService, SortMigration,
                  WatcherService (auto-sort watched folders), FileMeta, PresetService,
                  ShortcutResolver, MouseHook, HotkeyService, LaunchService,
-                 IconService, StartupService, FullscreenDetector
+                 IconService, LinkTargetService, LinkMetadataService,
+                 TelegramDropService, StartupService, FullscreenDetector
       UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
                  TargetEditorWindow (+ .Rules master-detail), SettingsWindow,
                  Themes, Palette (per-theme widget colours), MenuTheme.xaml
     tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta,
-                 TextDropService, WatcherService, HotkeyService, VirtualFileService)
+                 TextDropService, WatcherService, HotkeyService, VirtualFileService,
+                 LinkTargetService, LinkMetadataService, TelegramDropService)
     docs/media/  screenshots and gifs used by this README
 
 ## Known limitations
