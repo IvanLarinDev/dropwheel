@@ -3,7 +3,8 @@
 //
 // Checks the risky parts that are easy to miss by prose:
 //   - clean worktree;
-//   - release HEAD is based on the configured base ref;
+//   - prepare mode: release HEAD is based on the configured base ref;
+//   - post-merge mode: the release tag commit is already included in the base ref;
 //   - the local release tag exists and points at HEAD;
 //   - the remote tag does not already exist;
 //   - project manifest versions match the release tag.
@@ -13,6 +14,7 @@
 //     --allow-dirty       do not fail on dirty worktree
 //     --allow-missing-tag do not require a local tag at HEAD yet
 //     --allow-remote-tag  allow the tag to already exist on origin
+//     --require-tag-in-base require the tag commit to be an ancestor of --base
 
 const fs = require("fs");
 const path = require("path");
@@ -30,6 +32,7 @@ function parseArgs(argv) {
     allowDirty: false,
     allowMissingTag: false,
     allowRemoteTag: false,
+    requireTagInBase: false,
   };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--root") a.root = argv[++i];
@@ -39,6 +42,7 @@ function parseArgs(argv) {
     else if (argv[i] === "--allow-dirty") a.allowDirty = true;
     else if (argv[i] === "--allow-missing-tag") a.allowMissingTag = true;
     else if (argv[i] === "--allow-remote-tag") a.allowRemoteTag = true;
+    else if (argv[i] === "--require-tag-in-base") a.requireTagInBase = true;
   }
   a.root = path.resolve(a.root);
   return a;
@@ -125,8 +129,10 @@ function csprojVersion(abs, rel) {
   if (!rel.toLowerCase().endsWith(".csproj")) return null;
   let text = "";
   try { text = fs.readFileSync(abs, "utf8"); } catch { return null; }
-  const version = firstMatch(text, /<Version>\s*([^<\s]+)\s*<\/Version>/i) ||
-    firstMatch(text, /<VersionPrefix>\s*([^<\s]+)\s*<\/VersionPrefix>/i);
+  const explicitVersion = firstMatch(text, /<Version>\s*([^<\s]+)\s*<\/Version>/i);
+  const versionPrefix = firstMatch(text, /<VersionPrefix>\s*([^<\s]+)\s*<\/VersionPrefix>/i);
+  const versionSuffix = firstMatch(text, /<VersionSuffix>\s*([^<\s]+)\s*<\/VersionSuffix>/i);
+  const version = explicitVersion || (versionPrefix ? (versionSuffix ? `${versionPrefix}-${versionSuffix}` : versionPrefix) : "");
   return version ? { rel, kind: "csproj", version } : null;
 }
 
@@ -170,6 +176,15 @@ function checkGitState(a, res) {
   if (a.base) {
     if (!gitOk(a.root, ["rev-parse", "--verify", "--quiet", a.base])) {
       fail(res, `base ref not found: ${a.base}`);
+    } else if (a.requireTagInBase) {
+      const tagRef = a.tag ? `refs/tags/${a.tag}^{}` : "";
+      if (!tagRef || !gitOk(a.root, ["rev-parse", "--verify", "--quiet", tagRef])) {
+        fail(res, `cannot verify tag ancestry in ${a.base}: local tag is missing`);
+      } else if (gitOk(a.root, ["merge-base", "--is-ancestor", tagRef, a.base])) {
+        pass(res, `tag ${a.tag} is included in ${a.base}`);
+      } else {
+        fail(res, `tag ${a.tag} is not included in ${a.base}`);
+      }
     } else if (gitOk(a.root, ["merge-base", "--is-ancestor", a.base, "HEAD"])) {
       pass(res, `HEAD is based on ${a.base}`);
     } else {
@@ -245,7 +260,13 @@ function checkChangelog(a, res) {
 
 function main() {
   const a = parseArgs(process.argv.slice(2));
-  const res = { ok: true, tag: a.tag, root: a.root, results: [] };
+  const res = {
+    ok: true,
+    tag: a.tag,
+    root: a.root,
+    mode: a.requireTagInBase ? "post-merge" : "prepare",
+    results: [],
+  };
   const version = semverFromTag(a.tag);
 
   checkGitState(a, res);

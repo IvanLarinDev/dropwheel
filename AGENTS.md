@@ -9,12 +9,13 @@ enforce.
 ```text
 1. EXPLORE          - read the codebase, patterns, and risks
 2. PLAN             - plan -> user approval
-2.5 DESIGN (GUI)    - >=4 mockups -> user approval -> APPROVED file
+2.5 DESIGN (GUI)    - classify UI impact -> matching variants -> approval
 3. IMPLEMENT+TEST   - code and tests together; edge cases become tests
 4. VERIFY           - node hooks/verify.js + read output + git diff self-review
    - failure/new warnings -> return to step 3
    - green              -> step 5
 5. COMMIT on branch -> PR, never directly on main
+5.5 MERGE+CLEANUP   - confirmed MERGED + green main -> exact branch cleanup
 6. REPORT           - changed / verified / remaining / manual test notes
 7. USER DECISION    - accept = DONE; revise -> 2 or 3; reject -> revert
 ```
@@ -45,13 +46,40 @@ need a plan.
 implementation. The plan names the files, rationale, tests, risks, and edge
 cases.
 
-**2.5 DESIGN (GUI).** GUI work matching `harness.config.json -> ui.globs` is
-designed before code. New GUI work needs at least four stylistically distinct
-mockups from `node hooks/new-mockups.js <feature>`, user selection, and
-`design/mockups/<feature>/APPROVED`. GUI changes also need a mockup for the new
-state. `hooks/design-gate.js` passes UI changes only when the approved set is
-touched in the same branch diff; to reuse an old set, append a date/branch line
-to its `APPROVED` file.
+**2.5 DESIGN (GUI).** Classify the user-visible change before generating DESIGN
+evidence. Do not use four unrelated visual themes for every kind of UI work.
+
+- Backend-only work with no user-visible UI impact skips DESIGN. A mixed task
+  designs only its UI slice. `design-gate.js` skips automatically when no changed
+  file matches `harness.config.json -> ui.globs`.
+- Animation uses one concrete scenario. The low-cost option is at least four
+  written motion variants (`--fidelity text`); use executable HTML/JavaScript
+  variants (`--fidelity js`) when timing, gesture, or physical feel cannot be
+  judged from prose.
+- Changes to an existing UI keep its real visual language and components while
+  comparing layouts, placement, or interaction patterns. Pass at least one
+  current UI source file through `--baseline`.
+- UI created from scratch compares at least four stylistically distinct visual
+  directions.
+
+Use one explicit mode; the generator has no generic default:
+
+```text
+node hooks/new-mockups.js <feature> --kind existing-ui --baseline <repo-path>
+node hooks/new-mockups.js <feature> --kind new-ui
+node hooks/new-mockups.js <feature> --kind animation --fidelity text|js --example <scenario>
+node hooks/new-mockups.js <feature> --kind backend
+```
+
+The generator writes `DESIGN.json`, mode-appropriate variants, and `NOTES.md`.
+After user selection, create `design/mockups/<feature>/APPROVED` with a
+`ui: <changed-ui-path-or-glob>` line. The gate checks the manifest and passes UI
+changes only when that approved set is both touched and scoped to the changed UI
+paths in the same branch diff. Legacy sets without `DESIGN.json` remain valid
+only when `APPROVED` carries the same `ui:` scope. If the user explicitly waives
+new mockups for a UI-path change, create `design/mockups/<feature>/WAIVER.json`
+with `schemaVersion`, `feature`, `uiPaths`, `reason`, `date`, and
+`approvedBy` or `approvalSource`.
 
 **3. IMPLEMENT+TEST.** Code and tests move together. If a target project has no
 test runner, report that and propose a minimal one.
@@ -75,6 +103,35 @@ or `BREAKING CHANGE:` means MAJOR. Lefthook rejects co-author and generated-by
 trailers. `git push`, force-push, and `reset --hard` require an explicit user
 request.
 
+**5.5 MERGE -> CLEANUP.** Feature, fix, docs, chore, refactor, test, CI, and
+other development branches do not wait for a release. After the PR is confirmed
+server-side `MERGED` and the resulting `main` push CI is green, run from a
+separate clean base worktree:
+
+```powershell
+node hooks/post-merge-cleanup.js --branch feat/example --base origin/main
+node hooks/post-merge-cleanup.js --branch feat/example --base origin/main --apply
+```
+
+The helper requires both local and remote refs to be ancestors of the base,
+removes only clean linked worktrees, and is idempotent when the branch was
+already deleted. Dirty, diverged, or unmerged refs block exact cleanup and are
+never forced. `release/*` and `hotfix/*` are deliberately ineligible: retain
+them until their tag, published artifacts, and smoke tests succeed. The
+release-wide cleanup remains a final audit for merged branches missed earlier.
+
+For pipelines with separate development and accepted-main roots, finish the
+merge/cleanup sequence with a strict, read-only topology audit:
+
+```powershell
+node hooks/repo-state-audit.js --root <development-root> --accepted-root <accepted-main-root> --base main --strict
+```
+
+Completion requires matching local `main` SHAs, clean expected worktrees, and
+no leftover local branches or linked worktrees. A mismatch means the pipeline
+is still active or incomplete; synchronize and clean it explicitly, then rerun
+the audit. Do not make the audit delete or reset work automatically.
+
 **6. REPORT.** Report what changed, what was verified with commands and results,
 what remains, and how the user can test manually.
 
@@ -82,25 +139,44 @@ what remains, and how the user can test manually.
 
 ## Release Flow
 
-Run this only on explicit request and after merge to `main`.
+Run this only on an explicit release request. A request to make a **full
+release** is standing authorization for the normal release actions below:
+pushing feature/release branches, creating and merging their PRs, pushing the
+computed SemVer tag, publishing the GitHub Release, and deleting merged
+development/release branches after smoke testing. Do not pause for a second
+approval after the SemVer preview.
+
+Standing authorization does not allow bypassing hooks/rulesets, force-pushing,
+continuing after a failed gate, deleting unmerged branches, or discarding a
+dirty worktree. Unexpected history repair, rollback, or destructive recovery
+still requires a new user decision.
 
 | Step | Action | Gate |
 |---|---|---|
-| R1 | Start from a clean worktree at `origin/main`; `node hooks/doctor.js` is green; read current version with `git describe --tags --abbrev=0`. | |
-| R2 | Derive SemVer from Conventional Commits: first `cog bump --auto --dry-run`, then `cog bump --auto --annotated "vX.Y.Z"` to create an annotated tag and changelog. | Show tag, diff, and notes; wait for approval. |
-| R2.5 | `node hooks/release-preflight.js --tag vX.Y.Z --base origin/main`: clean tree, tag points to HEAD, remote tag absent, project/package versions match the tag. | |
-| R3 | `git push origin <branch> && git push origin vX.Y.Z`. | Only after an explicit yes. |
-| R4 | If release workflow exists: `gh run watch`; release workflow is green and has no skipped steps. | |
-| R5 | `gh release view vX.Y.Z`: release is published and artifacts exist. | |
-| R6 | Download artifact, smoke-test it, and verify binary version equals the tag. | |
-| R7 | Know rollback: before publication, recreate the tag; after publication, use `gh release delete` plus revert with approval. | |
+| R0 | Merge all intended feature/fix work through PRs into `main`; verify each PR and the resulting `main` push are green, then run exact post-merge cleanup for each branch. | No release from an unmerged feature branch; merged development branches should not accumulate while releases are deferred. |
+| R1 | Fetch/prune, then create a new clean release worktree from `origin/main`. Run `node hooks/doctor.js`, `node hooks/verify.js`, and `git describe --tags --abbrev=0`. | The latest tag must be an ancestor of `origin/main`; stop on a broken release graph. |
+| R2 | Derive SemVer from merged Conventional Commits with `cog bump --auto --dry-run`. Report the computed tag/diff/notes, create `release/vX.Y.Z`, run `node hooks/release-manifest-bump.js --tag vX.Y.Z`, commit manifest changes as `chore(release): prepare vX.Y.Z`, then run `cog bump --auto --annotated "vX.Y.Z"`. | A full-release request continues without another approval. Stop if the bump is inconsistent with the merged commits or manifests. |
+| R2.5 | Run prepare preflight: `node hooks/release-preflight.js --tag vX.Y.Z --base origin/main`. | Clean tree; annotated local tag points at release HEAD; remote tag absent; manifests and CHANGELOG match. |
+| R3 | Push **only** `release/vX.Y.Z`, create its PR to `main`, wait for required checks, merge it with a merge commit, and verify server-side `MERGED`. | Do not squash/rebase the PR: the locally tagged release commit must remain in `main`. Do not push the tag yet. |
+| R4 | Fetch `origin/main`, wait for its push CI, then run `node hooks/release-preflight.js --tag vX.Y.Z --base origin/main --require-tag-in-base`. | The tag commit must now be an ancestor of `origin/main`; remote tag must still be absent. |
+| R5 | Push `vX.Y.Z`. Watch the tag-triggered release workflow and require every release step to pass. | The workflow must build from the exact tag, verify, create a source ZIP + SHA-256, smoke-test it, and publish the GitHub Release. |
+| R6 | Run `gh release view vX.Y.Z`; download the published ZIP/checksum; compare SHA-256 and smoke-test the downloaded asset. | For this source-only harness, the tag plus matching CHANGELOG version is the version check. Binary/package projects must also verify their reported binary/package version. |
+| R7 | From a separate clean base worktree run `node hooks/release-cleanup.js --base origin/main` and then `node hooks/release-cleanup.js --base origin/main --apply`. | Final audit: delete any remaining merged managed branches and clean linked worktrees. Dirty merged branches block cleanup; unmerged branches are skipped and reported. Tags are retained. |
+| R8 | Report tag, merge SHAs, workflow URL, Release URL, asset hash, smoke results, cleanup results, and rollback boundary. | The release is complete only after R6 and R7. |
 
-Hotfix: branch from the previous tag, fix, PR to `main`, then tag through R2-R6.
-A legitimate release commit on `main` can use `HARNESS_ALLOW_MAIN=1 git commit ...`.
+The source repository's `.github/workflows/release.yml` implements the source
+ZIP path. Installed target repositories must provide a release workflow suited
+to their own binary/package artifacts; when none exists, reproduce R5-R6
+manually from the exact tag and do not claim the release is complete early.
 
-`release-preflight.js` intentionally fails if the tag/changelog are ready but a
-project manifest still reports an old version. If no version manifest exists, it
-warns; R6 still verifies the binary version.
+Hotfix: branch from the previous tag, fix, PR to `main`, then follow R1-R8.
+Do not make a release commit directly on `main`; the version/changelog commit
+uses the release PR in R3.
+
+`release-manifest-bump.js` synchronizes known project manifests before the tag is
+created. `release-preflight.js` intentionally fails if the tag/changelog are
+ready but a project manifest still reports an old version. If no version
+manifest exists, it warns; R6 still verifies the binary version.
 
 After `gh pr merge --delete-branch`, GitHub can merge the PR server-side even if
 the local post-merge pull/rebase fails because of a dirty worktree. Verify with
@@ -108,6 +184,11 @@ the local post-merge pull/rebase fails because of a dirty worktree. Verify with
 merge happened. Sync locally only from a clean tree with `git fetch origin` and
 `git merge --ff-only origin/main`. For releases, prefer a new clean worktree from
 `origin/main`.
+
+Rollback remains a separate decision: before publication, delete/recreate the
+tag only with approval; after publication, use `gh release delete` plus a revert
+PR with approval. Branch cleanup never deletes tags, so published release
+anchors remain available.
 
 ## Harness Layers
 

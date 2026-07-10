@@ -4,6 +4,7 @@ hooks/*.js    text eol=lf
 hooks/**/*.js text eol=lf
 install.js    text eol=lf
 *.sh          text eol=lf
+*.ps1         text eol=lf
 
 # Config files are LF too: otherwise Windows with autocrlf=true can make the working
 # tree CRLF, and `node hooks/doctor.js` reads the working tree and reports a false

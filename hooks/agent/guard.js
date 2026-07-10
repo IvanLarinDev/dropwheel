@@ -345,8 +345,9 @@ function run(ctx, env = process.env) {
         const mockRoot = cfg.mockups.dir.replace(/\\/g, "/").replace(/\/$/, "");
         if (checkEnabled("design-note", env) &&
             !rel.startsWith(mockRoot + "/") && cfg.uiGlobs.map(globToRe).some((re) => re.test(rel)))
-          notes.push(`guard: GUI file edit (${rel}). DESIGN stage requires >=${cfg.mockups.min} mockups plus APPROVED before code ` +
-            `(node hooks/new-mockups.js <feature>). The hard gate is design-gate.js in pre-push/CI.`);
+          notes.push(`guard: GUI file edit (${rel}). Classify the DESIGN evidence as existing-ui, new-ui, or animation, ` +
+            `then create >=${cfg.mockups.min} matching variants plus APPROVED (node hooks/new-mockups.js <feature> --kind ...). ` +
+            `Backend-only diffs outside ui.globs skip automatically. The hard gate is design-gate.js in pre-push/CI.`);
         if (checkEnabled("main-note", env)) {
           const branch = currentBranch(projectDir);
           if (["main", "master"].includes(branch))

@@ -155,6 +155,22 @@ function checkWorkflowSupplyChain(workflowPath) {
       : fail("CI AgentShield npm package must pin dist.integrity and set NPM_CONFIG_IGNORE_SCRIPTS=true");
   }
 }
+function checkReleaseWorkflowContract(workflowPath) {
+  const text = readText(workflowPath);
+  const checks = [
+    { name: "v* tag trigger", re: /tags:\s*\[[^\]]*["']?v\*/i },
+    { name: "contents write permission", re: /contents:\s*write/i },
+    { name: "post-merge preflight", re: /release-preflight\.js[^\n]*--require-tag-in-base[^\n]*--allow-remote-tag/i },
+    { name: "VERIFY", re: /node\s+hooks\/verify\.js\b/i },
+    { name: "exact-tag git archive", re: /git\s+archive\b/i },
+    { name: "SHA-256", re: /Get-FileHash[^\n]*SHA256/i },
+    { name: "archive smoke test", re: /Expand-Archive/i },
+    { name: "GitHub Release publication", re: /gh\s+release\s+(?:create|upload)/i },
+  ];
+  const missing = checks.filter((check) => !check.re.test(text)).map((check) => check.name);
+  if (missing.length) fail(`release workflow is missing required step(s): ${missing.join(", ")}`);
+  else ok("release workflow validates merged tags, builds/checksums/smokes source ZIP, and publishes GitHub Release");
+}
 
 // node / git
 ok("node " + process.version);
@@ -172,10 +188,11 @@ if (!inRepo) {
 
   // lefthook wired into .git/hooks? (lefthook install writes a stub referencing lefthook)
   const hooksDir = gitSafe(["rev-parse", "--git-path", "hooks"]) || ".git/hooks";
+  const hooksDirAbs = path.isAbsolute(hooksDir) ? hooksDir : path.join(ROOT, hooksDir);
   let wired = false;
   for (const h of ["pre-commit", "commit-msg", "pre-push"]) {
     try {
-      if (/lefthook/i.test(fs.readFileSync(path.join(ROOT, hooksDir, h), "utf8"))) { wired = true; break; }
+      if (/lefthook/i.test(fs.readFileSync(path.join(hooksDirAbs, h), "utf8"))) { wired = true; break; }
     } catch {}
   }
   wired ? ok("lefthook wired into .git/hooks") : warn("hooks are not installed; run: lefthook install");
@@ -218,7 +235,11 @@ const requiredHarnessFiles = [
   "hooks/verify.js",
   "hooks/verify-core.js",
   "hooks/design-gate.js",
+  "hooks/release-manifest-bump.js",
   "hooks/release-preflight.js",
+  "hooks/post-merge-cleanup.js",
+  "hooks/release-cleanup.js",
+  "hooks/repo-state-audit.js",
   "hooks/new-mockups.js",
   "hooks/doctor.js",
   "hooks/apply-ruleset.js",
@@ -263,6 +284,7 @@ const textCritical = requiredHarnessFiles.concat([
   "CLAUDE.md",
   "BACKLOG.md",
   ".github/workflows/ci.yml",
+  ".github/workflows/release.yml",
   ".github/CODEOWNERS",
   ".github/dependabot.yml",
   "install.cmd",
@@ -272,9 +294,11 @@ for (const f of textCritical) checkTextFile(f);
 
 // harness.config.json valid JSON
 const cfgPath = path.join(ROOT, "harness.config.json");
+let harnessConfig = {};
 if (fs.existsSync(cfgPath)) {
   try {
     const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+    harnessConfig = cfg;
     ok("harness.config.json is valid JSON");
     const hasSelfTest = fs.existsSync(path.join(ROOT, "hooks", "test.js"));
     const stacks = cfg.verify && Array.isArray(cfg.verify.stacks) ? cfg.verify.stacks : null;
@@ -338,6 +362,7 @@ if (fs.existsSync(cogPath)) {
 }
 
 const workflowPath = ".github/workflows/ci.yml";
+const releaseWorkflowPath = ".github/workflows/release.yml";
 const rulesetPath = ".github/rulesets/main.json";
 if (fs.existsSync(path.join(ROOT, rulesetPath))) {
   const jobs = workflowJobIds(workflowPath);
@@ -354,6 +379,14 @@ if (fs.existsSync(path.join(ROOT, rulesetPath))) {
     checkWorkflowSupplyChain(workflowPath);
   }
   checkRulesetPrReview(rulesetPath);
+}
+if (fs.existsSync(path.join(ROOT, releaseWorkflowPath))) {
+  if (harnessConfig.release && harnessConfig.release.sourceZip === true) {
+    checkReleaseWorkflowContract(releaseWorkflowPath);
+  } else {
+    ok("release workflow uses a target-specific artifact contract");
+  }
+  checkWorkflowSupplyChain(releaseWorkflowPath);
 }
 
 // report
