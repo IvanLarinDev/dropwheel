@@ -11,10 +11,12 @@ public partial class OverlayWindow
 {
     private double _wheelSize = BaseWindow; // current square window side
 
-    /// <summary>Grows the square window to hold the current wheel. Unlike a closed orb, an open
-    /// wheel must be fully visible, so the whole window is clamped inside the virtual screen: the
-    /// orb (wheel center) is nudged inward from a screen edge only as much as needed, so a wide
-    /// overflow ring is never clipped. The orb returns to its resting spot on close (PlaceWindow).</summary>
+    /// <summary>Grows or shrinks the square window to hold the current wheel, keeping the orb's
+    /// screen center fixed so it never jumps under the pointer — a moving orb makes the hover/close
+    /// logic oscillate the wheel open and closed. The window may extend past a screen edge (only the
+    /// orb must stay reachable, so it is kept 24px inside); a wide overflow ring near an edge can then
+    /// clip, which is accepted against the far worse flicker of a shifting orb. The size is BaseWindow
+    /// while closed and larger only while an overflow level is open.</summary>
     private void ApplyWheelWindow(double size)
     {
         if (Math.Abs(Width - size) > 0.5)
@@ -24,8 +26,8 @@ public partial class OverlayWindow
             Height = size;
             double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
             double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
-            Left = SnapToPixel(Math.Clamp(cx - size / 2, l, Math.Max(l, r - size)), horizontal: true);
-            Top = SnapToPixel(Math.Clamp(cy - size / 2, t, Math.Max(t, b - size)), horizontal: false);
+            Left = SnapToPixel(Math.Clamp(cx - size / 2, l - size / 2 + 24, r - size / 2 - 24), horizontal: true);
+            Top = SnapToPixel(Math.Clamp(cy - size / 2, t - size / 2 + 24, b - size / 2 - 24), horizontal: false);
         }
         _wheelSize = size;
         RecenterOrb();
@@ -39,18 +41,6 @@ public partial class OverlayWindow
         var s = VisualTreeHelper.GetDpi(this);
         double scale = horizontal ? s.DpiScaleX : s.DpiScaleY;
         return scale > 0 ? Math.Round(dip * scale) / scale : dip;
-    }
-
-    /// <summary>Shrinks the window back to BaseWindow when the wheel closes and returns the orb to
-    /// its resting position — where only the small orb shows, a partly off-screen transparent
-    /// window is fine, so the orb can hug a screen edge again.</summary>
-    private void RestoreClosedWindow()
-    {
-        Width = BaseWindow;
-        Height = BaseWindow;
-        _wheelSize = BaseWindow;
-        RecenterOrb();
-        PlaceWindow();
     }
 
     /// <summary>Re-centers the orb (and the toast) on the current window, so it stays at HalfSize
