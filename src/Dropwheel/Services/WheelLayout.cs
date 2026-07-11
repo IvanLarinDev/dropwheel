@@ -58,6 +58,17 @@ public static class WheelLayout
         return Math.Max(BaseWindow, 2 * (maxR + TileHalf + Margin));
     }
 
+    /// <summary>The largest window a mode can ever need, independent of tile count or threshold. The
+    /// overlay window is fixed at this size for the whole session so it never resizes while the wheel
+    /// opens or closes (a resizing, moving window is what makes the pointer logic glitch). None keeps
+    /// the classic window; the overflow modes reserve room for their widest ring up front.</summary>
+    public static double MaxWindowSize(OverflowLayout mode)
+    {
+        if (mode == OverflowLayout.None) return BaseWindow;
+        // A count that always overflows yields the mode's widest ring regardless of the user's threshold.
+        return WindowSize(mode, MaxThreshold + 8, MinThreshold);
+    }
+
     /// <summary>The distinct ring radii the layout uses, innermost first (one or two values).</summary>
     public static IReadOnlyList<double> RingRadii(OverflowLayout mode, int count, int threshold = SingleRingMax, int reserved = 0)
     {

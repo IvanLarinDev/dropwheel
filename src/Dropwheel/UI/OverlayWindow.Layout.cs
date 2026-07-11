@@ -9,28 +9,24 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    private double _wheelSize = BaseWindow; // current square window side
+    private double _wheelSize = BaseWindow; // current square window side (fixed per overflow mode)
 
-    /// <summary>Grows or shrinks the square window to hold the current wheel, keeping the orb's
-    /// screen center fixed so it never jumps under the pointer — a moving orb makes the hover/close
-    /// logic oscillate the wheel open and closed. The window may extend past a screen edge (only the
-    /// orb must stay reachable, so it is kept 24px inside); a wide overflow ring near an edge can then
-    /// clip, which is accepted against the far worse flicker of a shifting orb. The size is BaseWindow
-    /// while closed and larger only while an overflow level is open.</summary>
-    private void ApplyWheelWindow(double size)
+    /// <summary>Sizes the window once for the active overflow mode and keeps it there for the whole
+    /// session, so the window never resizes or moves while the wheel opens and closes — that motion,
+    /// under a still pointer, is what made the hover/close logic glitch. The overflow modes reserve
+    /// room for their widest ring up front; the empty margin is transparent and clicks pass through it.
+    /// Called at startup and when settings change (both with the wheel closed).</summary>
+    private void ApplyModeWindow()
     {
+        double size = WheelLayout.MaxWindowSize(TargetStore.Config.OverflowLayout);
         if (Math.Abs(Width - size) > 0.5)
         {
-            double cx = Left + Width / 2, cy = Top + Height / 2;
             Width = size;
             Height = size;
-            double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
-            double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
-            Left = SnapToPixel(Math.Clamp(cx - size / 2, l - size / 2 + 24, r - size / 2 - 24), horizontal: true);
-            Top = SnapToPixel(Math.Clamp(cy - size / 2, t - size / 2 + 24, b - size / 2 - 24), horizontal: false);
         }
         _wheelSize = size;
         RecenterOrb();
+        PlaceWindow(); // re-anchor the orb (window center) on its saved spot after any size change
     }
 
     /// <summary>Snaps a DIP window edge onto a whole device pixel. A transparent overlay placed on a
@@ -68,8 +64,8 @@ public partial class OverlayWindow
         // bounds of the whole virtual screen — the orb may live on any monitor
         double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
         double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
-        Left = Math.Clamp(cx - HalfSize, l - HalfSize + 24, r - HalfSize - 24);
-        Top = Math.Clamp(cy - HalfSize, t - HalfSize + 24, b - HalfSize - 24);
+        Left = SnapToPixel(Math.Clamp(cx - HalfSize, l - HalfSize + 24, r - HalfSize - 24), horizontal: true);
+        Top = SnapToPixel(Math.Clamp(cy - HalfSize, t - HalfSize + 24, b - HalfSize - 24), horizontal: false);
     }
 
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)

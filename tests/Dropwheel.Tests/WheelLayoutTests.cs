@@ -92,6 +92,26 @@ public sealed class WheelLayoutTests
     }
 
     [Fact]
+    public void Max_window_is_classic_for_None_and_larger_for_overflow_modes()
+    {
+        Assert.Equal(460, WheelLayout.MaxWindowSize(OverflowLayout.None), 3);
+        foreach (var mode in Enum.GetValues<OverflowLayout>().Where(m => m != OverflowLayout.None))
+            Assert.True(WheelLayout.MaxWindowSize(mode) > 460, $"{mode} should reserve a larger window");
+    }
+
+    [Fact]
+    public void Max_window_covers_the_widest_wheel_regardless_of_count_or_threshold()
+    {
+        foreach (var mode in Enum.GetValues<OverflowLayout>())
+        {
+            double max = WheelLayout.MaxWindowSize(mode);
+            // Whatever count or threshold the user has, the fixed window must already fit the wheel.
+            Assert.True(max >= WheelLayout.WindowSize(mode, 40, WheelLayout.MinThreshold) - 0.5);
+            Assert.True(max >= WheelLayout.WindowSize(mode, 12, WheelLayout.MaxThreshold) - 0.5);
+        }
+    }
+
+    [Fact]
     public void Threshold_is_clamped_into_range()
     {
         Assert.Equal(WheelLayout.MinThreshold, WheelLayout.ClampThreshold(1));

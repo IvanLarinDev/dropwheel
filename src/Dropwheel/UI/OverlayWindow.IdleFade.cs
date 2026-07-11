@@ -36,6 +36,7 @@ public partial class OverlayWindow
     {
         if (Orb.ContextMenu is System.Windows.Controls.ContextMenu m) Themes.ApplyMenu(m);
         PaintHub();
+        ApplyModeWindow(); // the overflow mode may have changed → resize the fixed window (wheel is closed here)
         if (_open) BuildCloud();
         Orb.Opacity = TargetStore.Config.OrbOpacity;
         _hoverTimer.Interval = HoverInterval();

@@ -66,7 +66,7 @@ public partial class OverlayWindow
         _cells = [];
         Rim.BeginAnimation(OpacityProperty, null);
         Rim.Opacity = 0;
-        ApplyWheelWindow(BaseWindow); // shrink back to the classic window, orb stays put
+        // The window keeps its fixed per-mode size; nothing to resize on close.
     }
 
     /// <summary>All tiles are laid out by the chosen overflow mode: one ring below the threshold,
@@ -87,7 +87,8 @@ public partial class OverlayWindow
         int threshold = TargetStore.Config.OverflowThreshold;
         int reserved = (_currentGroup != null ? 1 : 0) + 1; // "Back" (in a group) and "+": not targets
         _cells = WheelLayout.Compute(mode, n, threshold, reserved);
-        ApplyWheelWindow(WheelLayout.WindowSize(mode, n, threshold, reserved));
+        // The window is already fixed at the mode's max size (ApplyModeWindow), so opening never
+        // resizes or moves it — the wheel simply draws centered in the space that is already there.
 
         // Invisible round backdrop covering the whole wheel: the mouse over the "empty" space inside
         // stays inside the window (otherwise switching group levels fired MouseLeave and the close

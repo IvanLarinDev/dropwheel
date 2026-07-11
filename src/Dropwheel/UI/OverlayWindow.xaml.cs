@@ -8,25 +8,14 @@ namespace Dropwheel.UI;
 public partial class OverlayWindow : Window
 {
     /// <summary>Wheel center in window coordinates. The window is square and the orb sits at its
-    /// center, so this is always half the current width. The window is 460 while the wheel is
-    /// closed and grows only while an overflow level is open (see ApplyWheelWindow).</summary>
+    /// center, so this is always half the width. The window is fixed per overflow mode for the whole
+    /// session (see ApplyModeWindow) and does not resize while the wheel opens or closes.</summary>
     private double HalfSize => Width / 2;
 
     /// <summary>Hover timer interval, guarded against zero: a zero interval makes DispatcherTimer
     /// tick on every dispatcher pass, so we keep a sensible minimum.</summary>
     private static TimeSpan HoverInterval() =>
         TimeSpan.FromMilliseconds(Math.Max(50, TargetStore.Config.HoverDelayMs));
-
-    /// <summary>Whether the physical mouse cursor is inside the window's current screen bounds. Used to
-    /// tell a real mouse-leave from a spurious one that WPF raises when we move/resize the window under
-    /// a stationary cursor.</summary>
-    private bool CursorInsideWindow()
-    {
-        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } ct) return false;
-        var c = System.Windows.Forms.Cursor.Position; // device px
-        var p = ct.TransformFromDevice.Transform(new Point(c.X, c.Y)); // → DIP, window/screen space
-        return p.X >= Left && p.X < Left + Width && p.Y >= Top && p.Y < Top + Height;
-    }
 
     private readonly DispatcherTimer _hoverTimer;
     private readonly DispatcherTimer _closeTimer;
@@ -46,15 +35,7 @@ public partial class OverlayWindow : Window
         };
 
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        _closeTimer.Tick += (_, _) =>
-        {
-            _closeTimer.Stop();
-            // A programmatic resize/move of the window slides it out from under a still cursor, and WPF
-            // fires a spurious MouseLeave. Only close if the pointer is physically outside the window,
-            // otherwise the wheel would flicker open/closed while the cursor sits on the orb.
-            if (CursorInsideWindow()) { ErrorLog.Trace("close-suppressed (cursor still inside window)"); return; }
-            CloseCloud("leave-timer");
-        };
+        _closeTimer.Tick += (_, _) => { _closeTimer.Stop(); CloseCloud("leave-timer"); };
 
         _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
@@ -106,7 +87,7 @@ public partial class OverlayWindow : Window
         Loaded += (_, _) =>
         {
             ErrorLog.Trace("=== session start ===");
-            PlaceWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade();
+            ApplyModeWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade();
         };
         LocationChanged += (_, _) =>
         {
