@@ -107,7 +107,7 @@ public static partial class VirtualFileService
     internal static string TempPathFor(string path) =>
         Path.Combine(Path.GetDirectoryName(path) ?? "", $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
 
-    private static string UniquePath(string folder, string name)
+    internal static string UniquePath(string folder, string name)
     {
         name = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
         if (string.IsNullOrWhiteSpace(name)) name = "file";

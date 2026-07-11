@@ -76,7 +76,7 @@ public partial class OverlayWindow
         return null;
     }
 
-    private static TargetItem TargetFromPath(string path)
+    internal static TargetItem TargetFromPath(string path)
     {
         // A dropped .lnk becomes a target for what it points at, not the shortcut file.
         var target = ShortcutResolver.Resolve(path);
