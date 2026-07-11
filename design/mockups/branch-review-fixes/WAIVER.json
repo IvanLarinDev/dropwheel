@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "reason": "Branch-wide design-gate coverage. This branch bundles many changes across several sessions, and the gate requires a single set to cover every changed UI-path file. The genuinely visual changes keep their own design evidence: overflow layouts in design/mockups/wheel-overflow, the group-delete safety dialog in design/mockups/group-delete-safety (APPROVED), and the add-while-open tile arrival in design/mockups/add-while-open (APPROVED). Every other UI-path file listed here is a non-visual edit — reliability, performance, error-handling, DPI/units, accessibility metadata (AutomationProperties.Name), behavior-preserving refactors, and folder documentation — that does not change the visual design. This waiver consolidates gate coverage for the whole branch.",
+  "approvedBy": "Ivan Larin (repo owner) via chat request on 2026-07-11",
+  "date": "2026-07-11",
+  "uiPaths": [
+    "src/Dropwheel/UI/GroupDeleteWindow.xaml",
+    "src/Dropwheel/UI/GroupDeleteWindow.xaml.cs",
+    "src/Dropwheel/UI/LLM.md",
+    "src/Dropwheel/UI/README.md",
+    "src/Dropwheel/UI/OverlayWindow.Back.cs",
+    "src/Dropwheel/UI/OverlayWindow.Bubble.Wire.cs",
+    "src/Dropwheel/UI/OverlayWindow.Bubble.cs",
+    "src/Dropwheel/UI/OverlayWindow.Capture.cs",
+    "src/Dropwheel/UI/OverlayWindow.Charge.cs",
+    "src/Dropwheel/UI/OverlayWindow.Cloud.cs",
+    "src/Dropwheel/UI/OverlayWindow.Dnd.cs",
+    "src/Dropwheel/UI/OverlayWindow.GroupShortcuts.cs",
+    "src/Dropwheel/UI/OverlayWindow.Hotkey.cs",
+    "src/Dropwheel/UI/OverlayWindow.IdleFade.cs",
+    "src/Dropwheel/UI/OverlayWindow.Layout.cs",
+    "src/Dropwheel/UI/OverlayWindow.OrbDrop.cs",
+    "src/Dropwheel/UI/OverlayWindow.PinDrop.cs",
+    "src/Dropwheel/UI/OverlayWindow.Plus.cs",
+    "src/Dropwheel/UI/OverlayWindow.Proximity.cs",
+    "src/Dropwheel/UI/OverlayWindow.xaml.cs",
+    "src/Dropwheel/UI/SettingsWindow.xaml",
+    "src/Dropwheel/UI/SettingsWindow.xaml.cs",
+    "src/Dropwheel/UI/TargetEditorWindow.Rules.cs",
+    "src/Dropwheel/UI/TargetEditorWindow.xaml.cs"
+  ]
+}
