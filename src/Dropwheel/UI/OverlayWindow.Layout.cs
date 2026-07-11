@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -23,11 +24,21 @@ public partial class OverlayWindow
             Height = size;
             double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
             double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
-            Left = Math.Clamp(cx - size / 2, l, Math.Max(l, r - size));
-            Top = Math.Clamp(cy - size / 2, t, Math.Max(t, b - size));
+            Left = SnapToPixel(Math.Clamp(cx - size / 2, l, Math.Max(l, r - size)), horizontal: true);
+            Top = SnapToPixel(Math.Clamp(cy - size / 2, t, Math.Max(t, b - size)), horizontal: false);
         }
         _wheelSize = size;
         RecenterOrb();
+    }
+
+    /// <summary>Snaps a DIP window edge onto a whole device pixel. A transparent overlay placed on a
+    /// fractional pixel (common at 125%/150% display scaling) renders blurry; the wheel and orb draw
+    /// crisply when the window origin lands on the device-pixel grid.</summary>
+    private double SnapToPixel(double dip, bool horizontal)
+    {
+        var s = VisualTreeHelper.GetDpi(this);
+        double scale = horizontal ? s.DpiScaleX : s.DpiScaleY;
+        return scale > 0 ? Math.Round(dip * scale) / scale : dip;
     }
 
     /// <summary>Shrinks the window back to BaseWindow when the wheel closes and returns the orb to
