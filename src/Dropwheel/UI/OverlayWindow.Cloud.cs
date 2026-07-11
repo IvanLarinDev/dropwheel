@@ -11,7 +11,6 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    private const double RingR = WheelLayout.SingleRingRadius; // single-ring rim centerline
     private const double TileLeftOffset = 38;
     private const double TileTopOffset = 40;
     private const double BaseWindow = 460;
@@ -145,32 +144,21 @@ public partial class OverlayWindow
         HalfSize + (c.Radius - 52) * Math.Cos(c.Angle),
         HalfSize + (c.Radius - 52) * Math.Sin(c.Angle));
 
-    /// <summary>Slot on the classic single ring, used only by the reorder animation (which runs
-    /// while the level fits on one rim).</summary>
-    private WheelSlot SlotOnSingleRing(int index, int count)
-    {
-        double angle = -Math.PI / 2 + index * 2 * Math.PI / count;
-        return SlotFrom(new WheelCell(angle, RingR));
-    }
-
     private void AnimateTileReorder(TargetItem moved)
     {
         var targets = TargetStore.OrderedForDisplay(CurrentLevelTargets()).ToArray();
         int offset = _currentGroup == null ? 0 : 1;
-        int count = targets.Length + offset + 1; // plus tile is still the last slot
-
-        // The smooth arc reorder is tuned for one ring; once the level overflows onto a second
-        // ring a tile can change rings, so rebuild instead of sliding across the gap.
-        var mode = TargetStore.Config.OverflowLayout;
-        if (WheelLayout.RingRadii(mode, count, TargetStore.Config.OverflowThreshold, offset + 1).Count > 1)
-        { BuildCloud(); return; }
 
         var elements = Cloud.Children
             .OfType<FrameworkElement>()
             .Where(el => el.Tag is TargetItem)
             .ToDictionary(el => (TargetItem)el.Tag);
 
-        if (targets.Any(target => !elements.ContainsKey(target)))
+        // The reorder permutes the targets without changing the count, so the slot positions are the
+        // ones already in _cells; each target just slides to the slot at its new display index. Rebuild
+        // only if something is out of sync (a tile missing an element, or _cells not matching the count).
+        if (targets.Any(target => !elements.ContainsKey(target))
+            || _cells.Length < targets.Length + offset + 1)
         {
             BuildCloud();
             return;
@@ -181,17 +169,18 @@ public partial class OverlayWindow
         {
             var target = targets[i];
             var element = elements[target];
-            var slot = SlotOnSingleRing(i + offset, count);
+            var cell = _cells[i + offset];
             bool isMoved = ReferenceEquals(target, moved);
             Panel.SetZIndex(element, isMoved ? 10 : 2);
-            AnimateAlongRim(element, slot, ease, isMoved);
+            AnimateAlongRim(element, cell, ease, isMoved);
             if (_spokes.TryGetValue(element, out var spoke))
-                AnimateSpokeAlongRim(spoke, slot, ease);
+                AnimateSpokeAlongRim(spoke, cell, ease);
         }
     }
 
-    private void AnimateAlongRim(FrameworkElement element, WheelSlot slot, IEasingFunction ease, bool emphasize)
+    private void AnimateAlongRim(FrameworkElement element, WheelCell cell, IEasingFunction ease, bool emphasize)
     {
+        var slot = SlotFrom(cell);
         double fromLeft = Canvas.GetLeft(element);
         double fromTop = Canvas.GetTop(element);
         if (double.IsNaN(fromLeft)) fromLeft = slot.Left;
@@ -202,7 +191,7 @@ public partial class OverlayWindow
         Canvas.SetLeft(element, fromLeft);
         Canvas.SetTop(element, fromTop);
 
-        var mid = MidArcSlot(fromLeft + TileLeftOffset, fromTop + TileTopOffset, slot.Angle);
+        var mid = MidArcSlot(fromLeft + TileLeftOffset, fromTop + TileTopOffset, cell);
         var duration = TimeSpan.FromMilliseconds(emphasize ? 210 : 180);
         var left = ArcAnimation(mid.Left, slot.Left, duration, ease);
         var top = ArcAnimation(mid.Top, slot.Top, duration, ease);
@@ -228,9 +217,16 @@ public partial class OverlayWindow
         }
     }
 
-    private void AnimateSpokeAlongRim(Line spoke, WheelSlot slot, IEasingFunction ease)
+    private void AnimateSpokeAlongRim(Line spoke, WheelCell cell, IEasingFunction ease)
     {
-        var mid = MidArcSlot(spoke.X2, spoke.Y2, slot.Angle, RingR - 52);
+        var slot = SlotFrom(cell);
+        double toR = cell.Radius - 52;
+        double fromAngle = Math.Atan2(spoke.Y2 - HalfSize, spoke.X2 - HalfSize);
+        double fromR = Math.Sqrt(Math.Pow(spoke.X2 - HalfSize, 2) + Math.Pow(spoke.Y2 - HalfSize, 2));
+        double midAngle = fromAngle + NormalizeAngle(cell.Angle - fromAngle) / 2;
+        double midR = (fromR + toR) / 2;
+        double midX = HalfSize + midR * Math.Cos(midAngle);
+        double midY = HalfSize + midR * Math.Sin(midAngle);
         var fromX = spoke.X2;
         var fromY = spoke.Y2;
         spoke.BeginAnimation(Line.X2Property, null);
@@ -239,8 +235,8 @@ public partial class OverlayWindow
         spoke.Y2 = fromY;
 
         var duration = TimeSpan.FromMilliseconds(180);
-        var x = ArcAnimation(mid.Left, slot.SpokeX, duration, ease);
-        var y = ArcAnimation(mid.Top, slot.SpokeY, duration, ease);
+        var x = ArcAnimation(midX, slot.SpokeX, duration, ease);
+        var y = ArcAnimation(midY, slot.SpokeY, duration, ease);
         y.Completed += (_, _) =>
         {
             spoke.BeginAnimation(Line.X2Property, null);
@@ -252,16 +248,17 @@ public partial class OverlayWindow
         spoke.BeginAnimation(Line.Y2Property, y);
     }
 
-    private WheelSlot MidArcSlot(double fromX, double fromY, double toAngle, double radius = RingR)
+    /// <summary>Midpoint of a tile's path to <paramref name="cell"/>: the half-way angle and half-way
+    /// radius between where the tile is now (fromX, fromY — its center) and the target cell. Interpolating
+    /// the radius too means a tile changing rings curves smoothly between them; a same-ring move stays an
+    /// arc along that ring. Returned as a tile slot (its Left/Top carry the tile offset).</summary>
+    private WheelSlot MidArcSlot(double fromX, double fromY, WheelCell cell)
     {
         double fromAngle = Math.Atan2(fromY - HalfSize, fromX - HalfSize);
-        double midAngle = fromAngle + NormalizeAngle(toAngle - fromAngle) / 2;
-        return new WheelSlot(
-            midAngle,
-            HalfSize + radius * Math.Cos(midAngle) - (radius == RingR ? TileLeftOffset : 0),
-            HalfSize + radius * Math.Sin(midAngle) - (radius == RingR ? TileTopOffset : 0),
-            HalfSize + (RingR - 52) * Math.Cos(midAngle),
-            HalfSize + (RingR - 52) * Math.Sin(midAngle));
+        double fromR = Math.Sqrt(Math.Pow(fromX - HalfSize, 2) + Math.Pow(fromY - HalfSize, 2));
+        double midAngle = fromAngle + NormalizeAngle(cell.Angle - fromAngle) / 2;
+        double midR = (fromR + cell.Radius) / 2;
+        return SlotFrom(new WheelCell(midAngle, midR));
     }
 
     private static DoubleAnimationUsingKeyFrames ArcAnimation(
