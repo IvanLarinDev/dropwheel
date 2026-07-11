@@ -43,6 +43,8 @@ public static class TargetStore
                 Config = DeserializeConfig(configText, out var sanitizedInvalidEnums) ?? new();
                 var needsSave = sanitizedInvalidEnums;
                 if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); needsSave = true; }
+                var clampedThreshold = WheelLayout.ClampThreshold(Config.OverflowThreshold);
+                if (clampedThreshold != Config.OverflowThreshold) { Config.OverflowThreshold = clampedThreshold; needsSave = true; }
                 if (InitializeGroupShortcuts()) needsSave = true;
                 if (needsSave) Save();
                 return;
@@ -212,11 +214,40 @@ public static class TargetStore
         RenumberTilePositions(targets);
     }
 
-    /// <summary>Remove a target everywhere (from the root and all groups).</summary>
+    /// <summary>Remove a target everywhere (from the root and all groups). Used both for a real delete
+    /// and as the first half of a move — so it must NOT touch the item's cached icon.</summary>
     public static void RemoveEverywhere(TargetItem item)
     {
         Config.Targets.Remove(item);
         foreach (var g in Groups) g.Children!.Remove(item);
+    }
+
+    /// <summary>Deletes a target for good (a group takes its children with it) and removes any favicon it
+    /// had cached under the icons folder, so a deleted link doesn't leave an orphan file behind. Unlike
+    /// RemoveEverywhere this is only for a genuine delete, never a move.</summary>
+    public static void DeleteTarget(TargetItem item)
+    {
+        var orphaned = item.Children != null ? item.Children.Prepend(item).ToList() : new List<TargetItem> { item };
+        RemoveEverywhere(item);
+        foreach (var gone in orphaned) DeleteCachedIcon(gone);
+    }
+
+    private static void DeleteCachedIcon(TargetItem item)
+    {
+        var icon = item.IconPath;
+        if (string.IsNullOrWhiteSpace(icon)) return;
+        // Another surviving target may share the same cached favicon (same link → same hashed file); keep
+        // it if so.
+        if (AllTargets.Any(t => string.Equals(t.IconPath, icon, StringComparison.OrdinalIgnoreCase))) return;
+        try
+        {
+            var iconsRoot = Path.GetFullPath(Path.Combine(Dir, "icons")) + Path.DirectorySeparatorChar;
+            var full = Path.GetFullPath(icon);
+            // Only ever delete inside our own icons cache — never a user-chosen custom icon elsewhere.
+            if (full.StartsWith(iconsRoot, StringComparison.OrdinalIgnoreCase) && File.Exists(full))
+                File.Delete(full);
+        }
+        catch (Exception ex) { ErrorLog.Write($"Could not remove cached icon '{icon}'", ex); }
     }
 
     /// <summary>Move a target into a group (null = root).</summary>

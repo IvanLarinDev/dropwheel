@@ -108,7 +108,7 @@ public partial class TargetEditorWindow : Window
 
     private void OnDelete(object sender, RoutedEventArgs e)
     {
-        TargetStore.RemoveEverywhere(_target);
+        TargetStore.DeleteTarget(_target);
         Close();
     }
 

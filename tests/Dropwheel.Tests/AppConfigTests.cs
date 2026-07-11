@@ -321,6 +321,68 @@ public class AppConfigTests : IDisposable
     }
 
     [Fact]
+    public void Load_clamps_an_out_of_range_overflow_threshold()
+    {
+        File.WriteAllText(Path.Combine(_root, "config.json"),
+            """
+            { "OverflowThreshold": 999, "Targets": [] }
+            """);
+
+        TargetStore.Load();
+
+        Assert.Equal(WheelLayout.MaxThreshold, TargetStore.Config.OverflowThreshold);
+        Assert.NotEqual(999, TargetStore.Config.OverflowThreshold);
+    }
+
+    [Fact]
+    public void DeleteTarget_removes_a_cached_favicon_under_the_icons_folder()
+    {
+        var iconsDir = Path.Combine(_root, "icons");
+        Directory.CreateDirectory(iconsDir);
+        var iconFile = Path.Combine(iconsDir, "abc.png");
+        File.WriteAllBytes(iconFile, new byte[] { 1 });
+        var link = new TargetItem { Name = "Link", Path = "https://example.com", IconPath = iconFile };
+        TargetStore.Config.Targets.Clear();
+        TargetStore.Config.Targets.Add(link);
+
+        TargetStore.DeleteTarget(link);
+
+        Assert.False(File.Exists(iconFile));
+    }
+
+    [Fact]
+    public void DeleteTarget_keeps_a_favicon_still_used_by_another_target()
+    {
+        var iconsDir = Path.Combine(_root, "icons");
+        Directory.CreateDirectory(iconsDir);
+        var iconFile = Path.Combine(iconsDir, "shared.png");
+        File.WriteAllBytes(iconFile, new byte[] { 1 });
+        var one = new TargetItem { Name = "One", Path = "https://example.com", IconPath = iconFile };
+        var two = new TargetItem { Name = "Two", Path = "https://example.com/2", IconPath = iconFile };
+        TargetStore.Config.Targets.Clear();
+        TargetStore.Config.Targets.Add(one);
+        TargetStore.Config.Targets.Add(two);
+
+        TargetStore.DeleteTarget(one);
+
+        Assert.True(File.Exists(iconFile)); // still referenced by "two"
+    }
+
+    [Fact]
+    public void DeleteTarget_leaves_a_custom_icon_outside_the_cache_untouched()
+    {
+        var custom = Path.Combine(_root, "my-custom.png");
+        File.WriteAllBytes(custom, new byte[] { 1 });
+        var t = new TargetItem { Name = "App", Path = @"C:\apps\tool.exe", IconPath = custom };
+        TargetStore.Config.Targets.Clear();
+        TargetStore.Config.Targets.Add(t);
+
+        TargetStore.DeleteTarget(t);
+
+        Assert.True(File.Exists(custom)); // user-chosen icon, not ours to delete
+    }
+
+    [Fact]
     public void Load_preserves_targets_when_a_rule_condition_enum_token_is_unknown()
     {
         // Regression: the sanitizer walked Override and Children but never a target's Rules, so a single
