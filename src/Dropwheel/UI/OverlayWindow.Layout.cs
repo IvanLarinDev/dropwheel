@@ -71,13 +71,15 @@ public partial class OverlayWindow
 
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)
     {
-        switch (OrbGesture.Classify(Keyboard.Modifiers))
+        var kind = OrbGesture.Classify(Keyboard.Modifiers);
+        ErrorLog.Trace($"orb-mousedown gesture={kind} mods={Keyboard.Modifiers}");
+        switch (kind)
         {
             case OrbDragKind.Capture:
                 BeginOrbCapture(); // Alt+Shift: drag the orb onto a folder/app/file to pin it
                 break;
             case OrbDragKind.Move:
-                CloseCloud();
+                CloseCloud("orb-move");
                 _movingOrb = true;
                 DragMove(); // blocks until the button is released
                 _movingOrb = false;
@@ -93,7 +95,7 @@ public partial class OverlayWindow
         e.Handled = true;
     }
 
-    public void ToggleCloud() { if (_open) CloseCloud(); else OpenCloud("toggle"); }
+    public void ToggleCloud() { if (_open) CloseCloud("toggle"); else OpenCloud("toggle"); }
 
     /// <summary>Shows the user a short error message. Called from the global exception handler; the
     /// display itself is wrapped so it can't loop.</summary>

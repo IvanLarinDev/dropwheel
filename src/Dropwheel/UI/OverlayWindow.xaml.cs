@@ -34,7 +34,7 @@ public partial class OverlayWindow : Window
         };
 
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        _closeTimer.Tick += (_, _) => { _closeTimer.Stop(); CloseCloud(); };
+        _closeTimer.Tick += (_, _) => { _closeTimer.Stop(); CloseCloud("leave-timer"); };
 
         _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
@@ -42,10 +42,11 @@ public partial class OverlayWindow : Window
         Orb.Opacity = TargetStore.Config.OrbOpacity;
         Orb.MouseEnter += (_, _) =>
         {
+            ErrorLog.Trace($"orb-enter open={_open}");
             ArmGroupShortcuts();
             if (!_open && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) _hoverTimer.Start();
         };
-        Orb.MouseLeave += (_, _) => { _hoverTimer.Stop(); OnOrbGroupShortcutLeave(); };
+        Orb.MouseLeave += (_, _) => { ErrorLog.Trace($"orb-leave open={_open}"); _hoverTimer.Stop(); OnOrbGroupShortcutLeave(); };
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
         Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud("orb-dragenter"); };
         Orb.DragOver += OnAddTargetDragOver;
@@ -61,21 +62,24 @@ public partial class OverlayWindow : Window
         Themes.ApplyMenu(orbMenu);
         Orb.ContextMenu = orbMenu;
 
-        Root.MouseEnter += (_, _) => _closeTimer.Stop();
+        Root.MouseEnter += (_, _) => { if (_open) ErrorLog.Trace("root-enter close-stop"); _closeTimer.Stop(); };
         Root.MouseLeave += (_, _) =>
         {
             ResetGroupShortcutInput(preserveActivation: false);
-            if (_open) _closeTimer.Start();
+            if (_open) { ErrorLog.Trace("root-leave close-start"); _closeTimer.Start(); }
         };
         AllowDrop = true;
         PreviewDragOver += OnTileReorderPreviewDragOver;
         PreviewDrop += OnTileReorderPreviewDrop;
         DragEnter += (_, _) => _closeTimer.Stop();
         DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
-        Deactivated += (_, _) => CloseCloud();
+        Deactivated += (_, _) => CloseCloud("deactivated");
 
         Loaded += (_, _) =>
-        { PlaceWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade(); };
+        {
+            ErrorLog.Trace("=== session start ===");
+            PlaceWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade();
+        };
         LocationChanged += (_, _) => UpdateOrbScreenPos();
     }
 }

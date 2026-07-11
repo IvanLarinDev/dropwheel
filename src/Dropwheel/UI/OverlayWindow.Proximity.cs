@@ -39,6 +39,6 @@ public partial class OverlayWindow
         if (!leftDown) _proximityOpened = false;
         UpdateCharge(x, y, d2, leftDown); // charges the orb and, at the threshold, opens the wheel
         if (_open && _proximityOpened && d2 > _closeR2)
-        { _proximityOpened = false; CloseCloud(); }
+        { _proximityOpened = false; CloseCloud("proximity-retreat"); }
     }
 }

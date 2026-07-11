@@ -55,7 +55,7 @@ public partial class OverlayWindow
                 return;
             }
             if (t.IsGroup) EnterGroup(t);
-            else { LaunchService.Launch(t); CloseCloud(); }
+            else { LaunchService.Launch(t); CloseCloud("launch-target"); }
             e.Handled = true;
         };
         panel.MouseRightButtonUp += (_, e) => { OpenEditor(t); e.Handled = true; };
@@ -63,7 +63,7 @@ public partial class OverlayWindow
         {
             if (e.ChangedButton != MouseButton.Middle || !t.IsSorter) return;
             SortTargetFolderNow(t);
-            CloseCloud();
+            CloseCloud("sort-now");
             e.Handled = true;
         };
 

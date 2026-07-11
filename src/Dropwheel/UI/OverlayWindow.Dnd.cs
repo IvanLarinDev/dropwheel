@@ -73,7 +73,7 @@ public partial class OverlayWindow
             ErrorLog.Write($"Error dropping onto '{t.Name}'", ex);
             ShowToast("The operation could not be completed");
         }
-        CloseCloud();
+        CloseCloud("drop");
         e.Handled = true;
     }
 

@@ -55,6 +55,7 @@ public partial class OverlayWindow
     /// Cancelled if the drag pulls away or releases before it fires.</summary>
     private void StartBeat()
     {
+        ErrorLog.Trace("beat-start (LMB held near orb, threshold crossed)");
         _beatHolding = true;
         _beat = new DispatcherTimer
         { Interval = TimeSpan.FromMilliseconds(ScaleTiming(170, AnimationSpeed())) };
@@ -68,6 +69,7 @@ public partial class OverlayWindow
 
     private void CancelBeat()
     {
+        if (_beat != null) ErrorLog.Trace("beat-cancel");
         _beat?.Stop();
         _beat = null;
         _beatHolding = false;

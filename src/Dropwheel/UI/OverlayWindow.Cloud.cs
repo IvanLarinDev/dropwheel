@@ -37,23 +37,24 @@ public partial class OverlayWindow
     {
         if (_open) return;
         // Diagnostic trace: which trigger opened the wheel and the pointer context at that moment, so a
-        // "spontaneous" open can be traced to its real source (hover / proximity / drag) from error.log.
+        // "spontaneous" open can be traced to its real source (hover / proximity / drag) from trace.log.
         bool lmb = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0; // physical left-button state
         var mods = System.Windows.Input.Keyboard.Modifiers;
         var c = System.Windows.Forms.Cursor.Position;
         double dist = Math.Sqrt(Math.Pow(c.X - _orbSX, 2) + Math.Pow(c.Y - _orbSY, 2));
-        ErrorLog.Write($"wheel open [{reason}] lmb={lmb} mods={mods} cursor=({c.X},{c.Y}) orb=({_orbSX:0},{_orbSY:0}) dist={dist:0}");
+        ErrorLog.Trace($"OPEN  [{reason}] lmb={lmb} mods={mods} cursor=({c.X},{c.Y}) orb=({_orbSX:0},{_orbSY:0}) dist={dist:0}");
         _open = true;
         BuildCloud();
     }
 
-    private void CloseCloud()
+    private void CloseCloud(string reason = "?")
     {
         if (!_open)
         {
             ResetGroupShortcutInput();
             return;
         }
+        ErrorLog.Trace($"CLOSE [{reason}]");
         _open = false;
         ResetGroupShortcutInput();
         _currentGroup = null;
@@ -99,7 +100,7 @@ public partial class OverlayWindow
         };
         Canvas.SetLeft(backdrop, HalfSize - bd / 2);
         Canvas.SetTop(backdrop, HalfSize - bd / 2);
-        backdrop.MouseLeftButtonUp += (_, e) => { CloseCloud(); e.Handled = true; };
+        backdrop.MouseLeftButtonUp += (_, e) => { CloseCloud("backdrop-click"); e.Handled = true; };
         Cloud.Children.Add(backdrop);
 
         PositionRims(WheelLayout.RingRadii(mode, n, threshold, reserved));
@@ -438,6 +439,7 @@ public partial class OverlayWindow
 
     private void EnterGroup(TargetItem? group)
     {
+        ErrorLog.Trace($"enter-group '{group?.Name ?? "root"}'");
         _currentGroup = group;
         _closeTimer.Stop(); // navigation is not mouse-leave
         if (_open) BuildCloud();

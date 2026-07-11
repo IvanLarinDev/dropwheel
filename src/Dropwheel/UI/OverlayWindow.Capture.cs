@@ -50,7 +50,7 @@ public partial class OverlayWindow
     /// beneath it.</summary>
     private void BeginOrbCapture()
     {
-        CloseCloud();
+        CloseCloud("capture-begin");
         if (!GetCursorPos(out var p)) return;
 
         SpawnGhost(p.X, p.Y);
