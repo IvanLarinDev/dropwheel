@@ -116,8 +116,9 @@ public partial class OverlayWindow
         if (pinned)
             foreach (var item in items.Reverse()) TargetStore.PinToFront(list, item);
 
-        TargetStore.Save();
-        ShowToast(ToastForAdd(items.Length, group, pinned, duplicates.Count), canUndo: true);
+        bool saved = TrySaveConfig(); // a full disk mustn't crash the drop or skip the UI refresh
+        var addToast = ToastForAdd(items.Length, group, pinned, duplicates.Count);
+        ShowToast(saved ? addToast : $"{addToast}, but couldn't save to disk", canUndo: true);
         if (_open) BuildCloud();
         if (pinned && ReferenceEquals(group, _currentGroup))
             AnimatePinnedArrival(items, origin ?? new Point(HalfSize, HalfSize));

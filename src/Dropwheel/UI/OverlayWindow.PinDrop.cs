@@ -41,11 +41,7 @@ public partial class OverlayWindow
     {
         if (!_open) { PulsePinRing(); return; }
 
-        var elements = Cloud.Children
-            .OfType<FrameworkElement>()
-            .Where(el => el.Tag is TargetItem)
-            .GroupBy(el => (TargetItem)el.Tag!)
-            .ToDictionary(group => group.Key, group => group.First());
+        var elements = TileElementsByTarget();
 
         var speed = AnimationSpeed();
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
@@ -107,11 +103,7 @@ public partial class OverlayWindow
     {
         if (!_open || !ReferenceEquals(group, _currentGroup) || targets.Count == 0) return;
 
-        var elements = Cloud.Children
-            .OfType<FrameworkElement>()
-            .Where(el => el.Tag is TargetItem)
-            .GroupBy(el => (TargetItem)el.Tag!)
-            .ToDictionary(g => g.Key, g => g.First());
+        var elements = TileElementsByTarget();
 
         foreach (var target in targets.Distinct())
             if (elements.TryGetValue(target, out var element))

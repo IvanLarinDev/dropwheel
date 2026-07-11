@@ -135,15 +135,22 @@ public partial class OverlayWindow
         HalfSize + (c.Radius - 52) * Math.Cos(c.Angle),
         HalfSize + (c.Radius - 52) * Math.Sin(c.Angle));
 
+    /// <summary>Maps each on-screen tile to its target. A target can transiently back more than one tile
+    /// element during a rebuild, so a duplicate keeps the first element rather than throwing (a plain
+    /// ToDictionary here would crash the reorder on a duplicate Tag).</summary>
+    private Dictionary<TargetItem, FrameworkElement> TileElementsByTarget() =>
+        Cloud.Children
+            .OfType<FrameworkElement>()
+            .Where(el => el.Tag is TargetItem)
+            .GroupBy(el => (TargetItem)el.Tag!)
+            .ToDictionary(g => g.Key, g => g.First());
+
     private void AnimateTileReorder(TargetItem moved)
     {
         var targets = TargetStore.OrderedForDisplay(CurrentLevelTargets()).ToArray();
         int offset = _currentGroup == null ? 0 : 1;
 
-        var elements = Cloud.Children
-            .OfType<FrameworkElement>()
-            .Where(el => el.Tag is TargetItem)
-            .ToDictionary(el => (TargetItem)el.Tag);
+        var elements = TileElementsByTarget();
 
         // The reorder permutes the targets without changing the count, so the slot positions are the
         // ones already in _cells; each target just slides to the slot at its new display index. Rebuild
