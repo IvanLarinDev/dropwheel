@@ -16,10 +16,13 @@ public partial class OverlayWindow
         UIElement inner = t.IsGroup
             ? new TextBlock
             {
-                Text = t.Children!.Count.ToString(),
-                FontSize = 20,
+                // A non-empty group shows how many targets it holds; an empty one shows a container
+                // glyph instead of a bare "0", which read like a bug.
+                Text = t.Children!.Count > 0 ? t.Children.Count.ToString() : "▤",
+                FontSize = t.Children.Count > 0 ? 20 : 22,
                 FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(th.Label),
+                Opacity = t.Children.Count > 0 ? 1.0 : 0.7,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             }

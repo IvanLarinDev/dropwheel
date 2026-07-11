@@ -15,9 +15,22 @@ public partial class App
             Text = "Dropwheel"
         };
         var menu = new WF.ContextMenuStrip();
+        var header = new WF.ToolStripMenuItem($"Dropwheel {AppVersion()}") { Enabled = false };
+        menu.Items.Add(header);
+        menu.Items.Add(new WF.ToolStripSeparator());
         var auto = new WF.ToolStripMenuItem("Start with Windows")
         { Checked = StartupService.IsEnabled, CheckOnClick = true };
-        auto.Click += (_, _) => StartupService.SetEnabled(auto.Checked);
+        auto.Click += (_, _) =>
+        {
+            try { StartupService.SetEnabled(auto.Checked); }
+            catch (Exception ex)
+            {
+                ErrorLog.Write("Could not change the 'start with Windows' setting", ex);
+                auto.Checked = !auto.Checked; // undo the toggle CheckOnClick already applied
+                _tray?.ShowBalloonTip(4000, "Dropwheel",
+                    "Couldn't change the 'start with Windows' setting.", WF.ToolTipIcon.Warning);
+            }
+        };
         menu.Items.Add(auto);
         menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
         menu.Items.Add("Open config folder", null, (_, _) => LaunchService.OpenConfigFolder());
@@ -38,6 +51,18 @@ public partial class App
         menu.Renderer = new WF.ToolStripProfessionalRenderer(new DarkMenuColors(p)) { RoundedEdges = false };
         menu.BackColor = ToSd(p.Surface);
         menu.ForeColor = ToSd(p.Text);
+    }
+
+    /// <summary>The app version for the tray header, from the assembly's informational version
+    /// (without the trailing +commit), falling back to the plain assembly version.</summary>
+    private static string AppVersion()
+    {
+        var asm = System.Reflection.Assembly.GetExecutingAssembly();
+        var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)Attribute.GetCustomAttribute(
+            asm, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+        var info = attr?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(info)) return "v" + info.Split('+')[0];
+        return "v" + (asm.GetName().Version?.ToString() ?? "?");
     }
 
     private static SD.Color ToSd(System.Windows.Media.Color c) => SD.Color.FromArgb(c.R, c.G, c.B);

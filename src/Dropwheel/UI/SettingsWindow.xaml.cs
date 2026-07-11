@@ -81,6 +81,21 @@ public partial class SettingsWindow : Window
                 "Hotkey", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+        // A non-empty numeric field that isn't a whole number was previously discarded silently, so the
+        // dialog "saved" while quietly dropping the typo. Tell the user instead of losing their input.
+        var invalid = new List<string>();
+        CheckNumeric(OverflowThresholdBox.Text, "Overflow threshold", invalid);
+        CheckNumeric(HoverBox.Text, "Hover delay", invalid);
+        CheckNumeric(IdleBox.Text, "Idle fade", invalid);
+        CheckNumeric(GroupShortcutDelayBox.Text, "Group shortcut delay", invalid);
+        if (invalid.Count > 0)
+        {
+            MessageBox.Show(this,
+                "These fields need a whole number:\n• " + string.Join("\n• ", invalid),
+                "Settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         if (ThemeBox.SelectedItem is string theme) c.Theme = theme;
         if (OpenAnimationBox.SelectedItem is OpenAnimationChoice animation) c.OpenAnimation = animation.Value;
         if (OverflowLayoutBox.SelectedItem is OverflowLayoutChoice overflow) c.OverflowLayout = overflow.Value;
@@ -96,8 +111,21 @@ public partial class SettingsWindow : Window
         if (hk.Length > 0) c.Hotkey = hk;
         c.DeduplicateTargets = DeduplicateBox.IsChecked == true;
         TargetStore.Save();
-        try { StartupService.SetEnabled(AutostartBox.IsChecked == true); } catch { }
+        try { StartupService.SetEnabled(AutostartBox.IsChecked == true); }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Could not change the 'start with Windows' setting", ex);
+            MessageBox.Show(this,
+                "Your other settings were saved, but the “start with Windows” option couldn't be changed.",
+                "Autostart", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
         (Owner as OverlayWindow)?.ApplySettings();
         Close();
+    }
+
+    private static void CheckNumeric(string text, string label, List<string> invalid)
+    {
+        var t = text.Trim();
+        if (t.Length > 0 && !int.TryParse(t, out _)) invalid.Add(label); // empty means "keep current"
     }
 }
