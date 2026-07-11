@@ -84,9 +84,19 @@ public partial class OverlayWindow
                 break;
             case OrbDragKind.Move:
                 CloseCloud("orb-move");
+                double beforeL = Left, beforeT = Top;
                 _movingOrb = true;
                 DragMove(); // blocks until the button is released
                 _movingOrb = false;
+                // Alt+click (no real drag) must not nudge the orb: if it moved less than the system
+                // drag threshold, treat it as a click and snap back so its resting spot doesn't drift.
+                if (Math.Abs(Left - beforeL) < SystemParameters.MinimumHorizontalDragDistance
+                    && Math.Abs(Top - beforeT) < SystemParameters.MinimumVerticalDragDistance)
+                {
+                    Left = beforeL;
+                    Top = beforeT;
+                    ErrorLog.Trace("orb-move snap-back (click, not drag)");
+                }
                 TargetStore.Config.OrbX = Left + HalfSize;
                 TargetStore.Config.OrbY = Top + HalfSize;
                 TargetStore.Save();
