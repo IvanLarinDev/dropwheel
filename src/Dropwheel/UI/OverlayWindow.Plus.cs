@@ -64,6 +64,7 @@ public partial class OverlayWindow
             }
             OnOrbDrop(panel, e); // same logic: add to the current level
         };
+        System.Windows.Automation.AutomationProperties.SetName(panel, "Add target");
         return panel;
     }
 }

@@ -37,6 +37,7 @@ public partial class OverlayWindow
         panel.DragOver += (_, e) =>
         { StartGroupHover(null, back: true); e.Effects = DragDropEffects.Scroll; e.Handled = true; };
         panel.DragLeave += (_, _) => _groupHover?.Stop();
+        System.Windows.Automation.AutomationProperties.SetName(panel, "Back to previous level");
         return panel;
     }
 }

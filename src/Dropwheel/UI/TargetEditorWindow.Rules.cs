@@ -143,9 +143,9 @@ public partial class TargetEditorWindow
         var header = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
         var tools = new StackPanel { Orientation = Orientation.Horizontal };
         DockPanel.SetDock(tools, Dock.Right);
-        tools.Children.Add(MoveButton("▲", _selected > 0, () => MoveSelected(-1)));
-        tools.Children.Add(MoveButton("▼", _selected < _rules.Count - 1, () => MoveSelected(+1)));
-        tools.Children.Add(MoveButton("✕", true, DeleteSelected));
+        tools.Children.Add(MoveButton("▲", "Move rule up", _selected > 0, () => MoveSelected(-1)));
+        tools.Children.Add(MoveButton("▼", "Move rule down", _selected < _rules.Count - 1, () => MoveSelected(+1)));
+        tools.Children.Add(MoveButton("✕", "Delete rule", true, DeleteSelected));
         header.Children.Add(tools);
         header.Children.Add(new TextBlock { Text = $"Rule {_selected + 1}", FontWeight = FontWeights.SemiBold });
         DetailHost.Children.Add(header);
@@ -216,7 +216,7 @@ public partial class TargetEditorWindow
         // Line 1: [field ...............] [op] [✕]; line 2: [value full width].
         var top = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
 
-        var del = MoveButton("✕", true, () => { rule.All.Remove(cond); RebuildDetail(); RebuildMaster(); });
+        var del = MoveButton("✕", "Remove condition", true, () => { rule.All.Remove(cond); RebuildDetail(); RebuildMaster(); });
         DockPanel.SetDock(del, Dock.Right);
         top.Children.Add(del);
 
@@ -513,7 +513,7 @@ public partial class TargetEditorWindow
         op.SelectedItem = OpsFor[field].Contains(current) ? current : OpsFor[field][0];
     }
 
-    private Button MoveButton(string glyph, bool enabled, Action onClick)
+    private Button MoveButton(string glyph, string name, bool enabled, Action onClick)
     {
         var b = new Button
         {
@@ -522,7 +522,9 @@ public partial class TargetEditorWindow
             Margin = new Thickness(2, 0, 0, 0),
             Padding = new Thickness(0),
             IsEnabled = enabled,
+            ToolTip = name, // the glyph alone tells a screen reader nothing; name the action
         };
+        System.Windows.Automation.AutomationProperties.SetName(b, name);
         b.Click += (_, _) => onClick();
         return b;
     }

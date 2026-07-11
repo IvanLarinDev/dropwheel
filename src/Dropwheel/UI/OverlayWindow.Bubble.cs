@@ -77,8 +77,17 @@ public partial class OverlayWindow
                 },
             });
         }
-        return WireBubble(t, badge, MakeLabel(t.Name), top, sq);
+        var tile = WireBubble(t, badge, MakeLabel(t.Name), top, sq);
+        System.Windows.Automation.AutomationProperties.SetName(tile, AccessibleName(t));
+        return tile;
     }
+
+    /// <summary>Screen-reader label for a wheel tile: the target name plus a hint of what it is, since
+    /// the tile itself is drawn from plain shapes and exposes no text of its own to accessibility tools.</summary>
+    private static string AccessibleName(TargetItem t) =>
+        t.IsGroup ? $"Group {t.Name}, {t.Children!.Count} items"
+        : t.IsSorter ? $"Sorter {t.Name}"
+        : t.Name;
 
     /// <summary>Tile label: light text with a dark shadow so it reads on the overlay's dark
     /// backdrop. Themes whose in-tile text is dark (Light) get a light label instead — the dark
