@@ -95,7 +95,7 @@ public partial class OverlayWindow
         backdrop.MouseLeftButtonUp += (_, e) => { CloseCloud(); e.Handled = true; };
         Cloud.Children.Add(backdrop);
 
-        PositionRims(WheelLayout.RingRadii(mode, n));
+        PositionRims(WheelLayout.RingRadii(mode, n, threshold, reserved));
 
         var th = Themes.Current;
         for (int i = 0; i < n; i++)
