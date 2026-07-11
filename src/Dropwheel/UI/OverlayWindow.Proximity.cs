@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using Dropwheel.Services;
 
@@ -41,16 +41,12 @@ public partial class OverlayWindow
         // Proximity is meant for an external drag approaching from outside. A press that begins on or
         // right next to the orb (clicking it, an Alt-drag, just holding the button over it) is not an
         // approaching drag and must not auto-open — otherwise clicking to close instantly reopens.
-        if (leftDown != _prevLeftDown)
-        {
-            if (leftDown && d2 < _openR2) _suppressProximity = true; // press began inside the zone
-            ErrorLog.Trace($"lmb={leftDown} dist={Math.Sqrt(d2):0} openR={Math.Sqrt(_openR2):0} suppress={_suppressProximity} open={_open}");
-        }
+        if (leftDown && !_prevLeftDown && d2 < _openR2) _suppressProximity = true; // press began inside the zone
         _prevLeftDown = leftDown;
         if (!leftDown) { _proximityOpened = false; _suppressProximity = false; }
 
         UpdateCharge(x, y, d2, leftDown); // charges the orb and, at the threshold, opens the wheel
         if (_open && _proximityOpened && d2 > _closeR2)
-        { _proximityOpened = false; CloseCloud("proximity-retreat"); }
+        { _proximityOpened = false; CloseCloud(); }
     }
 }

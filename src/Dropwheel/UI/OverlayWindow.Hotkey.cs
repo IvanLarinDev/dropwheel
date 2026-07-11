@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Threading;
 using Dropwheel.Services;
 using WF = System.Windows.Forms;
@@ -22,7 +22,7 @@ public partial class OverlayWindow
         _fsTimer.Tick += (_, _) =>
         {
             bool fs = FullscreenDetector.IsFullscreenActive();
-            if (fs && !_hiddenByFullscreen) { _hiddenByFullscreen = true; CloseCloud("fullscreen"); Hide(); }
+            if (fs && !_hiddenByFullscreen) { _hiddenByFullscreen = true; CloseCloud(); Hide(); }
             else if (!fs && _hiddenByFullscreen) { _hiddenByFullscreen = false; Show(); }
         };
         _fsTimer.Start();
@@ -33,11 +33,10 @@ public partial class OverlayWindow
     /// <summary>Hotkey: open the wheel at the cursor; press again to close and send the orb home.</summary>
     private void OnHotkey()
     {
-        ErrorLog.Trace($"hotkey-fired visible={IsVisible} open={_open}");
         if (!IsVisible) return; // hidden by fullscreen
         if (_open)
         {
-            CloseCloud("hotkey");
+            CloseCloud();
             PlaceWindow(); // back home
             return;
         }
@@ -49,7 +48,7 @@ public partial class OverlayWindow
             Top = dip.Y - HalfSize;
         }
         UpdateOrbScreenPos();
-        OpenCloud("hotkey");
+        OpenCloud();
     }
 
     /// <summary>Registers the hotkey from config. If the combo is taken by another process, it falls

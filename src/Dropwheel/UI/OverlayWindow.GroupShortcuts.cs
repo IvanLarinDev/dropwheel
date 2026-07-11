@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Dropwheel.Models;
@@ -122,7 +122,7 @@ public partial class OverlayWindow
         else
         {
             EnterGroup(group);
-            OpenCloud("groupcode");
+            OpenCloud();
         }
     }
 
@@ -131,7 +131,7 @@ public partial class OverlayWindow
         if (!_open)
         {
             EnterGroup(null);
-            OpenCloud("groupcode-candidates");
+            OpenCloud();
         }
         else if (_currentGroup != null)
         {

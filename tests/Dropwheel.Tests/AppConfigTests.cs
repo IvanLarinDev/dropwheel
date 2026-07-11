@@ -260,6 +260,36 @@ public class AppConfigTests : IDisposable
     }
 
     [Fact]
+    public void Load_preserves_config_when_only_the_overflow_layout_enum_is_unknown()
+    {
+        // Regression: OverflowLayout was missing from the enum sanitizer, so an unknown value here — with
+        // every other enum valid — left `changed` false and threw, wiping the whole config to defaults.
+        var configPath = Path.Combine(_root, "config.json");
+        File.WriteAllText(configPath,
+            """
+            {
+              "OverflowLayout": "Spiral",
+              "OverflowThreshold": 11,
+              "Targets": [
+                {
+                  "Name": "Inbox",
+                  "Path": "C:\\Temp\\Inbox",
+                  "Pinned": true
+                }
+              ]
+            }
+            """);
+
+        TargetStore.Load();
+
+        Assert.Equal(OverflowLayout.None, TargetStore.Config.OverflowLayout);
+        Assert.Equal(11, TargetStore.Config.OverflowThreshold);
+        var target = Assert.Single(TargetStore.Config.Targets);
+        Assert.Equal("Inbox", target.Name);
+        Assert.Empty(Directory.GetFiles(_root, "config.bad.*.json"));
+    }
+
+    [Fact]
     public void Load_preserves_targets_when_target_override_enum_token_is_unknown()
     {
         var configPath = Path.Combine(_root, "config.json");

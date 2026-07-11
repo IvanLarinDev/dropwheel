@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Dropwheel.Services;
@@ -30,12 +30,11 @@ public partial class OverlayWindow : Window
         _hoverTimer.Tick += (_, _) =>
         {
             _hoverTimer.Stop();
-            ErrorLog.Trace($"hover-timer-fire alt={Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)} open={_open}");
-            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) OpenCloud("hover");
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) OpenCloud();
         };
 
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        _closeTimer.Tick += (_, _) => { _closeTimer.Stop(); CloseCloud("leave-timer"); };
+        _closeTimer.Tick += (_, _) => { _closeTimer.Stop(); CloseCloud(); };
 
         _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
@@ -43,19 +42,12 @@ public partial class OverlayWindow : Window
         Orb.Opacity = TargetStore.Config.OrbOpacity;
         Orb.MouseEnter += (_, _) =>
         {
-            bool arm = !_open && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
-            ErrorLog.Trace($"orb-enter open={_open} hover-arm={arm}");
             ArmGroupShortcuts();
-            if (arm) _hoverTimer.Start();
+            if (!_open && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) _hoverTimer.Start();
         };
-        Orb.MouseLeave += (_, _) =>
-        {
-            ErrorLog.Trace($"orb-leave open={_open} hover-was-armed={_hoverTimer.IsEnabled}");
-            _hoverTimer.Stop();
-            OnOrbGroupShortcutLeave();
-        };
+        Orb.MouseLeave += (_, _) => { _hoverTimer.Stop(); OnOrbGroupShortcutLeave(); };
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
-        Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud("orb-dragenter"); };
+        Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud(); };
         Orb.DragOver += OnAddTargetDragOver;
         Orb.Drop += OnOrbDrop; // dropping on the orb adds a target
 
@@ -69,30 +61,21 @@ public partial class OverlayWindow : Window
         Themes.ApplyMenu(orbMenu);
         Orb.ContextMenu = orbMenu;
 
-        Root.MouseEnter += (_, _) => { if (_open) ErrorLog.Trace("root-enter close-stop"); _closeTimer.Stop(); };
+        Root.MouseEnter += (_, _) => _closeTimer.Stop();
         Root.MouseLeave += (_, _) =>
         {
             ResetGroupShortcutInput(preserveActivation: false);
-            if (_open) { ErrorLog.Trace("root-leave close-start"); _closeTimer.Start(); }
+            if (_open) _closeTimer.Start();
         };
         AllowDrop = true;
         PreviewDragOver += OnTileReorderPreviewDragOver;
         PreviewDrop += OnTileReorderPreviewDrop;
         DragEnter += (_, _) => _closeTimer.Stop();
         DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
-        Deactivated += (_, _) => { ErrorLog.Trace("deactivated (focus lost)"); CloseCloud("deactivated"); };
-        Activated += (_, _) => ErrorLog.Trace("activated (focus gained)");
-        SizeChanged += (_, e) => ErrorLog.Trace($"window-size {e.NewSize.Width:0}x{e.NewSize.Height:0}");
+        Deactivated += (_, _) => CloseCloud();
 
         Loaded += (_, _) =>
-        {
-            ErrorLog.Trace("=== session start ===");
-            ApplyModeWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade();
-        };
-        LocationChanged += (_, _) =>
-        {
-            if (!_movingOrb) ErrorLog.Trace($"window-move L={Left:0} T={Top:0} open={_open}");
-            UpdateOrbScreenPos();
-        };
+        { ApplyModeWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade(); };
+        LocationChanged += (_, _) => UpdateOrbScreenPos();
     }
 }

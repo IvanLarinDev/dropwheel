@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Dropwheel.Models;
@@ -73,7 +73,7 @@ public partial class OverlayWindow
             ErrorLog.Write($"Error dropping onto '{t.Name}'", ex);
             ShowToast("The operation could not be completed");
         }
-        CloseCloud("drop");
+        CloseCloud();
         e.Handled = true;
     }
 

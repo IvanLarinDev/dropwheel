@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -71,7 +71,6 @@ public partial class OverlayWindow
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)
     {
         var kind = OrbGesture.Classify(Keyboard.Modifiers);
-        ErrorLog.Trace($"orb-mousedown gesture={kind} mods={Keyboard.Modifiers}");
         _suppressProximity = true; // a press that starts on the orb is a click/gesture, not a drag approaching
         switch (kind)
         {
@@ -79,7 +78,7 @@ public partial class OverlayWindow
                 BeginOrbCapture(); // Alt+Shift: drag the orb onto a folder/app/file to pin it
                 break;
             case OrbDragKind.Move:
-                CloseCloud("orb-move");
+                CloseCloud();
                 BeginOrbDrag(); // manual move by cursor delta; avoids DragMove's per-monitor-DPI jump
                 break;
             default:
@@ -99,18 +98,21 @@ public partial class OverlayWindow
     /// only moves once the cursor passes the system drag threshold, so an Alt+click leaves it put.</summary>
     private void BeginOrbDrag()
     {
+        if (_movingOrb) return; // already dragging — ignore a re-entrant press
         if (!TryCursorDip(out _dragStartCursor)) return;
         _dragStartLeft = Left;
         _dragStartTop = Top;
         _orbDragged = false;
+        if (!CaptureMouse()) return; // can't grab the mouse → don't start a drag we couldn't end
         _movingOrb = true;
-        CaptureMouse();
         MouseMove += OnOrbDragMove;
         MouseLeftButtonUp += OnOrbDragEnd;
+        LostMouseCapture += OnOrbDragLostCapture;
     }
 
     private void OnOrbDragMove(object sender, MouseEventArgs e)
     {
+        if (e.LeftButton == MouseButtonState.Released) { EndOrbDrag(); return; } // release we never got as a click
         if (!TryCursorDip(out var cur)) return;
         double dx = cur.X - _dragStartCursor.X, dy = cur.Y - _dragStartCursor.Y;
         if (!_orbDragged
@@ -122,20 +124,28 @@ public partial class OverlayWindow
         Top = _dragStartTop + dy;
     }
 
-    private void OnOrbDragEnd(object sender, MouseButtonEventArgs e)
+    private void OnOrbDragEnd(object sender, MouseButtonEventArgs e) => EndOrbDrag();
+    private void OnOrbDragLostCapture(object sender, MouseEventArgs e) => EndOrbDrag();
+
+    /// <summary>Ends the manual orb move exactly once, whichever way it finished: the button release, a
+    /// release seen mid-move, or a stolen mouse capture (UAC prompt, Alt+Tab, lock screen). Without the
+    /// LostMouseCapture path a stolen capture would leave <c>_movingOrb</c> stuck true, silently killing
+    /// proximity, group shortcuts and idle-fade until restart. Idempotent; saves the orb's new resting
+    /// position only if it was a real drag, not a click.</summary>
+    private void EndOrbDrag()
     {
+        if (!_movingOrb) return;
         MouseMove -= OnOrbDragMove;
         MouseLeftButtonUp -= OnOrbDragEnd;
-        ReleaseMouseCapture();
+        LostMouseCapture -= OnOrbDragLostCapture; // unsubscribe before releasing so the release doesn't re-enter
         _movingOrb = false;
+        if (IsMouseCaptured) ReleaseMouseCapture();
         if (_orbDragged)
         {
             TargetStore.Config.OrbX = Left + HalfSize;
             TargetStore.Config.OrbY = Top + HalfSize;
             TargetStore.Save();
-            ErrorLog.Trace($"orb-moved L={Left:0} T={Top:0}");
         }
-        else ErrorLog.Trace("orb-move click (no move, orb stays)");
         UpdateOrbScreenPos();
     }
 
@@ -149,7 +159,7 @@ public partial class OverlayWindow
         return true;
     }
 
-    public void ToggleCloud() { if (_open) CloseCloud("toggle"); else OpenCloud("toggle"); }
+    public void ToggleCloud() { if (_open) CloseCloud(); else OpenCloud(); }
 
     /// <summary>Shows the user a short error message. Called from the global exception handler; the
     /// display itself is wrapped so it can't loop.</summary>

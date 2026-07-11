@@ -272,6 +272,7 @@ public static class TargetStore
         var changed = false;
         changed |= RemoveInvalidEnum<DropAction>(rootObject, nameof(AppConfig.GlobalAction));
         changed |= RemoveInvalidEnum<OpenAnimation>(rootObject, nameof(AppConfig.OpenAnimation));
+        changed |= RemoveInvalidEnum<OverflowLayout>(rootObject, nameof(AppConfig.OverflowLayout));
 
         if (rootObject[nameof(AppConfig.Targets)] is JsonArray targets)
             changed |= SanitizeTargets(targets);

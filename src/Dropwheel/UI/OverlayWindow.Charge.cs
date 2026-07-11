@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -55,21 +55,19 @@ public partial class OverlayWindow
     /// Cancelled if the drag pulls away or releases before it fires.</summary>
     private void StartBeat()
     {
-        ErrorLog.Trace("beat-start (LMB held near orb, threshold crossed)");
         _beatHolding = true;
         _beat = new DispatcherTimer
         { Interval = TimeSpan.FromMilliseconds(ScaleTiming(170, AnimationSpeed())) };
         _beat.Tick += (_, _) =>
         {
             CancelBeat();
-            if (!_open) { _proximityOpened = true; OpenCloud("proximity"); }
+            if (!_open) { _proximityOpened = true; OpenCloud(); }
         };
         _beat.Start();
     }
 
     private void CancelBeat()
     {
-        if (_beat != null) ErrorLog.Trace("beat-cancel");
         _beat?.Stop();
         _beat = null;
         _beatHolding = false;

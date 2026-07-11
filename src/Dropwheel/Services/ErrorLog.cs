@@ -11,23 +11,6 @@ public static class ErrorLog
 
     public static string FilePath => Path.Combine(TargetStore.Dir, "error.log");
 
-    /// <summary>Path of the diagnostic event trace, separate from errors so it can be flooded with
-    /// lifecycle events (wheel open/close, hover, proximity, timers) without burying real errors.</summary>
-    public static string TraceFilePath => Path.Combine(TargetStore.Dir, "trace.log");
-
-    /// <summary>Appends a millisecond-stamped diagnostic event to trace.log. Same swallow-everything
-    /// contract as <see cref="Write"/>: tracing must never crash or slow the app noticeably.</summary>
-    public static void Trace(string message)
-    {
-        try
-        {
-            Directory.CreateDirectory(TargetStore.Dir);
-            var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}  {message}";
-            lock (Gate) File.AppendAllText(TraceFilePath, line + Environment.NewLine);
-        }
-        catch { /* nowhere to write — not critical */ }
-    }
-
     /// <summary>Appends a timestamped line. Write failures are swallowed on purpose — logging must
     /// not crash the app.</summary>
     public static void Write(string message, Exception? ex = null)

@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -50,7 +50,7 @@ public partial class OverlayWindow
     /// beneath it.</summary>
     private void BeginOrbCapture()
     {
-        CloseCloud("capture-begin");
+        CloseCloud();
         if (!GetCursorPos(out var p)) return;
 
         SpawnGhost(p.X, p.Y);
@@ -128,7 +128,7 @@ public partial class OverlayWindow
         TargetStore.Save();
 
         ShowToast($"Pinned: {target.Name}", canUndo: true);
-        OpenCloud("capture-pin");
+        OpenCloud();
         AnimatePinnedArrival(new[] { target }, new Point(HalfSize, HalfSize));
         RefreshLinkMetadata(new[] { target });
     }

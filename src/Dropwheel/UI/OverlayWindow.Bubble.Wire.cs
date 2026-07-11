@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -55,7 +55,7 @@ public partial class OverlayWindow
                 return;
             }
             if (t.IsGroup) EnterGroup(t);
-            else { LaunchService.Launch(t); CloseCloud("launch-target"); }
+            else { LaunchService.Launch(t); CloseCloud(); }
             e.Handled = true;
         };
         panel.MouseRightButtonUp += (_, e) => { OpenEditor(t); e.Handled = true; };
@@ -63,7 +63,7 @@ public partial class OverlayWindow
         {
             if (e.ChangedButton != MouseButton.Middle || !t.IsSorter) return;
             SortTargetFolderNow(t);
-            CloseCloud("sort-now");
+            CloseCloud();
             e.Handled = true;
         };
 
