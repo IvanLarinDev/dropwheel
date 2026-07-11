@@ -43,6 +43,7 @@ public partial class OverlayWindow
     private Border? _hiBorder;
     private long _lastProbe;         // throttles the expensive UI Automation hit-test
     private bool _probing;           // a background bounds probe is in flight
+    private int _captureGen;         // bumped per capture, so a stale background probe can't paint a newer one
 
     /// <summary>Starts the Alt+Shift capture. The main orb stays put; a light ghost follows the
     /// cursor while a 60&#8239;Hz timer polls the mouse button and lights the ghost over a valid
@@ -50,9 +51,14 @@ public partial class OverlayWindow
     /// beneath it.</summary>
     private void BeginOrbCapture()
     {
+        // Ignore a re-entrant Alt+Shift press while a capture — or its ghost fly-back — is still live.
+        // Without this the second capture's SpawnGhost overwrites _ghost, orphaning the first ghost
+        // window and letting the stale fly-back timer null out the new capture's ghost.
+        if (_ghost != null) return;
         CloseCloud();
         if (!GetCursorPos(out var p)) return;
 
+        _captureGen++;
         SpawnGhost(p.X, p.Y);
         _captureTimer = new DispatcherTimer(DispatcherPriority.Input)
         { Interval = TimeSpan.FromMilliseconds(16) };
@@ -280,12 +286,13 @@ public partial class OverlayWindow
         if (_probing || Environment.TickCount64 - _lastProbe < 120) return;
         _probing = true;
         _lastProbe = Environment.TickCount64;
-        int x = p.X, y = p.Y;
+        int x = p.X, y = p.Y, gen = _captureGen;
         System.Threading.Tasks.Task.Run(() =>
         {
             var bounds = TargetBounds(x, y);
             Dispatcher.BeginInvoke(() =>
             {
+                if (gen != _captureGen) return; // a newer capture started; don't touch its state
                 _probing = false;
                 if (_ghost == null) return; // capture ended while the probe was in flight
                 if (bounds is { } rect) ShowHighlight(rect);
@@ -306,8 +313,11 @@ public partial class OverlayWindow
             if (r.IsEmpty || r.Width < 8 || r.Height < 8 || r.Width > 1600 || r.Height > 1200) return null;
             return r;
         }
-        catch (Exception e) when (e is ElementNotAvailableException or COMException or TimeoutException or ArgumentException)
+        catch (Exception)
         {
+            // UI Automation can throw beyond the common few (e.g. InvalidOperation/UnauthorizedAccess on
+            // protected windows). Any failure just means "no bounds"; swallowing all of them keeps an
+            // exotic throw from escaping the probe task and stranding _probing (highlight would freeze).
             return null;
         }
     }
