@@ -3,7 +3,14 @@
 // hit in development: hooks not wired, CRLF, NUL bytes, bad config, missing git identity.
 // Checks the migrated stack (lefthook + gitleaks + cocogitto). Run: node hooks/doctor.js
 //
-// [--root <dir>] [--server] [--json]. Exit 0 = no FAIL (WARN allowed), 1 = FAIL.
+// [--root <dir>] [--server] [--json] [--strict-env].
+// Result levels: FAIL = the harness's own files/contract are wrong (fix in repo);
+// ENV = the environment cannot support the harness (git lock ops unavailable on
+// this mount, or a required external tool is not installed) - not a repo defect;
+// WARN = advisory; PASS = ok.
+// Exit codes: 0 = no FAIL and no ENV; 1 = at least one FAIL; 3 = only ENV/SKIP
+// (visible but non-blocking). --strict-env promotes ENV to blocking (exit 1),
+// for CI/automation that requires a fully provisioned environment.
 
 const fs = require("fs");
 const path = require("path");
@@ -15,6 +22,7 @@ const ROOT = arg("--root", process.cwd());
 const results = [];
 function ok(msg) { results.push({ level: "PASS", msg }); }
 function warn(msg) { results.push({ level: "WARN", msg }); }
+function env(msg, code) { results.push({ level: "ENV", msg, ...(code ? { code } : {}) }); }
 function fail(msg, code) { results.push({ level: "FAIL", msg, ...(code ? { code } : {}) }); }
 function git(args) { return execFileSync("git", args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000, killSignal: "SIGKILL" }).trim(); }
 function gitSafe(args) { try { return git(args); } catch { return null; } }
@@ -150,9 +158,12 @@ function checkRulesetPrReview(rel, profile) {
     else if (!codeowners.hasOwner) fail("ruleset: code-owner review is enabled but .github/CODEOWNERS has no owner entries");
     else ok("ruleset: CODEOWNERS has owner entries and is tracked");
   } else {
-    if (codeowners.exists && codeowners.hasOwner)
-      warn("ruleset: CODEOWNERS has owner entries but required code-owner review is disabled");
-    else
+    if (codeowners.exists && codeowners.hasOwner) {
+      if (profile === "solo")
+        ok("ruleset: solo profile keeps CODEOWNERS advisory (code-owner review intentionally disabled)");
+      else
+        warn("ruleset: CODEOWNERS has owner entries but required code-owner review is disabled");
+    } else
       ok("ruleset: code-owner review disabled and CODEOWNERS has no required owner configured");
   }
 }
@@ -261,10 +272,10 @@ if (!inRepo) {
       fs.unlinkSync(probe);
       ok(".git supports atomic lock operations (write + unlink)");
     } catch {
-    fail(".git cannot delete files; git cannot clean up lock files and commit/checkout/rebase will fail. Check mount or permissions.");
+      env(".git cannot delete files; git cannot clean up lock files and commit/checkout/rebase will fail. Check mount or permissions.", "git-lock-unavailable");
     }
   } catch {
-    fail(".git is not writable; git add/commit/checkout will not work. Check permissions or mount.");
+    env(".git is not writable; git add/commit/checkout will not work. Check permissions or mount.", "git-not-writable");
   }
   try {
     if (fs.existsSync(path.join(gitDirAbs, "index.lock")))
@@ -293,7 +304,7 @@ const tools = [
 ];
 if (releaseProvider === "cocogitto") tools.push(["cog", "cocogitto: conventional commits + release"]);
 for (const t of tools) {
-  inPath(t[0]) ? ok(t[0] + " found") : warn(t[0] + " not in PATH - " + t[1]);
+  inPath(t[0]) ? ok(t[0] + " found") : env(t[0] + " not in PATH - " + t[1], "tool-missing");
 }
 
 const requiredHarnessFiles = [
@@ -492,6 +503,13 @@ if (serverProvider === "github" && fs.existsSync(path.join(ROOT, rulesetPath))) 
     checkWorkflowSupplyChain(branchCleanupWorkflowPath);
   }
 }
+// L0 (server policy) visibility: state the strongest layer's status explicitly so
+// a green doctor never hides that the remote gate is disabled or merely unverified.
+if (serverProvider === "none") {
+  ok("L0 (server ruleset) disabled by config (serverPolicy=none); protection relies on Layer 1 (local hooks) + Layer 2 (agent guard)");
+} else if (serverProvider === "github" && fs.existsSync(path.join(ROOT, rulesetPath)) && !process.argv.includes("--server")) {
+  ok("L0 (server ruleset) configured; live status unverified this run - run 'doctor --server' to confirm it is active on the remote");
+}
 if (process.argv.includes("--server")) {
   if (serverProvider === "none") {
     ok("server-policy capability is disabled; no live drift check requested by configuration");
@@ -501,12 +519,23 @@ if (process.argv.includes("--server")) {
         cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 30000, killSignal: "SIGKILL",
       });
       const live = JSON.parse(output);
-      live.ok ? ok(`live GitHub ruleset matches project policy (${live.repo || "repository"})`) :
-        fail(`live GitHub ruleset drift: ${(live.mismatches || []).join("; ") || live.error || "unknown mismatch"}`);
+      if (live.ok) {
+        ok(`L0 (server ruleset) active: live GitHub ruleset matches project policy (${live.repo || "repository"})`);
+      } else if ((live.mismatches || []).length) {
+        fail(`L0 (server ruleset) drift: ${(live.mismatches || []).join("; ")}`);
+      } else {
+        env(`L0 (server ruleset) unavailable: ${live.error || "unknown"}. Falls back to Layer 1 (local hooks) + Layer 2 (agent guard).`, "l0-unavailable");
+      }
     } catch (e) {
       let live = null;
       try { live = JSON.parse(String(e.stdout || "")); } catch {}
-      fail(`live GitHub ruleset check failed: ${live ? (live.mismatches || []).join("; ") || live.error : String(e.stderr || e.message || "").trim()}`);
+      const mism = live && Array.isArray(live.mismatches) ? live.mismatches : [];
+      if (mism.length) {
+        fail(`L0 (server ruleset) drift: ${mism.join("; ")}`);
+      } else {
+        const reason = (live && live.error) || String(e.stderr || e.message || "").trim() || "live ruleset could not be read";
+        env(`L0 (server ruleset) unavailable: ${reason}. Falls back to Layer 1 (local hooks) + Layer 2 (agent guard).`, "l0-unavailable");
+      }
     }
   }
 }
@@ -543,13 +572,27 @@ if (auditReleaseWorkflow && fs.existsSync(path.join(ROOT, releaseWorkflowPath)))
 }
 
 // report
+const strictEnv = process.argv.includes("--strict-env");
 const fails = results.filter((r) => r.level === "FAIL").length;
+const envs = results.filter((r) => r.level === "ENV").length;
+const blocking = fails + (strictEnv ? envs : 0);
+const exitCode = blocking ? 1 : (envs ? 3 : 0);
 if (process.argv.includes("--json")) {
-  console.log(JSON.stringify({ ok: fails === 0, results }));
+  console.log(JSON.stringify({ ok: fails === 0, blocked: blocking > 0, fails, envs, strictEnv, exitCode, results }));
 } else {
   console.log("harness doctor:");
-  const icon = { PASS: "OK", WARN: "WARN", FAIL: "FAIL" };
+  const icon = { PASS: "OK", WARN: "WARN", ENV: "ENV", FAIL: "FAIL" };
   for (const r of results) console.log("  " + icon[r.level] + " " + r.msg);
-  console.log(fails ? "\ndoctor: " + fails + " FAIL - fix before work." : "\ndoctor: environment is ready.");
+  const parts = [];
+  if (fails) parts.push(fails + " FAIL");
+  if (envs) parts.push(envs + " ENV");
+  if (fails) {
+    console.log("\ndoctor: " + parts.join(", ") + " - fix FAIL before work.");
+  } else if (envs) {
+    console.log("\ndoctor: repo contract OK; " + envs + " ENV (environment/mount, not a repo defect" +
+      (strictEnv ? "; blocking under --strict-env" : "") + ").");
+  } else {
+    console.log("\ndoctor: environment is ready.");
+  }
 }
-process.exit(fails ? 1 : 0);
+process.exit(exitCode);

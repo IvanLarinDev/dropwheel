@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "source": {
-    "version": "v0.6.0",
-    "commit": "0527d43134df417284b8969a9ec691576482449c"
+    "version": "v0.6.1",
+    "commit": "bac64cfcdca273d657b942f47bbc4284a78276fd"
   },
   "managed": {
     "hooks/_lib.js": "58818491ad701f09be63a4246a13955c550cac3412d313d2e885db80cdfa19c7",
     "hooks/verify-core.js": "b05b7a77eeddb2da4c89a9ac7d91f82c6a88a13f65bb52e9e9758de436bc1224",
     "hooks/verify.js": "905a9334f522cf9293443021e36f1f9013603cdda4f82f6cd07b53b672544f4a",
     "hooks/design-gate.js": "0dc21685f60994e35a3570bcd51ecf2912a342c289a678733febe1ffb8237fdc",
-    "hooks/doctor.js": "e90ad7e9c1287572d6caf34c61b7fcf4159675a9aab5e665ae0ea8bddd5c9577",
+    "hooks/doctor.js": "a942bff5c50e0604f9d0a275050565adf1f47647df3ed2a41e21b057c2969f0b",
     "hooks/release-start.js": "1df1bd37d8b900e4e52063935421e026231ba8ce77c1cf68c4e30256053eac06",
     "hooks/release-config.js": "51ccab9de0be69425f2af71284e051f4b09038be5cc381e122a237e8f9af9d39",
     "hooks/release-manifest-bump.js": "c4151cfdf6242a30358417630b5c0258a72b5ea6f17d53ba78fb6d1502bf11fb",
