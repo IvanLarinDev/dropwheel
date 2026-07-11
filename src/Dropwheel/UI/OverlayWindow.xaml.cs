@@ -30,6 +30,7 @@ public partial class OverlayWindow : Window
         _hoverTimer.Tick += (_, _) =>
         {
             _hoverTimer.Stop();
+            ErrorLog.Trace($"hover-timer-fire alt={Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)} open={_open}");
             if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) OpenCloud("hover");
         };
 
@@ -42,11 +43,17 @@ public partial class OverlayWindow : Window
         Orb.Opacity = TargetStore.Config.OrbOpacity;
         Orb.MouseEnter += (_, _) =>
         {
-            ErrorLog.Trace($"orb-enter open={_open}");
+            bool arm = !_open && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
+            ErrorLog.Trace($"orb-enter open={_open} hover-arm={arm}");
             ArmGroupShortcuts();
-            if (!_open && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) _hoverTimer.Start();
+            if (arm) _hoverTimer.Start();
         };
-        Orb.MouseLeave += (_, _) => { ErrorLog.Trace($"orb-leave open={_open}"); _hoverTimer.Stop(); OnOrbGroupShortcutLeave(); };
+        Orb.MouseLeave += (_, _) =>
+        {
+            ErrorLog.Trace($"orb-leave open={_open} hover-was-armed={_hoverTimer.IsEnabled}");
+            _hoverTimer.Stop();
+            OnOrbGroupShortcutLeave();
+        };
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
         Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud("orb-dragenter"); };
         Orb.DragOver += OnAddTargetDragOver;
@@ -73,13 +80,19 @@ public partial class OverlayWindow : Window
         PreviewDrop += OnTileReorderPreviewDrop;
         DragEnter += (_, _) => _closeTimer.Stop();
         DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
-        Deactivated += (_, _) => CloseCloud("deactivated");
+        Deactivated += (_, _) => { ErrorLog.Trace("deactivated (focus lost)"); CloseCloud("deactivated"); };
+        Activated += (_, _) => ErrorLog.Trace("activated (focus gained)");
+        SizeChanged += (_, e) => ErrorLog.Trace($"window-size {e.NewSize.Width:0}x{e.NewSize.Height:0}");
 
         Loaded += (_, _) =>
         {
             ErrorLog.Trace("=== session start ===");
             PlaceWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade();
         };
-        LocationChanged += (_, _) => UpdateOrbScreenPos();
+        LocationChanged += (_, _) =>
+        {
+            if (!_movingOrb) ErrorLog.Trace($"window-move L={Left:0} T={Top:0} open={_open}");
+            UpdateOrbScreenPos();
+        };
     }
 }

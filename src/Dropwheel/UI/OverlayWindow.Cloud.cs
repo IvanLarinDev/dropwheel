@@ -35,7 +35,7 @@ public partial class OverlayWindow
 
     private void OpenCloud(string reason)
     {
-        if (_open) return;
+        if (_open) { ErrorLog.Trace($"open-ignored [{reason}] already-open"); return; }
         // Diagnostic trace: which trigger opened the wheel and the pointer context at that moment, so a
         // "spontaneous" open can be traced to its real source (hover / proximity / drag) from trace.log.
         bool lmb = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0; // physical left-button state
@@ -51,6 +51,7 @@ public partial class OverlayWindow
     {
         if (!_open)
         {
+            ErrorLog.Trace($"close-ignored [{reason}] already-closed");
             ResetGroupShortcutInput();
             return;
         }

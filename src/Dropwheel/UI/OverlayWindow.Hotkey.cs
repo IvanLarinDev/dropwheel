@@ -33,6 +33,7 @@ public partial class OverlayWindow
     /// <summary>Hotkey: open the wheel at the cursor; press again to close and send the orb home.</summary>
     private void OnHotkey()
     {
+        ErrorLog.Trace($"hotkey-fired visible={IsVisible} open={_open}");
         if (!IsVisible) return; // hidden by fullscreen
         if (_open)
         {

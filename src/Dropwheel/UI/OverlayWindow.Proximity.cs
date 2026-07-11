@@ -41,7 +41,11 @@ public partial class OverlayWindow
         // Proximity is meant for an external drag approaching from outside. A press that begins on or
         // right next to the orb (clicking it, an Alt-drag, just holding the button over it) is not an
         // approaching drag and must not auto-open — otherwise clicking to close instantly reopens.
-        if (leftDown && !_prevLeftDown) _suppressProximity = d2 < _openR2;
+        if (leftDown != _prevLeftDown)
+        {
+            if (leftDown && d2 < _openR2) _suppressProximity = true; // press began inside the zone
+            ErrorLog.Trace($"lmb={leftDown} dist={Math.Sqrt(d2):0} openR={Math.Sqrt(_openR2):0} suppress={_suppressProximity} open={_open}");
+        }
         _prevLeftDown = leftDown;
         if (!leftDown) { _proximityOpened = false; _suppressProximity = false; }
 
