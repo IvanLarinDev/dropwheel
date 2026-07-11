@@ -1,6 +1,0 @@
-2026-07-10 work/main-follow 01-scale-pulse
-ui: src/Dropwheel/UI/
-
-Chosen: the existing duplicate tile bounces up in scale and settles (scale 1 → 1.18 → 1,
-BackEase out, ~360 ms). Quiet and cheap, and it matches the wheel's existing tile emphasis
-in OverlayWindow.Cloud.cs. Implemented in PulseExistingTiles / PulseTile.
