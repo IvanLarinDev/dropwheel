@@ -1,0 +1,9 @@
+2026-07-11 work/main-follow all-four-as-settings-modes
+ui: src/Dropwheel/UI/
+
+Chosen: ship all four overflow layouts as a settings-selectable mode, exactly like the
+existing OpenAnimation enum + combo (SettingsWindow). Below the single-ring threshold every
+mode renders one ring, so users with few targets see today's wheel unchanged. Modes:
+Split balanced (01), Overflow band (02, default — inner ring stays familiar until the cap),
+Petals (03), Concentric columns (04). Verified live against the docs/demo baseline across all
+four themes; the overflow ring always flows outward to keep the drop target large.
