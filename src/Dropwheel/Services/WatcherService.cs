@@ -74,12 +74,17 @@ public sealed class WatcherService
 
         public bool TryRunSort(CancellationToken cancellationToken, Action sort)
         {
+            // Only the stop/cancel check is guarded; the blocking SHFileOperation runs OUTSIDE the lock.
+            // Holding _gate across the move would make a UI-thread Cancel() (app Exit, or dropping a
+            // watched folder on config save) wait for the whole move to finish, freezing the overlay.
+            // The move is kept safe instead by the cancellation token (SortOne checks it throughout) and
+            // by _queuedWork, which keeps Lifetime alive until CompleteWork runs after sort returns.
             lock (_gate)
             {
                 if (_stopping || cancellationToken.IsCancellationRequested) return false;
-                sort();
-                return true;
             }
+            sort();
+            return true;
         }
     }
 
