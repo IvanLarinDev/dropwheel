@@ -107,8 +107,11 @@ public static class CursorTargetLocator
                 return string.IsNullOrWhiteSpace(path) ? null : path;
             }
         }
-        catch (Exception e) when (e is COMException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
+        catch (Exception)
         {
+            // Any Explorer/shell state we can't read (a non-filesystem view, a transient COM fault)
+            // just means "no target here" — never let it propagate, since this runs mid-capture while
+            // the main overlay is click-through and an escape would leave it stuck that way.
             return null;
         }
         finally
@@ -126,8 +129,11 @@ public static class CursorTargetLocator
             var name = element?.Current.Name;
             return string.IsNullOrWhiteSpace(name) ? null : name;
         }
-        catch (Exception e) when (e is ElementNotAvailableException or COMException or TimeoutException)
+        catch (Exception)
         {
+            // UI Automation can throw a range of types (including ArgumentException/InvalidOperation
+            // on protected or vanishing windows); a missing item name is non-fatal, so swallow all and
+            // let the caller fall back to the folder itself rather than risk unwinding out of capture.
             return null;
         }
     }

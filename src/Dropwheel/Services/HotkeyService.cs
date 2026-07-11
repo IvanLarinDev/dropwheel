@@ -19,11 +19,15 @@ public sealed class HotkeyService : IDisposable
     {
         _callback = callback;
         _src = (HwndSource)PresentationSource.FromVisual(owner)!;
-        _src.AddHook(Hook);
+        // Validate and register BEFORE attaching the hook. If either step threw after AddHook, the
+        // half-built instance would be discarded without Dispose, leaking the Hook delegate on the
+        // window's HwndSource for the whole process — and since Id is shared, every later successful
+        // registration would then fire each leaked hook too.
         if (!TryParse(hotkey, out uint mods, out uint vk))
             throw new FormatException($"Hotkey '{hotkey}' is not a valid combination");
         if (!RegisterHotKey(_src.Handle, Id, mods, vk))
             throw new InvalidOperationException($"Hotkey '{hotkey}' is already taken");
+        _src.AddHook(Hook);
     }
 
     /// <summary>Parses a combination like "Ctrl+Alt+Space" into RegisterHotKey modifier flags and a

@@ -321,6 +321,45 @@ public class AppConfigTests : IDisposable
     }
 
     [Fact]
+    public void Load_preserves_targets_when_a_rule_condition_enum_token_is_unknown()
+    {
+        // Regression: the sanitizer walked Override and Children but never a target's Rules, so a single
+        // unknown ConditionField/CompareOp token left `changed` false, rethrew, and wiped the whole config.
+        var configPath = Path.Combine(_root, "config.json");
+        File.WriteAllText(configPath,
+            """
+            {
+              "Targets": [
+                {
+                  "Name": "Sorter",
+                  "Path": "C:\\Temp\\Sorter",
+                  "Pinned": true,
+                  "Rules": [
+                    {
+                      "Dest": "Images",
+                      "All": [ { "Field": "Extension", "Op": "FutureOp", "Value": "jpg" } ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        TargetStore.Load();
+
+        var target = Assert.Single(TargetStore.Config.Targets);
+        Assert.Equal("Sorter", target.Name);
+        Assert.True(target.Pinned);
+        var rule = Assert.Single(target.Rules!);
+        Assert.Equal("Images", rule.Dest);
+        var condition = Assert.Single(rule.All);
+        Assert.Equal(ConditionField.Extension, condition.Field);
+        Assert.Equal(CompareOp.In, condition.Op); // unknown Op degraded to its default, not lost
+        Assert.Equal("jpg", condition.Value);
+        Assert.Empty(Directory.GetFiles(_root, "config.bad.*.json"));
+    }
+
+    [Fact]
     public void Load_assigns_stable_shortcuts_to_existing_groups_once()
     {
         File.WriteAllText(TargetStore.FilePath,

@@ -294,8 +294,36 @@ public static class TargetStore
 
             changed |= RemoveInvalidEnum<DropAction>(targetObject, nameof(TargetItem.Override));
 
+            if (targetObject[nameof(TargetItem.Rules)] is JsonArray rules)
+                changed |= SanitizeRules(rules);
+
             if (targetObject[nameof(TargetItem.Children)] is JsonArray children)
                 changed |= SanitizeTargets(children);
+        }
+
+        return changed;
+    }
+
+    /// <summary>Strips unknown ConditionField/CompareOp tokens from a target's sort rules the same way
+    /// Override is handled, so a config written by a newer build (or hand-edited) with a rule enum this
+    /// build doesn't recognize degrades that one field to its default instead of throwing — which would
+    /// otherwise wipe the entire config down to defaults.</summary>
+    private static bool SanitizeRules(JsonArray rules)
+    {
+        var changed = false;
+        foreach (var ruleNode in rules)
+        {
+            if (ruleNode is not JsonObject ruleObject)
+                continue;
+            if (ruleObject[nameof(SortRule.All)] is not JsonArray conditions)
+                continue;
+            foreach (var conditionNode in conditions)
+            {
+                if (conditionNode is not JsonObject conditionObject)
+                    continue;
+                changed |= RemoveInvalidEnum<ConditionField>(conditionObject, nameof(RuleCondition.Field));
+                changed |= RemoveInvalidEnum<CompareOp>(conditionObject, nameof(RuleCondition.Op));
+            }
         }
 
         return changed;

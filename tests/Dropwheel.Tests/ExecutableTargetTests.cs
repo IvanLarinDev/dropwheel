@@ -70,6 +70,34 @@ public sealed class ExecutableTargetTests
     }
 
     [Fact]
+    public void Powershell_launch_passes_each_flag_and_the_script_as_separate_tokens()
+    {
+        var psi = LaunchService.BuildStartInfo(@"C:\scripts\tool.ps1", new[] { @"C:\drop\a b.txt" }, null);
+
+        Assert.Equal("powershell.exe", psi.FileName);
+        Assert.Equal(
+            new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", @"C:\scripts\tool.ps1", @"C:\drop\a b.txt" },
+            psi.ArgumentList);
+        Assert.Equal("", psi.Arguments); // nothing hand-built that Windows would re-tokenize
+        Assert.False(psi.UseShellExecute); // ArgumentList is honored on the interpreter path
+    }
+
+    [Fact]
+    public void Interpreter_launch_keeps_a_quote_laden_target_as_one_argument_token()
+    {
+        // A crafted .lnk can resolve to a target string containing a double quote. Built as a single
+        // interpolated Arguments string, that quote would break out and inject extra command-line tokens
+        // (e.g. turning `py "{exe}"` into `py -c "<code>"`). ArgumentList must keep it one opaque token.
+        var evil = "-c\" \"import os;os.system('calc');#.py";
+
+        var psi = LaunchService.BuildStartInfo(evil, new[] { @"C:\drop\a.txt" }, null);
+
+        Assert.Equal("py", psi.FileName);
+        Assert.Equal(new[] { evil, @"C:\drop\a.txt" }, psi.ArgumentList);
+        Assert.Equal("", psi.Arguments);
+    }
+
+    [Fact]
     public void BuildStartInfo_uses_custom_launch_options_for_one_target()
     {
         var psi = LaunchService.BuildStartInfo(

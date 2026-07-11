@@ -54,7 +54,12 @@ public static class MouseHook
             else if (msg == WM_MOUSEMOVE && MouseMoved is { } h)
             {
                 var s = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
-                h(s.pt.X, s.pt.Y, _leftDown);
+                // This runs inside an OS-invoked hook callback: an exception escaping here unwinds
+                // through a native frame and terminates the process (the app's DispatcherUnhandledException
+                // net cannot catch it), so a latent bug in a subscriber would crash on any mouse move.
+                // Swallow-and-log, exactly as the sibling KeyboardHook does.
+                try { h(s.pt.X, s.pt.Y, _leftDown); }
+                catch (Exception ex) { ErrorLog.Write("A mouse-move subscriber threw in the low-level hook", ex); }
             }
         }
         return CallNextHookEx(_hook, code, wParam, lParam);

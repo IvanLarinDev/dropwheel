@@ -69,7 +69,7 @@ public static class LaunchService
         var args = BuildArgs(files);
         var targetDir = Path.GetDirectoryName(exe) ?? "";
         var psi = custom == null
-            ? DefaultStartInfo(exe, args)
+            ? DefaultStartInfo(exe, files)
             : new ProcessStartInfo(
                 ExpandTemplate(custom.FileName, exe, args, targetDir),
                 ExpandTemplate(custom.Arguments, exe, args, targetDir))
@@ -80,16 +80,35 @@ public static class LaunchService
         return psi;
     }
 
-    private static ProcessStartInfo DefaultStartInfo(string exe, string files)
+    /// <summary>Builds the launch for an interpreter/executable target. The interpreter branches pass
+    /// the script path and every dropped file as SEPARATE ArgumentList entries (UseShellExecute defaults
+    /// to false there), so Windows never re-tokenizes them. Hand-building a quoted argument string here
+    /// would let a crafted target path — e.g. one resolved from a malicious .lnk — break out of its
+    /// quotes and inject extra command-line tokens, i.e. run arbitrary code through the interpreter.</summary>
+    private static ProcessStartInfo DefaultStartInfo(string exe, IReadOnlyList<string> files)
     {
         return Path.GetExtension(exe).ToLowerInvariant() switch
         {
-            ".ps1" => new ProcessStartInfo("powershell.exe",
-                $"-NoProfile -ExecutionPolicy Bypass -File \"{exe}\" {files}"),
-            ".py" or ".pyw" => new ProcessStartInfo("py", $"\"{exe}\" {files}"),
-            ".jar" => new ProcessStartInfo("java", $"-jar \"{exe}\" {files}"),
-            _ => new ProcessStartInfo(exe) { Arguments = files, UseShellExecute = true },
+            ".ps1" => WithFiles(WithArgs("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", exe), files),
+            ".py" or ".pyw" => WithFiles(WithArgs("py", exe), files),
+            ".jar" => WithFiles(WithArgs("java", "-jar", exe), files),
+            _ => new ProcessStartInfo(exe) { Arguments = BuildArgs(files), UseShellExecute = true },
         };
+    }
+
+    /// <summary>A ProcessStartInfo whose argument tokens are supplied individually (correct per-argument
+    /// quoting), never as a single hand-interpolated string.</summary>
+    private static ProcessStartInfo WithArgs(string fileName, params string[] args)
+    {
+        var psi = new ProcessStartInfo(fileName);
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        return psi;
+    }
+
+    private static ProcessStartInfo WithFiles(ProcessStartInfo psi, IReadOnlyList<string> files)
+    {
+        foreach (var f in files) psi.ArgumentList.Add(f);
+        return psi;
     }
 
     internal static string ExpandTemplate(string template, string target, string files, string targetDir) =>

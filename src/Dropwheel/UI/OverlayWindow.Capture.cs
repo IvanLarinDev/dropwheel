@@ -60,12 +60,25 @@ public partial class OverlayWindow
         _captureTimer.Start();
     }
 
+    /// <summary>Converts a device-pixel screen point (as GetCursorPos returns) to DIP screen
+    /// coordinates, matching what WPF Window.Left/Top expect. Without this the ghost and the
+    /// click-vs-capture distance are computed in mixed units and drift on any display scale other than
+    /// 100%. Falls back to the raw values before the window has a composition target. Mirrors the
+    /// device→DIP conversion already used by the orb-move path (TryCursorDip).</summary>
+    private Point DeviceToDip(int x, int y)
+    {
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is { } ct)
+            return ct.TransformFromDevice.Transform(new Point(x, y));
+        return new Point(x, y);
+    }
+
     private void OnCaptureTick(object? sender, EventArgs e)
     {
         if (_ghost == null || !GetCursorPos(out var p)) { FinishOrbCapture(); return; }
 
-        _ghost.Left = p.X - GhostSize / 2.0;
-        _ghost.Top = p.Y - GhostSize / 2.0;
+        var dip = DeviceToDip(p.X, p.Y);
+        _ghost.Left = dip.X - GhostSize / 2.0;
+        _ghost.Top = dip.Y - GhostSize / 2.0;
 
         bool armed = CursorTargetLocator.LooksLikeTargetWindow(IsOwnWindow);
         SetGhostArmed(armed);
@@ -92,9 +105,15 @@ public partial class OverlayWindow
         {
             _ghost.Visibility = Visibility.Hidden;
             SetClickThrough(this, true); // let a target sitting under the main overlay be seen
-            path = CursorTargetLocator.ResolveUnderCursor(IsOwnWindow);
-            SetClickThrough(this, false);
-            _ghost.Visibility = Visibility.Visible;
+            // try/finally is essential: this is the only place that ever clears WS_EX_TRANSPARENT on
+            // the main overlay, so if ResolveUnderCursor threw, the window would stay click-through for
+            // the rest of the process and the orb would silently stop responding to clicks.
+            try { path = CursorTargetLocator.ResolveUnderCursor(IsOwnWindow); }
+            finally
+            {
+                SetClickThrough(this, false);
+                _ghost.Visibility = Visibility.Visible;
+            }
         }
 
         if (path != null) PlayCaptureSuccess(path);
@@ -135,6 +154,7 @@ public partial class OverlayWindow
 
     private void SpawnGhost(int screenX, int screenY)
     {
+        var spawn = DeviceToDip(screenX, screenY);
         var th = Themes.Current;
         _ghostCore = new Ellipse
         {
@@ -197,8 +217,8 @@ public partial class OverlayWindow
             ShowActivated = false,
             Topmost = true,
             ResizeMode = ResizeMode.NoResize,
-            Left = screenX - GhostSize / 2.0,
-            Top = screenY - GhostSize / 2.0,
+            Left = spawn.X - GhostSize / 2.0,
+            Top = spawn.Y - GhostSize / 2.0,
             Content = grid,
         };
         _ghost.Show();
@@ -375,7 +395,10 @@ public partial class OverlayWindow
     }
 
     private bool MovedFarEnough(POINT cursor)
-        => IsCapture(cursor.X, cursor.Y, Left + HalfSize, Top + HalfSize, CaptureMinTravel);
+    {
+        var dip = DeviceToDip(cursor.X, cursor.Y); // orb center is DIP; compare like with like
+        return IsCapture(dip.X, dip.Y, Left + HalfSize, Top + HalfSize, CaptureMinTravel);
+    }
 
     /// <summary>True when the release point is far enough from the orb to count as a drag onto
     /// something rather than a click on the orb itself.</summary>

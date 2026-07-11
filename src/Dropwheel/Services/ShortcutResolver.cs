@@ -23,12 +23,26 @@ public static class ShortcutResolver
             var data = new WIN32_FIND_DATAW();
             link.GetPath(sb, sb.Capacity, ref data, SLGP_RAWPATH);
             var target = sb.ToString();
-            return string.IsNullOrEmpty(target) ? path : target;
+            if (string.IsNullOrEmpty(target) || HasSuspiciousPathChars(target))
+                return path; // empty or crafted (non-filesystem) target → keep the .lnk path, don't trust it
+            return target;
         }
         catch
         {
             return path; // unreadable or non-filesystem shortcut → keep the original path
         }
+    }
+
+    /// <summary>True if the string contains a character that never occurs in a legitimate Windows path
+    /// (a double quote, the name-illegal &lt; &gt; | characters, or a control character). A .lnk's stored
+    /// target is attacker-controlled binary data, so such a character marks a crafted shortcut trying to
+    /// smuggle extra command-line tokens rather than name a real file. Note: Path.GetInvalidPathChars on
+    /// .NET no longer includes the quote, so the dangerous set is checked explicitly here.</summary>
+    private static bool HasSuspiciousPathChars(string s)
+    {
+        foreach (var c in s)
+            if (c is '"' or '<' or '>' or '|' || c < ' ') return true;
+        return false;
     }
 
     private const uint SLGP_RAWPATH = 0x4;
