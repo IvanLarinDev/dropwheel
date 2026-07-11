@@ -92,6 +92,27 @@ the ghost furls back into the orb with a confirming ring, and the wheel opens wi
 the freshly pinned tile first. Every one of these moments plays live in the
 [interactive demo](https://ivanlarindev.github.io/dropwheel/demo/).
 
+## Crowded levels (overflow)
+
+A level with only a few targets always draws as the classic single ring. When a
+level fills up you can let the surplus flow onto a second, outer ring instead of
+cramming everything onto one rim. The layout is chosen in Settings:
+
+- **None** — the classic wheel: every tile stays on one ring, however many there
+  are. No second ring ever appears. This is the default, so existing wheels are
+  unchanged.
+- **Split balanced** — tiles split evenly across two equal-size rings.
+- **Overflow band** — the inner ring stays the familiar single wheel up to its
+  cap; only the surplus lands on a new outer band, staggered into the gaps.
+- **Petals** — tiles alternate between rings, the outer row offset into the gaps
+  — the most compact layout.
+- **Columns** — tiles form radial pairs on shared spokes (inner + outer per column).
+
+The **threshold** setting is how many real targets a level holds before the
+second ring appears, clamped to 4–16. The always-present tiles — the "+" add tile
+and, inside a group, "Back" — don't count toward it, so they never push a level
+into overflow on their own.
+
 ## Interface names
 
 Use these names when describing the wheel in issues, docs, or UI changes. The

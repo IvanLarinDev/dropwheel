@@ -27,7 +27,7 @@ public partial class OverlayWindow
     /// orb, the orb charges up (halo, breathing core, a lean toward the cursor). Crossing the open
     /// threshold holds one short beat, then opens the wheel — the inhale flowing into the reveal.
     /// Alt is reserved for the move/capture gestures, so it never charges.</summary>
-    private void UpdateCharge(int x, int y, double d2, bool leftDown)
+    private void UpdateCharge(int x, int y, double d2, bool leftDown, ProximityIntent intent)
     {
         if (!leftDown || Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
         {
@@ -43,7 +43,7 @@ public partial class OverlayWindow
         EnsureBreathing();
 
         if (d2 > _closeR2) CancelBeat();
-        if (!_open && d2 < _openR2 && _beat == null && !_suppressProximity) StartBeat();
+        if (intent == ProximityIntent.StartBeat && _beat == null) StartBeat();
     }
 
     /// <summary>Nearness charge 0..1: zero at or beyond the outer edge of the anticipation zone,

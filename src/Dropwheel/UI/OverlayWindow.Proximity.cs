@@ -39,15 +39,16 @@ public partial class OverlayWindow
         double dx = x - _orbSX, dy = y - _orbSY, d2 = dx * dx + dy * dy;
         WakeIdle(d2);
 
-        // Proximity is meant for an external drag approaching from outside. A press that begins on or
-        // right next to the orb (clicking it, an Alt-drag, just holding the button over it) is not an
-        // approaching drag and must not auto-open — otherwise clicking to close instantly reopens.
-        if (leftDown && !_prevLeftDown && d2 < _openR2) _suppressProximity = true; // press began inside the zone
-        _prevLeftDown = leftDown;
-        if (!leftDown) { _proximityOpened = false; _suppressProximity = false; }
+        // The exact suppression/open/close transition lives in a pure, unit-tested state machine, so the
+        // recurring "wheel opens by itself" regressions stay locked down. This frame only reads the live
+        // flags into it and applies the single action it returns.
+        var (next, intent) = new ProximityState(_prevLeftDown, _suppressProximity, _proximityOpened)
+            .Step(leftDown, d2, _openR2, _closeR2, _open);
+        _prevLeftDown = next.PrevLeftDown;
+        _suppressProximity = next.Suppressed;
+        _proximityOpened = next.ProximityOpened;
 
-        UpdateCharge(x, y, d2, leftDown); // charges the orb and, at the threshold, opens the wheel
-        if (_open && _proximityOpened && d2 > _closeR2)
-        { _proximityOpened = false; CloseCloud(); }
+        UpdateCharge(x, y, d2, leftDown, intent); // charges the orb and, on StartBeat, holds the beat
+        if (intent == ProximityIntent.Close) CloseCloud();
     }
 }

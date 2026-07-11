@@ -61,11 +61,19 @@ public partial class OverlayWindow
             var wa = SystemParameters.WorkArea;
             cx = wa.Right - 90; cy = wa.Top + wa.Height / 2;
         }
+        PlaceWindowAtCenter(cx, cy);
+    }
+
+    /// <summary>Positions the fixed-size window centered on (cx, cy) in DIP screen space, clamped so the
+    /// window stays on the virtual screen and snapped to the device-pixel grid. Shared by the saved-orb
+    /// placement and the hotkey-at-cursor open so both go through the identical clamp+snap.</summary>
+    private void PlaceWindowAtCenter(double cx, double cy)
+    {
         // bounds of the whole virtual screen — the orb may live on any monitor
         double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
         double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
-        Left = SnapToPixel(Math.Clamp(cx - HalfSize, l - HalfSize + 24, r - HalfSize - 24), horizontal: true);
-        Top = SnapToPixel(Math.Clamp(cy - HalfSize, t - HalfSize + 24, b - HalfSize - 24), horizontal: false);
+        Left = SnapToPixel(WheelLayout.ClampWindowEdge(cx, HalfSize, l, r), horizontal: true);
+        Top = SnapToPixel(WheelLayout.ClampWindowEdge(cy, HalfSize, t, b), horizontal: false);
     }
 
     private void OnOrbMouseDown(object sender, MouseButtonEventArgs e)
@@ -105,6 +113,8 @@ public partial class OverlayWindow
         _orbDragged = false;
         if (!CaptureMouse()) return; // can't grab the mouse → don't start a drag we couldn't end
         _movingOrb = true;
+        RestoreOrbOpacity(); // don't let idle fade dim the orb during a manual drag
+        _idleTimer?.Stop();  // pause the countdown for the whole drag
         MouseMove += OnOrbDragMove;
         MouseLeftButtonUp += OnOrbDragEnd;
         LostMouseCapture += OnOrbDragLostCapture;
@@ -147,6 +157,8 @@ public partial class OverlayWindow
             TargetStore.Save();
         }
         UpdateOrbScreenPos();
+        _idleTimer?.Stop();  // reset, then resume the fade countdown from the drag's end
+        _idleTimer?.Start();
     }
 
     /// <summary>Current mouse cursor in DIP screen coordinates, false if the visual has no source yet.</summary>

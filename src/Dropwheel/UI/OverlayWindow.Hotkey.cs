@@ -1,7 +1,5 @@
-﻿using System.Windows;
-using System.Windows.Threading;
+﻿using System.Windows.Threading;
 using Dropwheel.Services;
-using WF = System.Windows.Forms;
 
 namespace Dropwheel.UI;
 
@@ -40,13 +38,8 @@ public partial class OverlayWindow
             PlaceWindow(); // back home
             return;
         }
-        var c = WF.Cursor.Position; // device px
-        if (PresentationSource.FromVisual(this)?.CompositionTarget is { } ct)
-        {
-            var dip = ct.TransformFromDevice.Transform(new Point(c.X, c.Y));
-            Left = dip.X - HalfSize;
-            Top = dip.Y - HalfSize;
-        }
+        if (!TryCursorDip(out var dip)) return; // no source yet — leave the window where it is
+        PlaceWindowAtCenter(dip.X, dip.Y);
         UpdateOrbScreenPos();
         OpenCloud();
     }

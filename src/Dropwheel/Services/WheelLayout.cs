@@ -34,6 +34,13 @@ public static class WheelLayout
     /// <summary>Clamps a user-entered threshold into the supported range.</summary>
     public static int ClampThreshold(int threshold) => Math.Clamp(threshold, MinThreshold, MaxThreshold);
 
+    /// <summary>Clamps one axis of the window origin so at least <see cref="Margin"/> DIP of the window
+    /// stays on the virtual screen. Given the desired window center and the window's half-size, returns
+    /// the pre-snap edge (Left or Top). Pure so the clamp is unit-tested; pixel snapping stays in the UI
+    /// because it needs live DPI.</summary>
+    public static double ClampWindowEdge(double center, double halfSize, double screenLo, double screenHi)
+        => Math.Clamp(center - halfSize, screenLo - halfSize + Margin, screenHi - halfSize - Margin);
+
     /// <summary>One cell per tile, in tile order. Empty for a non-positive count. The layout stays a
     /// single ring for mode None, or until the number of targets exceeds <paramref name="threshold"/>.
     /// <paramref name="reserved"/> is the count of always-present non-target tiles ("+" and, inside a

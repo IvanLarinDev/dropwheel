@@ -23,10 +23,16 @@ public partial class OverlayWindow
         _idleTimer.Start();
     }
 
+    /// <summary>Restores the orb to its configured opacity if the idle fade had dimmed it.</summary>
+    private void RestoreOrbOpacity()
+    {
+        if (_dimmed) { _dimmed = false; Orb.Opacity = TargetStore.Config.OrbOpacity; }
+    }
+
     private void WakeIdle(double distSq)
     {
         if (_idleTimer == null || distSq > _closeR2) return;
-        if (_dimmed) { _dimmed = false; Orb.Opacity = TargetStore.Config.OrbOpacity; }
+        RestoreOrbOpacity();
         _idleTimer.Stop();
         _idleTimer.Start();
     }

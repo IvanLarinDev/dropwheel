@@ -359,6 +359,13 @@ public partial class OverlayWindow
     /// ring, and a second ellipse only when the level overflows onto an outer ring.</summary>
     private void PositionRims(IReadOnlyList<double> radii)
     {
+        if (radii.Count == 0)
+        {
+            _outerRim = null;
+            _outerRimScale = null;
+            _outerRimRot = null;
+            return;
+        }
         var th = Themes.Current;
         double r0 = radii[0];
         Rim.Width = Rim.Height = r0 * 2;
