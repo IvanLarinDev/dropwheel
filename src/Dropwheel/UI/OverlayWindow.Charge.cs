@@ -43,7 +43,7 @@ public partial class OverlayWindow
         EnsureBreathing();
 
         if (d2 > _closeR2) CancelBeat();
-        if (!_open && d2 < _openR2 && _beat == null) StartBeat();
+        if (!_open && d2 < _openR2 && _beat == null && !_suppressProximity) StartBeat();
     }
 
     /// <summary>Nearness charge 0..1: zero at or beyond the outer edge of the anticipation zone,

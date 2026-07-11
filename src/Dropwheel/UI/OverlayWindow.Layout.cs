@@ -52,6 +52,9 @@ public partial class OverlayWindow
         Canvas.SetLeft(Toast, HalfSize - 140);
         Canvas.SetTop(Toast, _wheelSize - 48);
         UpdateOrbScreenPos();
+        // After a resize/move, PointToScreen can read stale coordinates before the new layout is
+        // committed, leaving the proximity zone offset from the real orb. Re-read once layout settles.
+        Dispatcher.BeginInvoke(new Action(UpdateOrbScreenPos), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void PlaceWindow()
@@ -73,6 +76,7 @@ public partial class OverlayWindow
     {
         var kind = OrbGesture.Classify(Keyboard.Modifiers);
         ErrorLog.Trace($"orb-mousedown gesture={kind} mods={Keyboard.Modifiers}");
+        _suppressProximity = true; // a press that starts on the orb is a click/gesture, not a drag approaching
         switch (kind)
         {
             case OrbDragKind.Capture:
