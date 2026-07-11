@@ -57,7 +57,7 @@ public partial class OverlayWindow
         _cells = [];
         Rim.BeginAnimation(OpacityProperty, null);
         Rim.Opacity = 0;
-        ApplyWheelWindow(BaseWindow); // shrink back to the classic window
+        RestoreClosedWindow(); // shrink back and return the orb to its resting position
     }
 
     /// <summary>All tiles are laid out by the chosen overflow mode: one ring below the threshold,
