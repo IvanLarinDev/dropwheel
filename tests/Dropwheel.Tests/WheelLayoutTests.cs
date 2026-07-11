@@ -100,14 +100,21 @@ public sealed class WheelLayoutTests
     }
 
     [Fact]
-    public void Max_window_covers_the_widest_wheel_regardless_of_count_or_threshold()
+    public void Max_window_covers_the_widest_wheel_across_the_whole_count_range()
     {
+        // The fixed-window design's core invariant: for every mode and every realistic count/threshold,
+        // the reserved window already fits the wheel — nothing clips. Guards a future count-dependent
+        // radius mode: if its window grows past MaxWindowSize at some count, this fails instead of the
+        // outer ring silently clipping in the app.
         foreach (var mode in Enum.GetValues<OverflowLayout>())
         {
             double max = WheelLayout.MaxWindowSize(mode);
-            // Whatever count or threshold the user has, the fixed window must already fit the wheel.
-            Assert.True(max >= WheelLayout.WindowSize(mode, 40, WheelLayout.MinThreshold) - 0.5);
-            Assert.True(max >= WheelLayout.WindowSize(mode, 12, WheelLayout.MaxThreshold) - 0.5);
+            for (int n = 1; n <= WheelLayout.MaxRealisticTargets; n++)
+            {
+                Assert.True(max >= WheelLayout.WindowSize(mode, n, WheelLayout.MinThreshold) - 0.5,
+                    $"{mode}: window {max} must fit count {n} ({WheelLayout.WindowSize(mode, n, WheelLayout.MinThreshold)})");
+                Assert.True(max >= WheelLayout.WindowSize(mode, n, WheelLayout.MaxThreshold) - 0.5);
+            }
         }
     }
 

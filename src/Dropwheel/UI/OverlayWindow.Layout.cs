@@ -159,6 +159,16 @@ public partial class OverlayWindow
         return true;
     }
 
+    /// <summary>Saves the config, logging and swallowing a write failure instead of throwing. Used from
+    /// the contexts where an uncaught exception is worst — a timer tick and startup — so a full disk or a
+    /// permissions error leaves the app running (with in-memory state) rather than crashing. Returns
+    /// false on failure so the caller can tell the user the change wasn't persisted.</summary>
+    private static bool TrySaveConfig()
+    {
+        try { TargetStore.Save(); return true; }
+        catch (Exception ex) { ErrorLog.Write("Failed to save config", ex); return false; }
+    }
+
     public void ToggleCloud() { if (_open) CloseCloud(); else OpenCloud(); }
 
     /// <summary>Shows the user a short error message. Called from the global exception handler; the

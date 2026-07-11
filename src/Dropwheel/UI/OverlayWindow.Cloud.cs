@@ -149,7 +149,7 @@ public partial class OverlayWindow
         // ones already in _cells; each target just slides to the slot at its new display index. Rebuild
         // only if something is out of sync (a tile missing an element, or _cells not matching the count).
         if (targets.Any(target => !elements.ContainsKey(target))
-            || _cells.Length < targets.Length + offset + 1)
+            || _cells.Length != targets.Length + offset + 1) // != so a stale-longer _cells also rebuilds
         {
             BuildCloud();
             return;

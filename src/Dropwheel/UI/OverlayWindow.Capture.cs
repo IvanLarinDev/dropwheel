@@ -125,9 +125,9 @@ public partial class OverlayWindow
         RememberAdd(list);
         list.Add(target);
         TargetStore.PinToFront(list, target);
-        TargetStore.Save();
+        bool saved = TrySaveConfig(); // runs from a timer tick — don't let a write failure escape
 
-        ShowToast($"Pinned: {target.Name}", canUndo: true);
+        ShowToast(saved ? $"Pinned: {target.Name}" : $"Pinned {target.Name}, but couldn't save to disk", canUndo: true);
         OpenCloud();
         AnimatePinnedArrival(new[] { target }, new Point(HalfSize, HalfSize));
         RefreshLinkMetadata(new[] { target });

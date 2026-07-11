@@ -74,7 +74,8 @@ public partial class OverlayWindow
         if (rolledBack)
         {
             TargetStore.Config.Hotkey = _hotkeyActive;
-            TargetStore.Save();
+            TrySaveConfig(); // runs at startup — a write failure here must not crash init
+
             try { _hotkey = new HotkeyService(this, _hotkeyActive, OnHotkey); }
             catch (Exception ex) { ErrorLog.Write($"Failed to restore previous hotkey '{_hotkeyActive}'", ex); }
         }

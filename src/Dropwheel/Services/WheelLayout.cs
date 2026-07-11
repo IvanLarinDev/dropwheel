@@ -18,6 +18,11 @@ public static class WheelLayout
     public const int MinThreshold = 4;
     public const int MaxThreshold = 16;
 
+    /// <summary>The most targets a single level is sized to hold. The fixed window reserves room for a
+    /// wheel this dense, so a mode's ring radii must stay bounded across 1..this. Beyond it a level is
+    /// allowed to clip — it is well past what fits legibly on a wheel anyway.</summary>
+    public const int MaxRealisticTargets = 60;
+
     /// <summary>Radius of the single rim, matching the classic wheel.</summary>
     public const double SingleRingRadius = 170;
 
@@ -65,8 +70,12 @@ public static class WheelLayout
     public static double MaxWindowSize(OverflowLayout mode)
     {
         if (mode == OverflowLayout.None) return BaseWindow;
-        // A count that always overflows yields the mode's widest ring regardless of the user's threshold.
-        return WindowSize(mode, MaxThreshold + 8, MinThreshold);
+        // Scan the whole realistic count range rather than one sample: a future mode whose ring radius
+        // grows with the tile count reaches its widest wheel at a high count, not at a fixed threshold.
+        double max = BaseWindow;
+        for (int n = 1; n <= MaxRealisticTargets; n++)
+            max = Math.Max(max, WindowSize(mode, n, MinThreshold));
+        return max;
     }
 
     /// <summary>The distinct ring radii the layout uses, innermost first (one or two values).</summary>

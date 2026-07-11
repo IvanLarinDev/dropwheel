@@ -35,6 +35,7 @@ public partial class OverlayWindow
     private void OnGlobalMouse(int x, int y, bool leftDown)
     {
         if (_movingOrb) return;
+        if (!IsVisible) return; // hidden by the fullscreen detector — don't charge or open on a hidden window
         double dx = x - _orbSX, dy = y - _orbSY, d2 = dx * dx + dy * dy;
         WakeIdle(d2);
 
