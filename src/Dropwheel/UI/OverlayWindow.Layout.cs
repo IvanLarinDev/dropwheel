@@ -84,29 +84,73 @@ public partial class OverlayWindow
                 break;
             case OrbDragKind.Move:
                 CloseCloud("orb-move");
-                double beforeL = Left, beforeT = Top;
-                _movingOrb = true;
-                DragMove(); // blocks until the button is released
-                _movingOrb = false;
-                // Alt+click (no real drag) must not nudge the orb: if it moved less than the system
-                // drag threshold, treat it as a click and snap back so its resting spot doesn't drift.
-                if (Math.Abs(Left - beforeL) < SystemParameters.MinimumHorizontalDragDistance
-                    && Math.Abs(Top - beforeT) < SystemParameters.MinimumVerticalDragDistance)
-                {
-                    Left = beforeL;
-                    Top = beforeT;
-                    ErrorLog.Trace("orb-move snap-back (click, not drag)");
-                }
-                TargetStore.Config.OrbX = Left + HalfSize;
-                TargetStore.Config.OrbY = Top + HalfSize;
-                TargetStore.Save();
-                UpdateOrbScreenPos();
+                BeginOrbDrag(); // manual move by cursor delta; avoids DragMove's per-monitor-DPI jump
                 break;
             default:
                 ToggleCloud();
                 break;
         }
         e.Handled = true;
+    }
+
+    private Point _dragStartCursor;   // cursor at move start, DIP screen space
+    private double _dragStartLeft, _dragStartTop;
+    private bool _orbDragged;
+
+    /// <summary>Starts a manual orb move driven by the real cursor delta. Unlike Window.DragMove(),
+    /// which runs Win32's modal move loop and jumps the window under per-monitor DPI, this reads the
+    /// cursor in device pixels and converts to DIP, so the orb follows the pointer exactly. The window
+    /// only moves once the cursor passes the system drag threshold, so an Alt+click leaves it put.</summary>
+    private void BeginOrbDrag()
+    {
+        if (!TryCursorDip(out _dragStartCursor)) return;
+        _dragStartLeft = Left;
+        _dragStartTop = Top;
+        _orbDragged = false;
+        _movingOrb = true;
+        CaptureMouse();
+        MouseMove += OnOrbDragMove;
+        MouseLeftButtonUp += OnOrbDragEnd;
+    }
+
+    private void OnOrbDragMove(object sender, MouseEventArgs e)
+    {
+        if (!TryCursorDip(out var cur)) return;
+        double dx = cur.X - _dragStartCursor.X, dy = cur.Y - _dragStartCursor.Y;
+        if (!_orbDragged
+            && Math.Abs(dx) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(dy) < SystemParameters.MinimumVerticalDragDistance)
+            return; // still within click slop — don't nudge the orb
+        _orbDragged = true;
+        Left = _dragStartLeft + dx;
+        Top = _dragStartTop + dy;
+    }
+
+    private void OnOrbDragEnd(object sender, MouseButtonEventArgs e)
+    {
+        MouseMove -= OnOrbDragMove;
+        MouseLeftButtonUp -= OnOrbDragEnd;
+        ReleaseMouseCapture();
+        _movingOrb = false;
+        if (_orbDragged)
+        {
+            TargetStore.Config.OrbX = Left + HalfSize;
+            TargetStore.Config.OrbY = Top + HalfSize;
+            TargetStore.Save();
+            ErrorLog.Trace($"orb-moved L={Left:0} T={Top:0}");
+        }
+        else ErrorLog.Trace("orb-move click (no move, orb stays)");
+        UpdateOrbScreenPos();
+    }
+
+    /// <summary>Current mouse cursor in DIP screen coordinates, false if the visual has no source yet.</summary>
+    private bool TryCursorDip(out Point dip)
+    {
+        dip = default;
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } ct) return false;
+        var c = System.Windows.Forms.Cursor.Position; // device px
+        dip = ct.TransformFromDevice.Transform(new Point(c.X, c.Y));
+        return true;
     }
 
     public void ToggleCloud() { if (_open) CloseCloud("toggle"); else OpenCloud("toggle"); }
