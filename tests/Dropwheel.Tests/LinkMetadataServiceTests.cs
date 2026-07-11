@@ -4,6 +4,7 @@ using Dropwheel.Services;
 
 namespace Dropwheel.Tests;
 
+[Collection("TargetStoreState")]
 public sealed class LinkMetadataServiceTests
 {
     [Fact]

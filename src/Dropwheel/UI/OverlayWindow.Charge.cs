@@ -33,14 +33,17 @@ public partial class OverlayWindow
         {
             _chargeTarget = 0;
             CancelBeat();
-            EnsureBreathing();
+            // Only run the per-frame render loop if there is still charge to fade out. Otherwise a plain
+            // mouse move anywhere on screen (no button) would spin up a one-frame loop on every move.
+            if (_charge > 0.002) EnsureBreathing();
             return;
         }
 
         double dist = Math.Sqrt(d2);
         _chargeTarget = ChargeFor(dist, _openR, _outerR);
         if (dist > 1) { _lookX = (x - _orbSX) / dist; _lookY = (y - _orbSY) / dist; }
-        EnsureBreathing();
+        // Held far from the orb the charge is zero, so there is nothing to animate — don't start the loop.
+        if (_chargeTarget > 0 || _charge > 0.002) EnsureBreathing();
 
         if (d2 > _closeR2) CancelBeat();
         if (intent == ProximityIntent.StartBeat && _beat == null) StartBeat();

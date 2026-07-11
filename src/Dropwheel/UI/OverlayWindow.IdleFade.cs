@@ -7,6 +7,7 @@ public partial class OverlayWindow
 {
     private DispatcherTimer? _idleTimer;
     private bool _dimmed;
+    private long _lastWake; // throttles idle-timer restarts on rapid in-zone mouse moves
 
     /// <summary>The orb dims to 0.25 after N seconds without nearby activity;
     /// any mouse movement close by (via the LL hook) restores opacity.</summary>
@@ -33,6 +34,11 @@ public partial class OverlayWindow
     {
         if (_idleTimer == null || distSq > _closeR2) return;
         RestoreOrbOpacity();
+        // The fade is seconds-scale, so restarting the timer on every in-zone mouse move is wasted churn;
+        // coalesce restarts to a few times a second while keeping the same "activity resets the fade".
+        long now = Environment.TickCount64;
+        if (now - _lastWake < 200) return;
+        _lastWake = now;
         _idleTimer.Stop();
         _idleTimer.Start();
     }
