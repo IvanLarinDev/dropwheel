@@ -119,9 +119,14 @@ public partial class OverlayWindow
         bool saved = TrySaveConfig(); // a full disk mustn't crash the drop or skip the UI refresh
         var addToast = ToastForAdd(items.Length, group, pinned, duplicates.Count);
         ShowToast(saved ? addToast : $"{addToast}, but couldn't save to disk", canUndo: true);
-        if (_open) BuildCloud();
-        if (pinned && ReferenceEquals(group, _currentGroup))
-            AnimatePinnedArrival(items, origin ?? new Point(HalfSize, HalfSize));
+        if (_open)
+        {
+            // Only the newly added tiles animate in (arc from the hub); tiles already on screen slide to
+            // their new slots instead of replaying the whole opening animation. Adding into a group that
+            // isn't the current level passes no arrivals, so the view just refreshes (group count) quietly.
+            var arrivedHere = ReferenceEquals(group, _currentGroup) ? items : Array.Empty<TargetItem>();
+            RebuildWithArrival(arrivedHere, origin ?? new Point(HalfSize, HalfSize));
+        }
         if (duplicates.Count > 0) PulseExistingTiles(duplicates, group);
         RefreshLinkMetadata(items);
     }

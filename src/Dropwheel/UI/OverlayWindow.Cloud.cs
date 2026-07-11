@@ -60,8 +60,13 @@ public partial class OverlayWindow
     }
 
     /// <summary>All tiles are laid out by the chosen overflow mode: one ring below the threshold,
-    /// two rings above it. The last cell is always "+"; inside a group the first is "Back".</summary>
-    private void BuildCloud()
+    /// two rings above it. The last cell is always "+"; inside a group the first is "Back".
+    /// When <paramref name="arriving"/> is given (an add onto the already-open level), tiles that were
+    /// already present slide from their old positions in <paramref name="from"/> to their new slots
+    /// instead of replaying the opening animation, and the arriving tiles fly in on an arc from
+    /// <paramref name="origin"/> — so only the new tile visibly appears.</summary>
+    private void BuildCloud(HashSet<TargetItem>? arriving = null,
+        Dictionary<TargetItem, Point>? from = null, Point? origin = null)
     {
         Cloud.Children.Clear();
         _spokes.Clear();
@@ -120,9 +125,41 @@ public partial class OverlayWindow
             Canvas.SetLeft(items[i], slot.Left);
             Canvas.SetTop(items[i], slot.Top);
             Cloud.Children.Add(items[i]);
-            AnimateTile(items[i], i, slot.Angle, _cells[i].Radius);
+            if (arriving == null)
+                AnimateTile(items[i], i, slot.Angle, _cells[i].Radius);
+            else
+                AnimateArrival(items[i], i, arriving, from, origin ?? new Point(HalfSize, HalfSize));
         }
-        AnimateRim();
+        if (arriving == null) AnimateRim(); // an incremental add keeps the rim as-is
+    }
+
+    /// <summary>Rebuilds the open current level after an add so only the new tiles visibly appear: the
+    /// arriving tiles fly in on an arc from the hub, tiles that were already there slide to their new
+    /// slots, and the "+"/"Back" tiles just take their new place. Avoids the full opening replay.</summary>
+    private void RebuildWithArrival(IReadOnlyList<TargetItem> arrived, Point origin)
+    {
+        var from = TileElementsByTarget().ToDictionary(
+            kv => kv.Key, kv => new Point(Canvas.GetLeft(kv.Value), Canvas.GetTop(kv.Value)));
+        BuildCloud(new HashSet<TargetItem>(arrived), from, origin);
+    }
+
+    private void AnimateArrival(FrameworkElement el, int i, HashSet<TargetItem> arriving,
+        Dictionary<TargetItem, Point>? from, Point origin)
+    {
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var target = el.Tag as TargetItem;
+        if (target != null && arriving.Contains(target))
+        {
+            AnimateArcToSlot(el, origin, ScaleTiming(300, AnimationSpeed()), 0, ease); // new tile: arc from hub
+            return;
+        }
+        if (target != null && from != null && from.TryGetValue(target, out var p) && !double.IsNaN(p.X))
+        {
+            Canvas.SetLeft(el, p.X);
+            Canvas.SetTop(el, p.Y);
+            AnimateAlongRim(el, _cells[i], ease, emphasize: false); // existing tile: slide old -> new slot
+        }
+        // "+"/"Back" and anything untracked: already placed at the slot; no entrance replay.
     }
 
     /// <summary>Places the pixel slot for tile <paramref name="i"/> from its precomputed cell.</summary>
