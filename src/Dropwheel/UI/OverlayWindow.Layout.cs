@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Dropwheel.Models;
 using Dropwheel.Services;
@@ -7,6 +8,38 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
+    private double _wheelSize = BaseWindow; // current square window side
+
+    /// <summary>Grows or shrinks the square window to hold the current wheel, keeping the orb's
+    /// screen center fixed so it does not jump. The window is BaseWindow while closed and larger
+    /// only while an overflow level is open; the orb, toast and rim are re-centered to the new size.</summary>
+    private void ApplyWheelWindow(double size)
+    {
+        if (Math.Abs(Width - size) > 0.5)
+        {
+            double cx = Left + Width / 2, cy = Top + Height / 2;
+            Width = size;
+            Height = size;
+            double l = SystemParameters.VirtualScreenLeft, t = SystemParameters.VirtualScreenTop;
+            double r = l + SystemParameters.VirtualScreenWidth, b = t + SystemParameters.VirtualScreenHeight;
+            Left = Math.Clamp(cx - size / 2, l - size / 2 + 24, r - size / 2 - 24);
+            Top = Math.Clamp(cy - size / 2, t - size / 2 + 24, b - size / 2 - 24);
+        }
+        _wheelSize = size;
+        RecenterOrb();
+    }
+
+    /// <summary>Re-centers the orb (and the toast) on the current window, so it stays at HalfSize
+    /// after a resize. Called on every size change and when the wheel closes back to BaseWindow.</summary>
+    private void RecenterOrb()
+    {
+        Canvas.SetLeft(Orb, HalfSize - Orb.Width / 2);
+        Canvas.SetTop(Orb, HalfSize - Orb.Height / 2);
+        Canvas.SetLeft(Toast, HalfSize - 140);
+        Canvas.SetTop(Toast, _wheelSize - 48);
+        UpdateOrbScreenPos();
+    }
+
     private void PlaceWindow()
     {
         double cx = TargetStore.Config.OrbX, cy = TargetStore.Config.OrbY;

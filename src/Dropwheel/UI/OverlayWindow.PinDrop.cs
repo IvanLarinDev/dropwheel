@@ -54,14 +54,14 @@ public partial class OverlayWindow
                 AnimateArcToSlot(element, origin, ScaleTiming(300, speed), ScaleTiming(i * 40, speed), ease);
     }
 
-    private static void AnimateArcToSlot(
+    private void AnimateArcToSlot(
         FrameworkElement element, Point origin, int durationMs, int delayMs, IEasingFunction ease)
     {
         double toLeft = Canvas.GetLeft(element), toTop = Canvas.GetTop(element);
         if (double.IsNaN(toLeft) || double.IsNaN(toTop)) return;
 
         double fromLeft = origin.X - TileLeftOffset, fromTop = origin.Y - TileTopOffset;
-        var (midLeft, midTop) = BowedMidpoint(fromLeft, fromTop, toLeft, toTop);
+        var (midLeft, midTop) = BowedMidpoint(fromLeft, fromTop, toLeft, toTop, HalfSize);
         var duration = TimeSpan.FromMilliseconds(durationMs);
         var delay = TimeSpan.FromMilliseconds(delayMs);
 
@@ -145,17 +145,17 @@ public partial class OverlayWindow
     /// <summary>Midpoint of the flight, pushed outward along the ray from the hub. A drop on the hub
     /// itself has no direction of its own, so the destination's ray is used instead.</summary>
     internal static (double Left, double Top) BowedMidpoint(
-        double fromLeft, double fromTop, double toLeft, double toTop)
+        double fromLeft, double fromTop, double toLeft, double toTop, double center)
     {
         double midX = (fromLeft + toLeft) / 2 + TileLeftOffset;
         double midY = (fromTop + toTop) / 2 + TileTopOffset;
-        double dx = midX - HalfSize, dy = midY - HalfSize;
+        double dx = midX - center, dy = midY - center;
         double length = Math.Sqrt(dx * dx + dy * dy);
 
         if (length < 1)
         {
-            dx = toLeft + TileLeftOffset - HalfSize;
-            dy = toTop + TileTopOffset - HalfSize;
+            dx = toLeft + TileLeftOffset - center;
+            dy = toTop + TileTopOffset - center;
             length = Math.Sqrt(dx * dx + dy * dy);
         }
         if (length < 1) return (midX - TileLeftOffset, midY - TileTopOffset);

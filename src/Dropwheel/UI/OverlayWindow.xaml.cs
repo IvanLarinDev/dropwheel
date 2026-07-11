@@ -7,7 +7,10 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow : Window
 {
-    private const double HalfSize = 230; // 460x460 window, orb centered
+    /// <summary>Wheel center in window coordinates. The window is square and the orb sits at its
+    /// center, so this is always half the current width. The window is 460 while the wheel is
+    /// closed and grows only while an overflow level is open (see ApplyWheelWindow).</summary>
+    private double HalfSize => Width / 2;
 
     /// <summary>Hover timer interval, guarded against zero: a zero interval makes DispatcherTimer
     /// tick on every dispatcher pass, so we keep a sensible minimum.</summary>

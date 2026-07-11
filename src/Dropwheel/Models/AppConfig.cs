@@ -34,6 +34,10 @@ public class AppConfig
     /// <summary>How target tiles animate when the wheel opens.</summary>
     public OpenAnimation OpenAnimation { get; set; } = OpenAnimation.Pop;
 
+    /// <summary>How a level lays out its tiles once they exceed a single rim. Defaults to
+    /// OverflowBand, which keeps the inner ring identical to today's wheel until the cap.</summary>
+    public OverflowLayout OverflowLayout { get; set; } = OverflowLayout.OverflowBand;
+
     /// <summary>Multiplier for wheel open animation speed. 1.0 = normal.</summary>
     public double OpenAnimationSpeed { get; set; } = 1.0;
 

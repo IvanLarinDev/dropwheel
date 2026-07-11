@@ -16,6 +16,16 @@ public partial class SettingsWindow : Window
         new("Magnetic settle", OpenAnimation.MagneticSettle),
     ];
 
+    private sealed record OverflowLayoutChoice(string Label, OverflowLayout Value);
+
+    private static readonly OverflowLayoutChoice[] OverflowLayoutChoices =
+    [
+        new("Overflow band — inner ring stays, extras go outside", OverflowLayout.OverflowBand),
+        new("Split balanced — two equal rings", OverflowLayout.SplitBalanced),
+        new("Petals — compact, tiles alternate rings", OverflowLayout.Petals),
+        new("Concentric columns — radial pairs", OverflowLayout.Columns),
+    ];
+
     public SettingsWindow()
     {
         InitializeComponent();
@@ -27,6 +37,10 @@ public partial class SettingsWindow : Window
         ThemeBox.SelectedItem = Themes.All.ContainsKey(c.Theme) ? c.Theme : "Fluent";
         OpenAnimationBox.SelectedItem = OpenAnimationChoices.FirstOrDefault(x => x.Value == c.OpenAnimation)
             ?? OpenAnimationChoices[0];
+        foreach (var choice in OverflowLayoutChoices) OverflowLayoutBox.Items.Add(choice);
+        OverflowLayoutBox.DisplayMemberPath = nameof(OverflowLayoutChoice.Label);
+        OverflowLayoutBox.SelectedItem = OverflowLayoutChoices.FirstOrDefault(x => x.Value == c.OverflowLayout)
+            ?? OverflowLayoutChoices[0];
         OpenAnimationSpeedSlider.Value = Math.Clamp(c.OpenAnimationSpeed, 0.5, 2.0);
         OpenAnimationSpeedText.Text = $"{OpenAnimationSpeedSlider.Value:0.##}x";
         OpenAnimationSpeedSlider.ValueChanged += (_, _) =>
@@ -57,6 +71,7 @@ public partial class SettingsWindow : Window
         }
         if (ThemeBox.SelectedItem is string theme) c.Theme = theme;
         if (OpenAnimationBox.SelectedItem is OpenAnimationChoice animation) c.OpenAnimation = animation.Value;
+        if (OverflowLayoutBox.SelectedItem is OverflowLayoutChoice overflow) c.OverflowLayout = overflow.Value;
         c.OpenAnimationSpeed = Math.Round(Math.Clamp(OpenAnimationSpeedSlider.Value, 0.5, 2.0), 2);
         c.GlobalAction = ActionBox.SelectedIndex == 1 ? DropAction.Move : DropAction.Copy;
         if (int.TryParse(HoverBox.Text, out int hover)) c.HoverDelayMs = Math.Clamp(hover, 50, 2000);

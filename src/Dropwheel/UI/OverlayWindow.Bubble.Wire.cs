@@ -174,18 +174,15 @@ public partial class OverlayWindow
         if (targetCount == 0) return null;
 
         var point = e.GetPosition(this);
-        var dx = point.X - HalfSize;
-        var dy = point.Y - HalfSize;
-        var distance = Math.Sqrt(dx * dx + dy * dy);
-        if (distance < RingR - 90 || distance > RingR + 90) return null;
-
         int offset = _currentGroup == null ? 0 : 1;
         int slotCount = targetCount + offset + 1;
+        if (_cells.Length != slotCount) return null; // wheel not built for this level
+
         int nearestSlot = 0;
         double nearestDistance = double.MaxValue;
         for (int i = 0; i < slotCount; i++)
         {
-            var slot = SlotFor(i, slotCount);
+            var slot = SlotFor(i);
             var slotDx = point.X - (slot.Left + TileLeftOffset);
             var slotDy = point.Y - (slot.Top + TileTopOffset);
             var slotDistance = slotDx * slotDx + slotDy * slotDy;
@@ -194,6 +191,7 @@ public partial class OverlayWindow
             nearestSlot = i;
         }
 
+        if (nearestDistance > 60 * 60) return null; // pointer is not over any tile (e.g. the hub)
         if (_currentGroup != null && nearestSlot == 0) return null;
         return Math.Clamp(nearestSlot - offset, 0, targetCount - 1);
     }
