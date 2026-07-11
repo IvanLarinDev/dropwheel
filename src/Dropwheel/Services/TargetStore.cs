@@ -232,6 +232,16 @@ public static class TargetStore
         foreach (var gone in orphaned) DeleteCachedIcon(gone);
     }
 
+    /// <summary>Deletes a group but keeps its targets by moving them out to the root level first, then
+    /// removing the now-empty container. The children (and their icons) are preserved.</summary>
+    public static void DissolveGroup(TargetItem group)
+    {
+        if (group.Children == null) return;
+        foreach (var child in group.Children.ToList()) MoveToGroup(child, null); // to root; empties Children
+        RemoveEverywhere(group);
+        DeleteCachedIcon(group);
+    }
+
     private static void DeleteCachedIcon(TargetItem item)
     {
         var icon = item.IconPath;

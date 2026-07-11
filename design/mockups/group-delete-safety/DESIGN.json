@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "group-delete-safety",
+  "kind": "new-ui",
+  "variants": [
+    {
+      "file": "01-minimal-light.html",
+      "focus": "Minimal / Light"
+    },
+    {
+      "file": "02-dark-pro.html",
+      "focus": "Dark / Pro"
+    },
+    {
+      "file": "03-high-contrast-a11y.html",
+      "focus": "High-contrast / A11y"
+    },
+    {
+      "file": "04-playful-rounded.html",
+      "focus": "Playful / Rounded"
+    }
+  ]
+}

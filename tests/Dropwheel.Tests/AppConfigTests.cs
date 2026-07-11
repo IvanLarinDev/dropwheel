@@ -370,6 +370,22 @@ public class AppConfigTests : IDisposable
     }
 
     [Fact]
+    public void DissolveGroup_moves_children_to_root_and_removes_the_group()
+    {
+        var a = new TargetItem { Name = "A", Path = @"C:\a" };
+        var b = new TargetItem { Name = "B", Path = @"C:\b" };
+        var group = new TargetItem { Name = "G", Children = new() { a, b } };
+        TargetStore.Config.Targets.Clear();
+        TargetStore.Config.Targets.Add(group);
+
+        TargetStore.DissolveGroup(group);
+
+        Assert.DoesNotContain(group, TargetStore.Config.Targets);
+        Assert.Contains(a, TargetStore.Config.Targets);
+        Assert.Contains(b, TargetStore.Config.Targets);
+    }
+
+    [Fact]
     public void DeleteTarget_leaves_a_custom_icon_outside_the_cache_untouched()
     {
         var custom = Path.Combine(_root, "my-custom.png");

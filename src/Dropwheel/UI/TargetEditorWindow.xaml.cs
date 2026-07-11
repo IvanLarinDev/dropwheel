@@ -108,6 +108,19 @@ public partial class TargetEditorWindow : Window
 
     private void OnDelete(object sender, RoutedEventArgs e)
     {
+        // A group with children can lose a lot of configuration in one click, so confirm and offer a
+        // non-destructive path (move the children out) instead of silently deleting everything.
+        if (_target.IsGroup && _target.Children!.Count > 0)
+        {
+            var dlg = new GroupDeleteWindow(_target.Name, _target.Children.Count) { Owner = this };
+            if (dlg.ShowDialog() != true) return; // cancelled — keep the group
+            if (dlg.Choice == GroupDeleteChoice.KeepChildren)
+            {
+                TargetStore.DissolveGroup(_target);
+                Close();
+                return;
+            }
+        }
         TargetStore.DeleteTarget(_target);
         Close();
     }
