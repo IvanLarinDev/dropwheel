@@ -12,6 +12,11 @@ public static partial class VirtualFileService
     [DllImport("kernel32.dll")] private static extern bool GlobalUnlock(IntPtr h);
     [DllImport("kernel32.dll")] private static extern nint GlobalSize(IntPtr h);
 
+    /// <summary>Upper bound on a single virtual file written to disk. A malicious drag source can return
+    /// an IStream that never ends; without a cap that would fill the disk. Generous enough for any real
+    /// dropped attachment, so it only ever stops a runaway source.</summary>
+    internal const long MaxVirtualFileBytes = 2L * 1024 * 1024 * 1024;
+
     private static bool SaveContents(IComData com, int index, string path)
     {
         var tmp = TempPathFor(path);
@@ -50,6 +55,7 @@ public static partial class VirtualFileService
         {
             using var fs = File.Create(path);
             var buf = new byte[81920];
+            long total = 0;
             IntPtr pRead = Marshal.AllocHGlobal(4);
             try
             {
@@ -58,6 +64,12 @@ public static partial class VirtualFileService
                     stream.Read(buf, buf.Length, pRead);
                     int read = Marshal.ReadInt32(pRead);
                     if (read <= 0) break;
+                    total += read;
+                    if (total > MaxVirtualFileBytes)
+                    {
+                        ErrorLog.Write($"Virtual file exceeded {MaxVirtualFileBytes} bytes; aborting to avoid an unbounded write");
+                        return false; // SaveContents' finally deletes the partial temp file
+                    }
                     fs.Write(buf, 0, read);
                 }
             }
@@ -78,7 +90,13 @@ public static partial class VirtualFileService
         if (p == IntPtr.Zero) return false;
         try
         {
-            var buf = new byte[(long)GlobalSize(h)];
+            long size = (long)GlobalSize(h);
+            if (size > MaxVirtualFileBytes)
+            {
+                ErrorLog.Write($"Virtual file HGLOBAL of {size} bytes exceeds the cap; skipped");
+                return false;
+            }
+            var buf = new byte[size];
             Marshal.Copy(p, buf, 0, buf.Length);
             File.WriteAllBytes(path, buf);
             return true;
