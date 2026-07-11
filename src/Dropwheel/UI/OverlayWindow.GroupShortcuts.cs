@@ -122,7 +122,7 @@ public partial class OverlayWindow
         else
         {
             EnterGroup(group);
-            OpenCloud();
+            OpenCloud("groupcode");
         }
     }
 
@@ -131,7 +131,7 @@ public partial class OverlayWindow
         if (!_open)
         {
             EnterGroup(null);
-            OpenCloud();
+            OpenCloud("groupcode-candidates");
         }
         else if (_currentGroup != null)
         {

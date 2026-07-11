@@ -61,7 +61,7 @@ public partial class OverlayWindow
         _beat.Tick += (_, _) =>
         {
             CancelBeat();
-            if (!_open) { _proximityOpened = true; OpenCloud(); }
+            if (!_open) { _proximityOpened = true; OpenCloud("proximity"); }
         };
         _beat.Start();
     }

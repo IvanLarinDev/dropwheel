@@ -128,7 +128,7 @@ public partial class OverlayWindow
         TargetStore.Save();
 
         ShowToast($"Pinned: {target.Name}", canUndo: true);
-        OpenCloud();
+        OpenCloud("capture-pin");
         AnimatePinnedArrival(new[] { target }, new Point(HalfSize, HalfSize));
         RefreshLinkMetadata(new[] { target });
     }

@@ -93,7 +93,7 @@ public partial class OverlayWindow
         e.Handled = true;
     }
 
-    public void ToggleCloud() { if (_open) CloseCloud(); else OpenCloud(); }
+    public void ToggleCloud() { if (_open) CloseCloud(); else OpenCloud("toggle"); }
 
     /// <summary>Shows the user a short error message. Called from the global exception handler; the
     /// display itself is wrapped so it can't loop.</summary>

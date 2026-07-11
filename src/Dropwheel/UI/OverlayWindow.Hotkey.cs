@@ -48,7 +48,7 @@ public partial class OverlayWindow
             Top = dip.Y - HalfSize;
         }
         UpdateOrbScreenPos();
-        OpenCloud();
+        OpenCloud("hotkey");
     }
 
     /// <summary>Registers the hotkey from config. If the combo is taken by another process, it falls

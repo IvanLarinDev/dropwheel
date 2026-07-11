@@ -30,7 +30,7 @@ public partial class OverlayWindow : Window
         _hoverTimer.Tick += (_, _) =>
         {
             _hoverTimer.Stop();
-            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) OpenCloud();
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) OpenCloud("hover");
         };
 
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -47,7 +47,7 @@ public partial class OverlayWindow : Window
         };
         Orb.MouseLeave += (_, _) => { _hoverTimer.Stop(); OnOrbGroupShortcutLeave(); };
         Orb.MouseLeftButtonDown += OnOrbMouseDown;
-        Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud(); };
+        Orb.DragEnter += (_, _) => { _closeTimer.Stop(); OpenCloud("orb-dragenter"); };
         Orb.DragOver += OnAddTargetDragOver;
         Orb.Drop += OnOrbDrop; // dropping on the orb adds a target
 
