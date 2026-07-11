@@ -76,8 +76,9 @@ public partial class OverlayWindow
 
         var mode = TargetStore.Config.OverflowLayout;
         int threshold = TargetStore.Config.OverflowThreshold;
-        _cells = WheelLayout.Compute(mode, n, threshold);
-        ApplyWheelWindow(WheelLayout.WindowSize(mode, n, threshold));
+        int reserved = (_currentGroup != null ? 1 : 0) + 1; // "Back" (in a group) and "+": not targets
+        _cells = WheelLayout.Compute(mode, n, threshold, reserved);
+        ApplyWheelWindow(WheelLayout.WindowSize(mode, n, threshold, reserved));
 
         // Invisible round backdrop covering the whole wheel: the mouse over the "empty" space inside
         // stays inside the window (otherwise switching group levels fired MouseLeave and the close
@@ -151,7 +152,7 @@ public partial class OverlayWindow
         // The smooth arc reorder is tuned for one ring; once the level overflows onto a second
         // ring a tile can change rings, so rebuild instead of sliding across the gap.
         var mode = TargetStore.Config.OverflowLayout;
-        if (WheelLayout.RingRadii(mode, count, TargetStore.Config.OverflowThreshold).Count > 1)
+        if (WheelLayout.RingRadii(mode, count, TargetStore.Config.OverflowThreshold, offset + 1).Count > 1)
         { BuildCloud(); return; }
 
         var elements = Cloud.Children

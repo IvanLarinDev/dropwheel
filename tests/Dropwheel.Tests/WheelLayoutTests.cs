@@ -80,6 +80,18 @@ public sealed class WheelLayoutTests
     }
 
     [Fact]
+    public void Reserved_tiles_do_not_push_a_level_into_overflow()
+    {
+        // 12 targets + the "+" tile = 13 items; with threshold 12 and one reserved tile the level
+        // must stay a single ring — the "+" is not a target and shouldn't trigger the extra ring.
+        Assert.Single(WheelLayout.RingRadii(OverflowLayout.OverflowBand, 13, threshold: 12, reserved: 1));
+        // a 13th target (14 items) does overflow, and the inner ring keeps the 12 targets + "+".
+        var cells = WheelLayout.Compute(OverflowLayout.OverflowBand, 14, threshold: 12, reserved: 1);
+        int inner = cells.Count(c => Math.Abs(c.Radius - WheelLayout.SingleRingRadius) < 0.5);
+        Assert.Equal(13, inner);
+    }
+
+    [Fact]
     public void Threshold_is_clamped_into_range()
     {
         Assert.Equal(WheelLayout.MinThreshold, WheelLayout.ClampThreshold(1));
