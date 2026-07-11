@@ -36,8 +36,11 @@
             <TextBlock x:Name="OpenAnimationSpeedText" Grid.Column="1" VerticalAlignment="Center"
                        TextAlignment="Right"/>
         </Grid>
-        <TextBlock Text="Wheel layout when targets overflow one ring"/>
+        <TextBlock Text="Wheel layout when a level has many targets"/>
         <ComboBox x:Name="OverflowLayoutBox" Margin="0,4,0,10"/>
+        <TextBlock x:Name="OverflowThresholdLabel" Text="Extra ring appears after this many tiles"/>
+        <TextBox x:Name="OverflowThresholdBox" Margin="0,4,0,10"
+                 ToolTip="How many tiles the main ring holds before the extra ring appears. Range 4–16. Ignored for the None layout."/>
         <TextBlock Text="Default drop action"/>
         <ComboBox x:Name="ActionBox" Margin="0,4,0,10">
             <ComboBoxItem Content="Copy"/>

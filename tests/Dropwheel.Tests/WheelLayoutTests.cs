@@ -11,6 +11,11 @@ public sealed class WheelLayoutTests
     public static IEnumerable<object[]> AllModes =>
         Enum.GetValues<OverflowLayout>().Select(m => new object[] { m });
 
+    public static IEnumerable<object[]> OverflowModes =>
+        Enum.GetValues<OverflowLayout>()
+            .Where(m => m != OverflowLayout.None)
+            .Select(m => new object[] { m });
+
     [Theory]
     [MemberData(nameof(AllModes))]
     public void Below_threshold_is_a_single_ring_for_every_mode(OverflowLayout mode)
@@ -25,7 +30,7 @@ public sealed class WheelLayoutTests
     }
 
     [Theory]
-    [MemberData(nameof(AllModes))]
+    [MemberData(nameof(OverflowModes))]
     public void Overflow_flows_outward_into_a_second_ring(OverflowLayout mode)
     {
         var cells = WheelLayout.Compute(mode, 14);
@@ -40,11 +45,45 @@ public sealed class WheelLayoutTests
     }
 
     [Theory]
-    [MemberData(nameof(AllModes))]
+    [MemberData(nameof(OverflowModes))]
     public void Window_grows_only_when_a_second_ring_appears(OverflowLayout mode)
     {
         Assert.Equal(460, WheelLayout.WindowSize(mode, WheelLayout.SingleRingMax), 3);
         Assert.True(WheelLayout.WindowSize(mode, WheelLayout.SingleRingMax + 3) > 460);
+    }
+
+    [Fact]
+    public void None_never_overflows_however_many_targets()
+    {
+        var cells = WheelLayout.Compute(OverflowLayout.None, 20);
+        Assert.Equal(20, cells.Length);
+        Assert.All(cells, c => Assert.Equal(WheelLayout.SingleRingRadius, c.Radius, 3));
+        Assert.Equal(460, WheelLayout.WindowSize(OverflowLayout.None, 20), 3);
+        Assert.Single(WheelLayout.RingRadii(OverflowLayout.None, 20));
+    }
+
+    [Fact]
+    public void Threshold_controls_when_the_extra_ring_appears()
+    {
+        const int threshold = 6;
+        Assert.Single(WheelLayout.RingRadii(OverflowLayout.OverflowBand, threshold, threshold));
+        Assert.Equal(2, WheelLayout.RingRadii(OverflowLayout.OverflowBand, threshold + 1, threshold).Count);
+    }
+
+    [Fact]
+    public void OverflowBand_keeps_exactly_the_threshold_on_the_inner_ring()
+    {
+        const int threshold = 7;
+        var cells = WheelLayout.Compute(OverflowLayout.OverflowBand, 13, threshold);
+        int inner = cells.Count(c => Math.Abs(c.Radius - WheelLayout.SingleRingRadius) < 0.5);
+        Assert.Equal(threshold, inner);
+    }
+
+    [Fact]
+    public void Threshold_is_clamped_into_range()
+    {
+        Assert.Equal(WheelLayout.MinThreshold, WheelLayout.ClampThreshold(1));
+        Assert.Equal(WheelLayout.MaxThreshold, WheelLayout.ClampThreshold(99));
     }
 
     [Fact]

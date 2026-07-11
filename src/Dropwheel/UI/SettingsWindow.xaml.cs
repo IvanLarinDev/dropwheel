@@ -20,6 +20,7 @@ public partial class SettingsWindow : Window
 
     private static readonly OverflowLayoutChoice[] OverflowLayoutChoices =
     [
+        new("None — one ring, classic wheel", OverflowLayout.None),
         new("Overflow band — inner ring stays, extras go outside", OverflowLayout.OverflowBand),
         new("Split balanced — two equal rings", OverflowLayout.SplitBalanced),
         new("Petals — compact, tiles alternate rings", OverflowLayout.Petals),
@@ -41,6 +42,9 @@ public partial class SettingsWindow : Window
         OverflowLayoutBox.DisplayMemberPath = nameof(OverflowLayoutChoice.Label);
         OverflowLayoutBox.SelectedItem = OverflowLayoutChoices.FirstOrDefault(x => x.Value == c.OverflowLayout)
             ?? OverflowLayoutChoices[0];
+        OverflowThresholdBox.Text = WheelLayout.ClampThreshold(c.OverflowThreshold).ToString();
+        OverflowLayoutBox.SelectionChanged += (_, _) => UpdateThresholdEnabled();
+        UpdateThresholdEnabled();
         OpenAnimationSpeedSlider.Value = Math.Clamp(c.OpenAnimationSpeed, 0.5, 2.0);
         OpenAnimationSpeedText.Text = $"{OpenAnimationSpeedSlider.Value:0.##}x";
         OpenAnimationSpeedSlider.ValueChanged += (_, _) =>
@@ -53,6 +57,14 @@ public partial class SettingsWindow : Window
         GroupShortcutDelayBox.Text = c.GroupShortcutDelayMs.ToString();
         DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
+    }
+
+    /// <summary>The threshold only applies to the overflow layouts, so it is greyed out for None.</summary>
+    private void UpdateThresholdEnabled()
+    {
+        bool on = OverflowLayoutBox.SelectedItem is OverflowLayoutChoice { Value: not OverflowLayout.None };
+        OverflowThresholdBox.IsEnabled = on;
+        OverflowThresholdLabel.Opacity = on ? 1.0 : 0.5;
     }
 
     private void OnSave(object sender, RoutedEventArgs e)
@@ -72,6 +84,8 @@ public partial class SettingsWindow : Window
         if (ThemeBox.SelectedItem is string theme) c.Theme = theme;
         if (OpenAnimationBox.SelectedItem is OpenAnimationChoice animation) c.OpenAnimation = animation.Value;
         if (OverflowLayoutBox.SelectedItem is OverflowLayoutChoice overflow) c.OverflowLayout = overflow.Value;
+        if (int.TryParse(OverflowThresholdBox.Text, out int threshold))
+            c.OverflowThreshold = WheelLayout.ClampThreshold(threshold);
         c.OpenAnimationSpeed = Math.Round(Math.Clamp(OpenAnimationSpeedSlider.Value, 0.5, 2.0), 2);
         c.GlobalAction = ActionBox.SelectedIndex == 1 ? DropAction.Move : DropAction.Copy;
         if (int.TryParse(HoverBox.Text, out int hover)) c.HoverDelayMs = Math.Clamp(hover, 50, 2000);

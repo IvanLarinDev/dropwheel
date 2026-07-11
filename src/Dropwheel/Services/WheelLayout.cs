@@ -12,8 +12,11 @@ public readonly record struct WheelCell(double Angle, double Radius);
 /// overflow always flows outward — a shorter inner circumference would cramp the drop target.</summary>
 public static class WheelLayout
 {
-    /// <summary>The most tiles that stay comfortable on one rim before overflow kicks in.</summary>
+    /// <summary>Default main-ring capacity before overflow, and the lower/upper bounds the user's
+    /// configured threshold is clamped to.</summary>
     public const int SingleRingMax = 9;
+    public const int MinThreshold = 4;
+    public const int MaxThreshold = 16;
 
     /// <summary>Radius of the single rim, matching the classic wheel.</summary>
     public const double SingleRingRadius = 170;
@@ -23,35 +26,40 @@ public static class WheelLayout
     private const double BaseWindow = 460;
     private const double Top = -Math.PI / 2;
 
-    /// <summary>One cell per tile, in tile order. Empty for a non-positive count.</summary>
-    public static WheelCell[] Compute(OverflowLayout mode, int count)
+    /// <summary>Clamps a user-entered threshold into the supported range.</summary>
+    public static int ClampThreshold(int threshold) => Math.Clamp(threshold, MinThreshold, MaxThreshold);
+
+    /// <summary>One cell per tile, in tile order. Empty for a non-positive count. The layout stays a
+    /// single ring for mode None, or until the tile count exceeds <paramref name="threshold"/>.</summary>
+    public static WheelCell[] Compute(OverflowLayout mode, int count, int threshold = SingleRingMax)
     {
         if (count <= 0) return [];
-        if (count <= SingleRingMax) return Ring(count, SingleRingRadius, Top);
+        threshold = ClampThreshold(threshold);
+        if (mode == OverflowLayout.None || count <= threshold) return Ring(count, SingleRingRadius, Top);
         return mode switch
         {
             OverflowLayout.SplitBalanced => Split(count),
-            OverflowLayout.OverflowBand => Band(count),
+            OverflowLayout.OverflowBand => Band(count, threshold),
             OverflowLayout.Petals => Petals(count),
             OverflowLayout.Columns => Columns(count),
-            _ => Band(count),
+            _ => Band(count, threshold),
         };
     }
 
     /// <summary>Square window side needed to hold the layout with a tile and margin around the
     /// outermost ring, never smaller than the classic window.</summary>
-    public static double WindowSize(OverflowLayout mode, int count)
+    public static double WindowSize(OverflowLayout mode, int count, int threshold = SingleRingMax)
     {
         double maxR = SingleRingRadius;
-        foreach (var c in Compute(mode, count)) maxR = Math.Max(maxR, c.Radius);
+        foreach (var c in Compute(mode, count, threshold)) maxR = Math.Max(maxR, c.Radius);
         return Math.Max(BaseWindow, 2 * (maxR + TileHalf + Margin));
     }
 
     /// <summary>The distinct ring radii the layout uses, innermost first (one or two values).</summary>
-    public static IReadOnlyList<double> RingRadii(OverflowLayout mode, int count)
+    public static IReadOnlyList<double> RingRadii(OverflowLayout mode, int count, int threshold = SingleRingMax)
     {
         var radii = new List<double>();
-        foreach (var c in Compute(mode, count))
+        foreach (var c in Compute(mode, count, threshold))
             if (!radii.Any(r => Math.Abs(r - c.Radius) < 0.5)) radii.Add(c.Radius);
         radii.Sort();
         return radii;
@@ -75,9 +83,9 @@ public static class WheelLayout
         return cells;
     }
 
-    private static WheelCell[] Band(int n)
+    private static WheelCell[] Band(int n, int threshold)
     {
-        int inner = SingleRingMax, outer = n - inner;
+        int inner = threshold, outer = n - inner;
         var ai = Ring(inner, SingleRingRadius, Top);
         var ao = Ring(outer, 262, Top + Math.PI / outer); // half-step so the band sits in the gaps
         var cells = new WheelCell[n];

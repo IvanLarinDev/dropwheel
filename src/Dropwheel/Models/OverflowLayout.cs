@@ -4,6 +4,10 @@ namespace Dropwheel.Models;
 /// threshold every mode draws one ring, so a level with few targets looks unchanged.</summary>
 public enum OverflowLayout
 {
+    /// <summary>The classic wheel: every tile stays on one ring, however many there are. No
+    /// second ring ever appears. This is the default, so existing wheels are unchanged.</summary>
+    None,
+
     /// <summary>Tiles split evenly across two equal-size rings.</summary>
     SplitBalanced,
 
