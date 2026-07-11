@@ -100,6 +100,11 @@ public static class LinkMetadataService
 
     private static async Task<string?> TryDownloadIconAsync(Uri iconUri, CancellationToken ct)
     {
+        // Fast path: when the icon URL carries an unambiguous image extension its cache file name is
+        // fully determined without the server's Content-Type, so a favicon downloaded on an earlier add
+        // or capture is returned with no network round trip at all.
+        if (CachedIconPath(iconUri) is { } cached) return cached;
+
         try
         {
             using var response = await Client.GetAsync(iconUri, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -152,6 +157,29 @@ public static class LinkMetadataService
 
         var unquoted = Regex.Match(tag, $@"(?is)\b{name}\s*=\s*([^\s>]+)");
         return unquoted.Success ? unquoted.Groups[1].Value : null;
+    }
+
+    /// <summary>The on-disk path of an already-downloaded favicon for this URL, or null when nothing is
+    /// cached or the URL extension is not by itself enough to name the file (only the server's
+    /// Content-Type could, so a network fetch is still needed).</summary>
+    internal static string? CachedIconPath(Uri iconUri)
+    {
+        var candidate = IconCachePathCandidate(iconUri);
+        return candidate != null && File.Exists(candidate) ? candidate : null;
+    }
+
+    /// <summary>The path a favicon for this URL would be cached at, based solely on the URL extension,
+    /// or null when the extension can't name the file. Does not check whether the file exists.</summary>
+    internal static string? IconCachePathCandidate(Uri iconUri)
+        => UrlIconExtension(iconUri) is { } ext ? IconPathFor(iconUri, ext) : null;
+
+    /// <summary>The image extension the icon URL itself carries, or null when it names no known image
+    /// type (the .ico default used elsewhere is deliberately not assumed here, since it would make the
+    /// cache path guessable-but-wrong for extension-less URLs).</summary>
+    private static string? UrlIconExtension(Uri iconUri)
+    {
+        var ext = Path.GetExtension(iconUri.AbsolutePath).ToLowerInvariant();
+        return ext is ".png" or ".jpg" or ".jpeg" or ".ico" or ".webp" ? ext : null;
     }
 
     private static string IconPathFor(Uri iconUri, string extension)

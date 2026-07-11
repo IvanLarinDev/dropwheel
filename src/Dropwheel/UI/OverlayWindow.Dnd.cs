@@ -8,14 +8,14 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    /// <summary>Priority: modifier (Ctrl/Shift) → target override → global setting.</summary>
+    /// <summary>Priority: modifier (Ctrl/Shift) → target override → global setting. Delegates to the
+    /// pure DropDispatch.ResolveAction so the precedence is unit-testable without DragEventArgs.</summary>
     private static DropAction Resolve(TargetItem t, DragEventArgs e)
-    {
-        if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey)) return DropAction.Copy;
-        if (e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey)) return DropAction.Move;
-        if (t.Override != DropAction.Inherit) return t.Override;
-        return TargetStore.Config.GlobalAction;
-    }
+        => DropDispatch.ResolveAction(
+            e.KeyStates.HasFlag(DragDropKeyStates.ControlKey),
+            e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey),
+            t.Override,
+            TargetStore.Config.GlobalAction);
 
     private void OnBubbleDragOver(TargetItem t, Border badge, DragEventArgs e)
     {
@@ -55,7 +55,12 @@ public partial class OverlayWindow
         if ((!real && !virt && !link && !text) || !LaunchService.IsFolderTarget(t))
         { e.Effects = DragDropEffects.None; e.Handled = true; return; }
 
-        var act = virt || text ? DropAction.Copy : Resolve(t, e); // virtual files and text: copy only
+        var act = DropDispatch.EffectiveAction(
+            virt || text, // virtual files and text: copy only
+            e.KeyStates.HasFlag(DragDropKeyStates.ControlKey),
+            e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey),
+            t.Override,
+            TargetStore.Config.GlobalAction);
         e.Effects = link ? AddTargetDropEffect(e) : act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
         ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : text ? "≡" : act == DropAction.Move ? "➜" : "⧉";
         if (link) ((TextBlock)badge.Child).Text = "+";
@@ -109,18 +114,17 @@ public partial class OverlayWindow
         var dest = LaunchService.DestPath(t);
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
         {
-            if (t.IsSorter)
+            switch (DropDispatch.ClassifyFileDrop(t.IsSorter, LaunchService.IsRunTarget(t)))
             {
-                DropSorted(t, files, Resolve(t, e));
-                return;
-            }
-            if (LaunchService.IsRunTarget(t))
-            {
-                bool launched = LaunchService.LaunchWith(t, files);
-                ShowToast(launched
-                    ? $"▶ Opened {files.Length} item(s) with {t.Name}"
-                    : "Could not launch");
-                return;
+                case FileDropRoute.Sort:
+                    DropSorted(t, files, Resolve(t, e));
+                    return;
+                case FileDropRoute.Run:
+                    bool launched = LaunchService.LaunchWith(t, files);
+                    ShowToast(launched
+                        ? $"▶ Opened {files.Length} item(s) with {t.Name}"
+                        : "Could not launch");
+                    return;
             }
             var act = Resolve(t, e);
             var op = BuildOpBefore(act, files, dest);

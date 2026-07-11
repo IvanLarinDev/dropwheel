@@ -1,3 +1,4 @@
+using System.IO;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -5,6 +6,38 @@ namespace Dropwheel.Tests;
 
 public sealed class LinkMetadataServiceTests
 {
+    [Fact]
+    public void CachedIconPath_returns_a_seeded_file_for_an_extensioned_url()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dw_icons_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        TargetStore.DirOverride = root;
+        try
+        {
+            var iconUri = new Uri("https://example.com/assets/favicon.png");
+            Assert.Null(LinkMetadataService.CachedIconPath(iconUri)); // nothing cached yet
+
+            var path = LinkMetadataService.IconCachePathCandidate(iconUri)!;
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(path, new byte[] { 1, 2, 3 });
+
+            Assert.Equal(path, LinkMetadataService.CachedIconPath(iconUri)); // cache hit, no network needed
+        }
+        finally
+        {
+            TargetStore.DirOverride = null;
+            try { Directory.Delete(root, true); } catch (DirectoryNotFoundException) { }
+        }
+    }
+
+    [Fact]
+    public void CachedIconPath_is_null_for_an_extensionless_url()
+    {
+        // Without a usable extension the file name depends on the server Content-Type, so the cache path
+        // can't be known up front and a fetch is still required.
+        Assert.Null(LinkMetadataService.CachedIconPath(new Uri("https://example.com/icon")));
+    }
+
     [Fact]
     public void SourceUri_prefers_original_browser_url()
     {
