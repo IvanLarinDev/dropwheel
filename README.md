@@ -1,8 +1,11 @@
 # Dropwheel
 
-[![CI](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanLarinDev/dropwheel/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/IvanLarinDev/dropwheel)](https://github.com/IvanLarinDev/dropwheel/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+<p align="center">
+  <img src="docs/wheel.svg" alt="Dropwheel — the radial wheel open on the desktop with target tiles around a central orb" width="500">
+</p>
 
 Overlay launcher for Windows 10/11: a floating orb that expands into a radial
 **wheel** of targets (folders and apps). Drop files to copy or move them, drop
@@ -29,12 +32,9 @@ text to a file. The demo source lives in [`docs/demo/`](docs/demo/).
 
 ## Install
 
-Grab the [latest release](https://github.com/IvanLarinDev/dropwheel/releases/latest):
-
-- `Dropwheel-vX.Y.Z-win-x64.zip` — small; requires the .NET 10 Desktop Runtime
-- `Dropwheel-vX.Y.Z-win-x64-self-contained.zip` — larger; no runtime needed
-
-Unzip anywhere and run `Dropwheel.exe`. Config lives in `%AppData%\Dropwheel\config.json`.
+Grab `Dropwheel.exe` from the [latest release](https://github.com/IvanLarinDev/dropwheel/releases/latest)
+and run it — a single file that needs the .NET 10 Desktop Runtime installed.
+Config lives in `%AppData%\Dropwheel\config.json`.
 
 ## Build from source
 
@@ -50,11 +50,11 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Action                | How                                                |
 |-----------------------|----------------------------------------------------|
 | Open the wheel        | hover the orb (250 ms), click it, or drag a file near it |
-| Drop a file           | drag onto a target tile; badge shows ⧉ copy / ➜ move |
+| Drop a file           | drag onto a target tile; the badge names the action — Copy / Move |
 | Drop text             | drag selected text onto a folder → saves `text_<date>.txt` (`.md` if it looks like Markdown) |
 | Open with an app      | drag files onto an .exe/.bat/.ps1/… target → runs it with them as arguments |
 | Force copy / move     | hold Ctrl / Shift while dropping on a target tile   |
-| Undo last drop or add | click “Undo” in the toast (6 s)                    |
+| Undo last action      | click “Undo” in the toast — covers file drops, adds, sorts, and deleting a target |
 | Edit a target         | right-click its tile                               |
 | Add a target          | drop a folder/exe/link onto the “+” tile or the orb |
 | Pin a target from the desktop | Alt+Shift-drag the orb onto a folder, app or file in Explorer or on the desktop — it’s pinned first, next to the hub |
@@ -67,8 +67,9 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Wheel at cursor       | Ctrl+Alt+Space (configurable)                      |
 | Settings              | tray icon or orb context menu                      |
 
-The orb hides automatically in full-screen apps (games, presentations) and can
-fade out when idle (see Settings).
+The orb hides automatically in full-screen apps (games, presentations) — while
+it's hidden the tray menu shows an *Orb hidden — fullscreen app active* status so
+you know where it went — and it can fade out when idle (see Settings).
 
 Turn on **Skip duplicate targets** in Settings and dropping a folder, app or link
 that already sits on the current wheel level won't add a second tile — a toast says
@@ -79,6 +80,17 @@ Group codes stay attached to their groups when tiles are reordered. If both `1`
 and `11` exist, `1` opens after the configurable sequence timeout, while typing
 the second `1` before that timeout opens `11` immediately. Right-click a group
 to edit or disable its code.
+
+## Feedback, dialogs & broken targets
+
+Every action reports back in the same place: a short toast on the wheel names what
+happened in plain words — *Copied*, *Moved*, *Sorted*, *Undone* — with an **Undo**
+link where it applies. All the windows (new group, target editor, settings, and a
+themed message box) share one frame and one button layout, follow the active theme,
+and validate **inline** instead of popping up error dialogs; the hotkey field checks
+itself as you type, and settings are grouped into sections. If a target's folder or
+file goes missing, its tile shows a small warning mark — not a silent fade — and a
+click offers **Locate…** or **Remove**.
 
 ## A living interface
 
@@ -131,14 +143,14 @@ parts numbered on a live wheel.
 | **Add tile** | The dashed `+` tile used to create a new target in the current level. |
 | **Folder target** | A target tile backed by a folder path; dropped files are copied or moved into it. |
 | **Run target** | A target tile backed by an executable or script; dropped files are passed to it as arguments. |
-| **Sorter target** | A folder target with routing rules, shown with an amber border and a sorting badge. |
+| **Sorter target** | A folder target with routing rules, shown with an amber border and a `Sort` badge. |
 | **Group target** | A target tile that opens another wheel level instead of receiving files directly. |
-| **Badge** | The small status marker on a tile, such as copy, move, run, sorter, or group. |
+| **Badge** | The small marker on a tile that names an action or state in plain words — `Copy`, `Move`, `Sort`, `Run` — plus a group's shortcut number. |
 
 ## Sorter targets & routing rules
 
 A **sorter** distributes dropped files into subfolders by rules (amber-bordered
-tile, ⇅ badge). Right-click a target and press **Convert to routing rules**, or
+tile, `Sort` badge). Right-click a target and press **Convert to routing rules**, or
 start from a **Presets ▾** category (Images, Documents, Archives, …). Rules are
 an ordered list edited in a master–detail panel — the first rule whose
 conditions all match wins:
@@ -189,7 +201,7 @@ file is routed by the rules; Undo removes it.
 If a target is an executable or script (`.exe`, `.com`, `.bat`, `.cmd`, `.ps1`,
 `.py`, `.pyw`, `.vbs`, `.wsf`, `.js`, `.jar`, or a `.lnk` to one), dropping files
 on its tile runs it with the dropped files as arguments — the Windows "open with"
-behaviour, shown with a ▶ badge. Scripts the shell would only open in an editor
+behaviour, shown with a `Run` badge. Scripts the shell would only open in an editor
 (`.ps1`, `.py`, `.jar`) are launched through their interpreter. This is a launch,
 not a file operation, so it isn't undoable.
 
@@ -227,8 +239,10 @@ Light and Neon.
                  IconService, LinkTargetService, LinkMetadataService,
                  TelegramDropService, StartupService, FullscreenDetector
       UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
-                 TargetEditorWindow (+ .Rules master-detail), SettingsWindow,
-                 Themes, Palette (per-theme widget colours), MenuTheme.xaml
+                 DialogShell (shared dialog frame) + DwMessageBox + ToastHost,
+                 TargetEditorWindow (+ .Rules master-detail),
+                 SettingsWindow (two-pane sections),
+                 Themes, Palette (colour roles), MenuTheme.xaml
     tests/       Dropwheel.Tests (xUnit: SortService, SortMigration, FileMeta,
                  TextDropService, WatcherService, HotkeyService, VirtualFileService,
                  LinkTargetService, LinkMetadataService, TelegramDropService)
