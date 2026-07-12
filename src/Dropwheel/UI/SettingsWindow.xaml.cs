@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Dropwheel.Models;
 using Dropwheel.Services;
@@ -18,6 +19,17 @@ public partial class SettingsWindow : Window
         new("Magnetic settle", OpenAnimation.MagneticSettle),
     ];
 
+    private sealed record HotkeyPresetChoice(string Label, string Value);
+
+    private static readonly HotkeyPresetChoice[] HotkeyPresetChoices =
+    [
+        new($"Default ({AppConfig.DefaultHotkey})", AppConfig.DefaultHotkey),
+        new("Ctrl+Shift+Space", "Ctrl+Shift+Space"),
+        new("Ctrl+Alt+D", "Ctrl+Alt+D"),
+        new("Ctrl+Shift+D", "Ctrl+Shift+D"),
+        new("Ctrl+Alt+F12", "Ctrl+Alt+F12"),
+    ];
+
     private sealed record OverflowLayoutChoice(string Label, OverflowLayout Value);
 
     private static readonly OverflowLayoutChoice[] OverflowLayoutChoices =
@@ -31,6 +43,8 @@ public partial class SettingsWindow : Window
 
     private readonly StackPanel[] _sections;
     private readonly DispatcherTimer _validateTimer;
+    private bool _recordingHotkey;
+    private bool _updatingHotkeyPreset;
 
     public SettingsWindow()
     {
@@ -46,6 +60,8 @@ public partial class SettingsWindow : Window
         foreach (var name in Themes.All.Keys) ThemeBox.Items.Add(name);
         foreach (var choice in OpenAnimationChoices) OpenAnimationBox.Items.Add(choice);
         OpenAnimationBox.DisplayMemberPath = nameof(OpenAnimationChoice.Label);
+        foreach (var choice in HotkeyPresetChoices) HotkeyPresetBox.Items.Add(choice);
+        HotkeyPresetBox.DisplayMemberPath = nameof(HotkeyPresetChoice.Label);
         ThemeBox.SelectedItem = Themes.All.ContainsKey(c.Theme) ? c.Theme : "Fluent";
         OpenAnimationBox.SelectedItem = OpenAnimationChoices.FirstOrDefault(x => x.Value == c.OpenAnimation)
             ?? OpenAnimationChoices[0];
@@ -64,13 +80,20 @@ public partial class SettingsWindow : Window
         HoverBox.Text = c.HoverDelayMs.ToString();
         OpacitySlider.Value = c.OrbOpacity;
         IdleBox.Text = c.IdleFadeSeconds.ToString();
-        HotkeyBox.Text = c.Hotkey;
+        HotkeyBox.Text = DisplayHotkey(c.Hotkey);
         GroupShortcutDelayBox.Text = c.GroupShortcutDelayMs.ToString();
         DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
 
-        foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox, HotkeyBox })
-            box.TextChanged += (_, _) => { _validateTimer.Stop(); _validateTimer.Start(); };
+        foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox })
+            box.TextChanged += (_, _) => QueueValidation();
+        HotkeyBox.TextChanged += OnHotkeyTextChanged;
+        HotkeyBox.PreviewKeyDown += OnHotkeyBoxPreviewKeyDown;
+        HotkeyCaptureButton.Click += OnHotkeyCaptureClick;
+        HotkeyResetButton.Click += OnHotkeyResetClick;
+        HotkeyResetButton.ToolTip = $"Restore {AppConfig.DefaultHotkey}.";
+        HotkeyPresetBox.SelectionChanged += OnHotkeyPresetChanged;
+        RefreshHotkeyPreset();
         SectionList.SelectedIndex = 0;
         ValidateAll();
     }
@@ -113,13 +136,19 @@ public partial class SettingsWindow : Window
     /// must parse and be free right now.</summary>
     private bool ValidateHotkey()
     {
+        if (_recordingHotkey)
+        {
+            SetHotkeyStatus("Recording: press Ctrl, Alt, Shift, or Win plus one key", null);
+            return false;
+        }
+
         var hk = HotkeyBox.Text.Trim();
         if (hk.Length == 0) return SetHotkeyStatus("", null);
-        if (string.Equals(hk, TargetStore.Config.Hotkey, StringComparison.OrdinalIgnoreCase))
+        if (!HotkeyService.TryNormalize(hk, out var normalized))
+            return SetHotkeyStatus("Use Ctrl, Alt, Shift, or Win plus one key", false);
+        if (HotkeyService.IsSameCombination(normalized, TargetStore.Config.Hotkey))
             return SetHotkeyStatus("Available", true);
-        if (!HotkeyService.IsValid(hk))
-            return SetHotkeyStatus("Not a valid combination — needs a modifier and one key", false);
-        if (HotkeyService.IsAvailable(hk)) return SetHotkeyStatus("Available", true);
+        if (HotkeyService.IsAvailable(normalized)) return SetHotkeyStatus("Available", true);
         return SetHotkeyStatus("Already taken by another app", false);
     }
 
@@ -127,10 +156,124 @@ public partial class SettingsWindow : Window
     {
         HotkeyStatus.Text = text;
         HotkeyStatus.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        HotkeyStatus.Foreground = ok == true ? Palettes.Success : Palettes.Danger;
-        HotkeyBox.BorderBrush = ok == false ? Palettes.Danger : Palettes.Border;
+        HotkeyStatus.Foreground = ok switch
+        {
+            true => Palettes.Success,
+            false => Palettes.Danger,
+            _ => Palettes.TextMuted,
+        };
+        HotkeyBox.BorderBrush = ok == false ? Palettes.Danger
+            : _recordingHotkey ? Palettes.Accent : Palettes.Border;
         return ok != false;
     }
+
+    private void OnHotkeyTextChanged(object sender, TextChangedEventArgs e)
+    {
+        RefreshHotkeyPreset();
+        QueueValidation();
+    }
+
+    private void QueueValidation()
+    {
+        _validateTimer.Stop();
+        _validateTimer.Start();
+    }
+
+    private void OnHotkeyCaptureClick(object sender, RoutedEventArgs e) =>
+        SetHotkeyRecording(!_recordingHotkey);
+
+    private void OnHotkeyResetClick(object sender, RoutedEventArgs e)
+    {
+        SetHotkeyRecording(false);
+        SetHotkeyText(AppConfig.DefaultHotkey);
+    }
+
+    private void OnHotkeyPresetChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingHotkeyPreset) return;
+        if (HotkeyPresetBox.SelectedItem is HotkeyPresetChoice choice)
+        {
+            SetHotkeyRecording(false);
+            SetHotkeyText(choice.Value);
+        }
+    }
+
+    private void OnHotkeyBoxPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!_recordingHotkey) return;
+
+        e.Handled = true;
+        var key = EffectiveKey(e);
+        if (key == Key.Escape)
+        {
+            SetHotkeyRecording(false);
+            return;
+        }
+
+        if (HotkeyService.TryFormatCapturedHotkey(key, Keyboard.Modifiers, out var hotkey))
+        {
+            HotkeyBox.Text = hotkey;
+            HotkeyBox.CaretIndex = HotkeyBox.Text.Length;
+            SetHotkeyRecording(false);
+            return;
+        }
+
+        SetHotkeyStatus("Press Ctrl, Alt, Shift, or Win plus one key", null);
+    }
+
+    private void SetHotkeyRecording(bool recording)
+    {
+        _recordingHotkey = recording;
+        HotkeyBox.IsReadOnly = recording;
+        HotkeyCaptureButton.Content = recording ? "Stop" : "Record";
+        if (recording)
+        {
+            HotkeyBox.Focus();
+            HotkeyBox.SelectAll();
+            SetHotkeyStatus("Recording: press Ctrl, Alt, Shift, or Win plus one key", null);
+            Shell.IsPrimaryEnabled = false;
+            HotkeyErrDot.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            ValidateAll();
+        }
+    }
+
+    private void SetHotkeyText(string hotkey)
+    {
+        HotkeyBox.Text = hotkey;
+        HotkeyBox.CaretIndex = HotkeyBox.Text.Length;
+        RefreshHotkeyPreset();
+        ValidateAll();
+    }
+
+    private void RefreshHotkeyPreset()
+    {
+        if (_updatingHotkeyPreset) return;
+        _updatingHotkeyPreset = true;
+        try
+        {
+            var text = HotkeyBox.Text.Trim();
+            HotkeyPresetBox.SelectedItem = HotkeyPresetChoices
+                .FirstOrDefault(x => HotkeyService.IsSameCombination(x.Value, text));
+        }
+        finally
+        {
+            _updatingHotkeyPreset = false;
+        }
+    }
+
+    private static string DisplayHotkey(string hotkey) =>
+        HotkeyService.TryNormalize(hotkey, out var normalized) ? normalized : hotkey;
+
+    private static Key EffectiveKey(KeyEventArgs e) => e.Key switch
+    {
+        Key.System => e.SystemKey,
+        Key.ImeProcessed => e.ImeProcessedKey,
+        Key.DeadCharProcessed => e.DeadCharProcessedKey,
+        _ => e.Key,
+    };
 
     /// <summary>Colors the little orb preview from the current theme so it depicts the real wheel
     /// look rather than a fixed neon swatch: the backdrop and dots follow the theme, the frame the
@@ -170,7 +313,8 @@ public partial class SettingsWindow : Window
         if (int.TryParse(IdleBox.Text, out int idle)) c.IdleFadeSeconds = Math.Clamp(idle, 0, 3600);
         if (int.TryParse(GroupShortcutDelayBox.Text, out int sequenceDelay))
             c.GroupShortcutDelayMs = Math.Clamp(sequenceDelay, 150, 1500);
-        if (hk.Length > 0) c.Hotkey = hk;
+        if (hk.Length > 0 && HotkeyService.TryNormalize(hk, out var normalizedHotkey))
+            c.Hotkey = normalizedHotkey;
         c.DeduplicateTargets = DeduplicateBox.IsChecked == true;
         TargetStore.Save();
         try { StartupService.SetEnabled(AutostartBox.IsChecked == true); }

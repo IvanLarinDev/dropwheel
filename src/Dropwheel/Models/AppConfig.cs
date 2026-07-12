@@ -2,6 +2,8 @@ namespace Dropwheel.Models;
 
 public class AppConfig
 {
+    public const string DefaultHotkey = "Ctrl+Alt+Space";
+
     public DropAction GlobalAction { get; set; } = DropAction.Copy;
 
     // Orb center (DIP, virtual screen); NaN = default (right edge of primary).
@@ -11,7 +13,7 @@ public class AppConfig
 
     public double OrbOpacity { get; set; } = 0.8;
     public int HoverDelayMs { get; set; } = 250;
-    public string Hotkey { get; set; } = "Ctrl+Alt+Space";
+    public string Hotkey { get; set; } = DefaultHotkey;
 
     /// <summary>Maximum pause between digits of a group shortcut.</summary>
     public int GroupShortcutDelayMs { get; set; } = 400;

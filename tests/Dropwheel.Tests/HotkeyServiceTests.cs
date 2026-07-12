@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Dropwheel.Services;
 
 namespace Dropwheel.Tests;
@@ -46,5 +47,56 @@ public sealed class HotkeyServiceTests
     {
         Assert.False(HotkeyService.TryParse(hotkey, out _, out _));
         Assert.False(HotkeyService.IsValid(hotkey));
+    }
+
+    [Theory]
+    [InlineData("control + windows + enter", "Ctrl+Win+Return")]
+    [InlineData("Win+PgUp", "Win+PageUp")]
+    [InlineData("ctrl+alt+space", "Ctrl+Alt+Space")]
+    public void Manual_input_is_normalized_for_settings(string input, string expected)
+    {
+        Assert.True(HotkeyService.TryNormalize(input, out var normalized));
+
+        Assert.Equal(expected, normalized);
+    }
+
+    [Theory]
+    [InlineData("A")]
+    [InlineData("Space")]
+    public void Settings_normalization_requires_a_modifier(string input)
+    {
+        Assert.True(HotkeyService.TryParse(input, out _, out _));
+
+        Assert.False(HotkeyService.TryNormalize(input, out _));
+    }
+
+    [Theory]
+    [InlineData(Key.Space, ModifierKeys.Control | ModifierKeys.Alt, "Ctrl+Alt+Space")]
+    [InlineData(Key.D, ModifierKeys.Control | ModifierKeys.Shift, "Ctrl+Shift+D")]
+    [InlineData(Key.F12, ModifierKeys.Control | ModifierKeys.Alt, "Ctrl+Alt+F12")]
+    public void Captured_key_strokes_are_formatted_for_settings(
+        Key key,
+        ModifierKeys modifiers,
+        string expected)
+    {
+        Assert.True(HotkeyService.TryFormatCapturedHotkey(key, modifiers, out var hotkey));
+
+        Assert.Equal(expected, hotkey);
+    }
+
+    [Theory]
+    [InlineData(Key.LeftCtrl, ModifierKeys.Control)]
+    [InlineData(Key.A, ModifierKeys.None)]
+    public void Captured_key_strokes_need_a_modifier_and_non_modifier_key(
+        Key key,
+        ModifierKeys modifiers)
+    {
+        Assert.False(HotkeyService.TryFormatCapturedHotkey(key, modifiers, out _));
+    }
+
+    [Fact]
+    public void Equivalent_hotkeys_compare_by_registered_combination()
+    {
+        Assert.True(HotkeyService.IsSameCombination("Control+Alt+Space", "ctrl+alt+space"));
     }
 }

@@ -12,6 +12,10 @@ public sealed class HotkeyService : IDisposable
     [DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     private const int WM_HOTKEY = 0x0312, Id = 0x0D27;
+    private const uint ModAlt = 0x1;
+    private const uint ModCtrl = 0x2;
+    private const uint ModShift = 0x4;
+    private const uint ModWin = 0x8;
     private readonly HwndSource _src;
     private readonly Action _callback;
 
@@ -42,10 +46,12 @@ public sealed class HotkeyService : IDisposable
         foreach (var part in s.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
             switch (part.ToLowerInvariant())
             {
-                case "alt": mods |= 0x1; break;
-                case "ctrl": mods |= 0x2; break;
-                case "shift": mods |= 0x4; break;
-                case "win": mods |= 0x8; break;
+                case "alt": mods |= ModAlt; break;
+                case "ctrl": mods |= ModCtrl; break;
+                case "control": mods |= ModCtrl; break;
+                case "shift": mods |= ModShift; break;
+                case "win": mods |= ModWin; break;
+                case "windows": mods |= ModWin; break;
                 default:
                     if (key != null) return false; // more than one non-modifier key
                     try
@@ -63,6 +69,45 @@ public sealed class HotkeyService : IDisposable
 
     /// <summary>Whether the string is a hotkey the app can actually register.</summary>
     public static bool IsValid(string s) => TryParse(s, out _, out _);
+
+    /// <summary>Formats a captured key stroke as the settings editor stores it. User-facing hotkeys
+    /// need at least one modifier so a stray letter cannot hijack ordinary typing.</summary>
+    public static bool TryFormatCapturedHotkey(Key key, ModifierKeys modifiers, out string hotkey)
+    {
+        hotkey = "";
+        if (IsModifierKey(key) || key == Key.None) return false;
+
+        uint mods = 0;
+        if (modifiers.HasFlag(ModifierKeys.Control)) mods |= ModCtrl;
+        if (modifiers.HasFlag(ModifierKeys.Alt)) mods |= ModAlt;
+        if (modifiers.HasFlag(ModifierKeys.Shift)) mods |= ModShift;
+        if (modifiers.HasFlag(ModifierKeys.Windows)) mods |= ModWin;
+        if (!HasModifier(mods)) return false;
+
+        hotkey = Format(mods, key);
+        return true;
+    }
+
+    /// <summary>Normalizes manual input to the same canonical form as captured input. This keeps the
+    /// saved config stable while still accepting aliases such as Control or Windows.</summary>
+    public static bool TryNormalize(string s, out string hotkey)
+    {
+        hotkey = "";
+        if (!TryParse(s, out uint mods, out uint vk) || !HasModifier(mods)) return false;
+
+        var key = KeyInterop.KeyFromVirtualKey(checked((int)vk));
+        if (key == Key.None) return false;
+
+        hotkey = Format(mods, key);
+        return true;
+    }
+
+    /// <summary>Compares two hotkey strings by the virtual key they register, not by spelling.</summary>
+    public static bool IsSameCombination(string left, string right) =>
+        TryParse(left, out uint leftMods, out uint leftKey)
+        && TryParse(right, out uint rightMods, out uint rightKey)
+        && leftMods == rightMods
+        && leftKey == rightKey;
 
     private const int TrialId = 0x0D28; // distinct from the live Id so a trial never clashes with it
 
@@ -85,10 +130,46 @@ public sealed class HotkeyService : IDisposable
     /// layout. The map keys below are Cyrillic on purpose — that is the layout data.</summary>
     private static string NormalizeKeyName(string part)
     {
+        part = NormalizeAlias(part);
         if (part.Length != 1) return part;
         return CyrillicToLatin.TryGetValue(char.ToLowerInvariant(part[0]), out var lat)
             ? lat.ToString() : part;
     }
+
+    private static string NormalizeAlias(string part) => part.ToLowerInvariant() switch
+    {
+        "esc" => "Escape",
+        "enter" => "Return",
+        "del" => "Delete",
+        "ins" => "Insert",
+        "pgup" => "Prior",
+        "pageup" => "Prior",
+        "pgdn" => "Next",
+        "pagedown" => "Next",
+        _ => part,
+    };
+
+    private static bool HasModifier(uint mods) => (mods & (ModAlt | ModCtrl | ModShift | ModWin)) != 0;
+
+    private static string Format(uint mods, Key key)
+    {
+        var parts = new List<string>(5);
+        if ((mods & ModCtrl) != 0) parts.Add("Ctrl");
+        if ((mods & ModAlt) != 0) parts.Add("Alt");
+        if ((mods & ModShift) != 0) parts.Add("Shift");
+        if ((mods & ModWin) != 0) parts.Add("Win");
+        parts.Add(KeyName(key));
+        return string.Join("+", parts);
+    }
+
+    private static string KeyName(Key key) =>
+        new KeyConverter().ConvertToInvariantString(key) ?? key.ToString();
+
+    private static bool IsModifierKey(Key key) => key is
+        Key.LeftCtrl or Key.RightCtrl
+        or Key.LeftAlt or Key.RightAlt
+        or Key.LeftShift or Key.RightShift
+        or Key.LWin or Key.RWin;
 
     private static readonly Dictionary<char, char> CyrillicToLatin = new()
     {
