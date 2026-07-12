@@ -340,7 +340,16 @@ function Wait-ForWorkflowRun {
             'run', 'list', '--workflow', $Workflow, '--commit', $CommitSha,
             '--limit', '20', '--json', 'databaseId,status,conclusion,headSha,url,createdAt'
         ) -Capture
-        $runs = @($json | ConvertFrom-Json | Sort-Object createdAt -Descending)
+        # Windows PowerShell 5 emits an empty JSON array as one pipeline item
+        # whose value is an empty Object[]. Explicit enumeration prevents it
+        # from looking like a run with no databaseId under StrictMode.
+        $decodedRuns = $json | ConvertFrom-Json
+        $runs = @(
+            $decodedRuns |
+                ForEach-Object { $_ } |
+                Where-Object { $null -ne $_ } |
+                Sort-Object createdAt -Descending
+        )
         if ($runs.Count -gt 0) {
             $run = $runs[0]
             if ($reportedRun -ne $run.databaseId) {
@@ -371,7 +380,13 @@ function Start-OrResumeReleaseWorkflow {
         'run', 'list', '--workflow', $ReleaseWorkflow, '--commit', $CommitSha,
         '--limit', '20', '--json', 'databaseId,status,conclusion,headSha,url,createdAt'
     ) -Capture
-    $runs = @($json | ConvertFrom-Json | Sort-Object createdAt -Descending)
+    $decodedRuns = $json | ConvertFrom-Json
+    $runs = @(
+        $decodedRuns |
+            ForEach-Object { $_ } |
+            Where-Object { $null -ne $_ } |
+            Sort-Object createdAt -Descending
+    )
     if ($runs.Count -eq 0) {
         Write-Host "No release workflow run found; dispatching $ReleaseWorkflow for $Tag."
         Invoke-Native gh @('workflow', 'run', $ReleaseWorkflow, '--ref', $Tag, '-f', "tag=$Tag")
