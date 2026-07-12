@@ -16,6 +16,8 @@ public partial class TargetEditorWindow : Window
     {
         InitializeComponent();
         Themes.ApplyWindow(this);
+        Shell.PrimaryClick += OnSave;
+        Shell.DangerClick += OnDelete;
         _target = t;
         _preselect = preselectGroup;
         NameBox.Text = t.Name;

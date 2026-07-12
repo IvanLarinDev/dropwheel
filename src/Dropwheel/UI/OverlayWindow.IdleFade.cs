@@ -47,6 +47,7 @@ public partial class OverlayWindow
     public void ApplySettings()
     {
         if (Orb.ContextMenu is System.Windows.Controls.ContextMenu m) Themes.ApplyMenu(m);
+        Themes.RaiseThemeChanged();
         PaintHub();
         ApplyModeWindow(); // the overflow mode may have changed → resize the fixed window (wheel is closed here)
         if (_open) BuildCloud();

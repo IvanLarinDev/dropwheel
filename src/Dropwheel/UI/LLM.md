@@ -15,7 +15,13 @@
   `Capture` (Alt+Shift-захват: координаты приводятся к DIP, есть гард повторного входа и
   «поколение» probe), `GroupShortcuts`, `Undo`, `IdleFade`, `Sort`, `Hotkey`.
 - `SettingsWindow.xaml(.cs)`, `TargetEditorWindow.xaml(.cs)` + `TargetEditorWindow.Rules.cs`,
-  `PromptWindow.xaml(.cs)` — прочие окна.
+  `PromptWindow.xaml(.cs)`, `GroupDeleteWindow.xaml(.cs)` — прочие окна. Все они кладут своё
+  содержимое внутрь `DialogShell` (общий каркас: заголовок+подзаголовок, разделитель, футер).
+- `DialogShell.cs` + `DialogShell.xaml` — каркас диалогов. Футер всегда одинаков: справа
+  Primary-глагол (Enter), слева от него Cancel (Esc), опционально деструктив тихой кнопкой
+  слева (`DangerText`). Окно подписывает `PrimaryClick`/`DangerClick`; Cancel и Esc сами
+  закрывают диалог с `DialogResult=false`. `DwMessageBox.cs` — темизированная замена
+  `MessageBox` (с fallback на системный, если палитра ещё не готова).
 - `Themes.cs`, `Palette.cs`, `MenuTheme.xaml` — палитры и оформление. `Palette` — единственный
   источник цвета: помимо окон он держит общие роли обратной связи `Success/Warning/Danger/Info`,
   которыми красятся и диалоги, и колесо (бейджи дропа, битые цели). `Theme` — цветовая таблица
@@ -27,6 +33,10 @@
 - Изменения внешнего вида, раскладки и анимаций — только после мокапов: срабатывает хук
   `design-gate` (жёсткий гейт в pre-push/CI). Чисто логическая правка UI-файла (без
   изменения картинки) допустима, но при пуше потребует waiver с пояснением.
+- Новое окно-диалог строй на `DialogShell`: содержимое кладёшь внутрь, кнопки не рисуешь
+  сам — задаёшь `PrimaryText`/`DangerText` и подписываешь события. Не заводи своих футеров с
+  разным набором кнопок. Для сообщений и подтверждений — `DwMessageBox`, не `MessageBox`
+  (системный `MessageBox` оставляем только для ошибок старта до загрузки конфига).
 - Новую тему главного окна выноси в отдельный `OverlayWindow.<Тема>.cs`, не раздувай
   существующие части.
 - Цвета — только из ролей `Palette`/`Theme`. Никаких `Brushes.<Имя>` или `#hex` в

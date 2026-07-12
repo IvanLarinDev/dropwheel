@@ -29,14 +29,28 @@ public partial class App : Application
             args.Handled = true;
         };
 
-        StartupService.RefreshPath();
-        TargetStore.Load();
-        _overlay = new OverlayWindow();
-        _overlay.Show();
-        InitTray();
+        // A failure here happens before the overlay and theme exist, so there is no toast or themed
+        // dialog to show it in — fall back to the system message box and exit cleanly instead of a
+        // silent crash on, say, an unreadable config.
+        try
+        {
+            StartupService.RefreshPath();
+            TargetStore.Load();
+            _overlay = new OverlayWindow();
+            _overlay.Show();
+            InitTray();
 
-        _watcher = new WatcherService(Dispatcher, ShowSortedToast);
-        _watcher.Start();
+            _watcher = new WatcherService(Dispatcher, ShowSortedToast);
+            _watcher.Start();
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Startup failed", ex);
+            MessageBox.Show(
+                "Dropwheel couldn't start.\n\n" + ex.Message + "\n\nSee error.log for details.",
+                "Dropwheel", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown();
+        }
     }
 
     /// <summary>Unobtrusively reports that background auto-sort moved something. The toast coalesces

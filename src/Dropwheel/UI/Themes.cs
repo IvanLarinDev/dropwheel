@@ -57,6 +57,13 @@ public static class Themes
     public static Theme Current =>
         All.TryGetValue(TargetStore.Config.Theme, out var t) ? t : All["Fluent"];
 
+    /// <summary>Raised after the theme changes at runtime (settings saved). Open windows subscribe
+    /// to re-apply the palette so a live theme switch reaches every visible surface, not just the wheel.</summary>
+    public static event Action? ThemeChanged;
+
+    /// <summary>Announces a runtime theme change to subscribers. Called once the new theme is in effect.</summary>
+    public static void RaiseThemeChanged() => ThemeChanged?.Invoke();
+
     /// <summary>Whether the current theme uses dark window chrome (Dark or Neon).</summary>
     public static bool IsWindowDark => Palettes.Current.Dark;
 

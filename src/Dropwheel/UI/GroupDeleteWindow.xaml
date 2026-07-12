@@ -1,25 +1,26 @@
 <Window x:Class="Dropwheel.UI.GroupDeleteWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Delete group" Width="380" SizeToContent="Height"
+        xmlns:ui="clr-namespace:Dropwheel.UI"
+        Title="Delete group" Width="400" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize" Topmost="True">
-    <StackPanel Margin="18">
-        <TextBlock x:Name="Caption" Margin="0,0,0,14" TextWrapping="Wrap"/>
-        <RadioButton x:Name="KeepOption" Margin="0,0,0,10" IsChecked="True">
-            <StackPanel>
-                <TextBlock x:Name="KeepText" FontWeight="SemiBold"/>
-                <TextBlock x:Name="KeepSub" Opacity="0.7" FontSize="11" TextWrapping="Wrap"/>
-            </StackPanel>
-        </RadioButton>
-        <RadioButton x:Name="DeleteOption" Margin="0,0,0,4">
-            <StackPanel>
-                <TextBlock x:Name="DeleteText" FontWeight="SemiBold"/>
-                <TextBlock Text="Everything inside is removed" Opacity="0.7" FontSize="11"/>
-            </StackPanel>
-        </RadioButton>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="Cancel" Width="90" Padding="8,4" Margin="0,0,8,0" IsCancel="True" Click="OnCancel"/>
-            <Button Content="Continue" Width="90" Padding="8,4" IsDefault="True" Click="OnContinue"/>
+    <ui:DialogShell x:Name="Shell" PrimaryText="Delete group, keep items">
+        <StackPanel Margin="0,2,0,0">
+            <TextBlock x:Name="Caption" Margin="0,0,0,14" TextWrapping="Wrap"/>
+            <RadioButton x:Name="KeepOption" Margin="0,0,0,10" IsChecked="True">
+                <StackPanel>
+                    <TextBlock x:Name="KeepText" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="KeepSub" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{DynamicResource DwTextMuted}"/>
+                </StackPanel>
+            </RadioButton>
+            <RadioButton x:Name="DeleteOption" Margin="0,0,0,2">
+                <StackPanel>
+                    <TextBlock x:Name="DeleteText" FontWeight="SemiBold"/>
+                    <TextBlock Text="Everything inside is removed" FontSize="11"
+                               Foreground="{DynamicResource DwTextMuted}"/>
+                </StackPanel>
+            </RadioButton>
         </StackPanel>
-    </StackPanel>
+    </ui:DialogShell>
 </Window>

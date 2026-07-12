@@ -32,6 +32,7 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         Themes.ApplyWindow(this);
         PaintAnimPreview();
+        Shell.PrimaryClick += OnSave;
         var c = TargetStore.Config;
         foreach (var name in Themes.All.Keys) ThemeBox.Items.Add(name);
         foreach (var choice in OpenAnimationChoices) OpenAnimationBox.Items.Add(choice);
