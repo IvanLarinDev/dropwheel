@@ -8,14 +8,17 @@
 
 - Хранение и данные: `TargetStore` (загрузка/сохранение `config.json`, дедуп, санитайзер
   конфига), `PresetService`, `SortMigration`.
-- Файлы и дроп: `FileOps` (копирование/перемещение через проводник), `VirtualFileService`
-  (перетаскивание из браузера/почты), `TextDropService`, `LinkTargetService`.
+- Файлы и дроп: `FileOps` (копирование/перемещение через проводник), `DropDispatch`
+  (приоритеты дропа), `VirtualFileService` (перетаскивание из браузера/почты),
+  `TextDropService`, `LinkTargetService`, `FileMeta` (свойства файла для условий правил).
 - Запуск: `LaunchService` (открыть цель, запустить с файлами), `ShortcutResolver`
   (разбор `.lnk`), `StartupService` (автозапуск), `TelegramDropService`.
 - Ввод и присутствие: `MouseHook`, `KeyboardHook`, `HotkeyService`, `OrbGesture`,
-  `GroupShortcutActivation`, `FullscreenDetector`, `CursorTargetLocator`.
+  `GroupShortcutActivation`, `GroupShortcutSequence`, `ProximityState`,
+  `FullscreenDetector`, `CursorTargetLocator`.
 - Сортировка и раскладка: `SortService`, `WheelLayout`, `WatcherService` (авто-сортировка
-  наблюдаемых папок), `IconService`, `LinkMetadataService`, `ErrorLog`.
+  наблюдаемых папок), `HintPolicy` (лимиты показов подсказок), `IconService`,
+  `LinkMetadataService`, `ErrorLog`.
 
 ## Как работать
 

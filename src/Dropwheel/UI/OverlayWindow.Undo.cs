@@ -100,14 +100,14 @@ public partial class OverlayWindow
         else ShowToast("Could not undo completely", kind: ToastKind.Warning);
     }
 
-    /// <summary>Rebuilds a level to its snapshot: same items, same order, same pin positions. Any
-    /// targets added after the snapshot are absent from it, so restoring drops them.</summary>
     /// <summary>Re-inserts a deleted target at its old index, clamped in case the list changed length
     /// meanwhile. Best-effort like the rest of Undo: it restores the tile, not any cached favicon that
     /// deletion removed (that re-fetches on demand).</summary>
     internal static void RestoreDelete(DeleteOp op) =>
         op.List.Insert(Math.Clamp(op.Index, 0, op.List.Count), op.Item);
 
+    /// <summary>Rebuilds a level to its snapshot: same items, same order, same pin positions. Any
+    /// targets added after the snapshot are absent from it, so restoring drops them.</summary>
     internal static void RestoreLevel(AddOp add)
     {
         add.Level.Clear();

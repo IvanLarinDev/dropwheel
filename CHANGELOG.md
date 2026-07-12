@@ -4,43 +4,43 @@
 ## [v0.13.0](https://github.com/IvanLarinDev/dropwheel/compare/0abeb83284e46c7e8b6993ace622d0b92123279e..v0.13.0) - 2026-07-10
 #### Features
 - (**groups**) add sequential numeric shortcuts - ([f1e8885](https://github.com/IvanLarinDev/dropwheel/commit/f1e8885801dfae9fbef08be001c1ff40dbaa179c)) - Ivan Larin
-- (**orb**) живая аура призрака — радар-кольца над целью - ([cdba305](https://github.com/IvanLarinDev/dropwheel/commit/cdba305c0ef45376649f2987bda50e11ffb99cb9)) - Ivan Larin
-- (**orb**) заметнее взвод призрака над целью; убрана диагностика - ([673b121](https://github.com/IvanLarinDev/dropwheel/commit/673b1214b27a9e998da606c5f3a6853eef521236)) - Ivan Larin
-- (**orb**) анимации реакции на приближение — дыхание орба и подсветка цели - ([1ed9f96](https://github.com/IvanLarinDev/dropwheel/commit/1ed9f967d63d4471953f351a96eb91860bb6f37f)) - Ivan Larin
-- (**orb**) закрепление цели перетаскиванием орба с Alt+Shift - ([681843d](https://github.com/IvanLarinDev/dropwheel/commit/681843d1319f19aa4ad1480bc6f4d3de96e860f0)) - Ivan Larin
-- (**targets**) отмена добавления и закрепления цели - ([fb13c0d](https://github.com/IvanLarinDev/dropwheel/commit/fb13c0dbf213a393413e5fa393201b88dd4ec39c)) - Ivan Larin
+- (**orb**) live ghost aura — radar rings over the target - ([cdba305](https://github.com/IvanLarinDev/dropwheel/commit/cdba305c0ef45376649f2987bda50e11ffb99cb9)) - Ivan Larin
+- (**orb**) more visible ghost arming over the target; diagnostics removed - ([673b121](https://github.com/IvanLarinDev/dropwheel/commit/673b1214b27a9e998da606c5f3a6853eef521236)) - Ivan Larin
+- (**orb**) proximity reaction animations — orb breathing and target highlight - ([1ed9f96](https://github.com/IvanLarinDev/dropwheel/commit/1ed9f967d63d4471953f351a96eb91860bb6f37f)) - Ivan Larin
+- (**orb**) pin a target by dragging the orb with Alt+Shift - ([681843d](https://github.com/IvanLarinDev/dropwheel/commit/681843d1319f19aa4ad1480bc6f4d3de96e860f0)) - Ivan Larin
+- (**targets**) undo for adding and pinning a target - ([fb13c0d](https://github.com/IvanLarinDev/dropwheel/commit/fb13c0dbf213a393413e5fa393201b88dd4ec39c)) - Ivan Larin
 #### Bug Fixes
 - (**automation**) use one agents checkout - ([a326902](https://github.com/IvanLarinDev/dropwheel/commit/a326902517c4f163d3a150f84f6d00bd5c2044b4)) - Ivan Larin
 - (**groups**) keep shortcuts active in open wheel - ([04de018](https://github.com/IvanLarinDev/dropwheel/commit/04de01833b7388ed7d6bf675d7f878ec8e08be68)) - Ivan Larin
-- (**orb**) свечение призрака обрезалось окном — окну дан запас под ореол - ([5dc45cb](https://github.com/IvanLarinDev/dropwheel/commit/5dc45cb6c89206892098926866fe2c23ae6699c0)) - Ivan Larin
-- (**orb**) убрать фриз при захвате — UIA-хиттест ушёл в фоновый поток - ([12a0d5b](https://github.com/IvanLarinDev/dropwheel/commit/12a0d5bd79eb7300eae1e5ee359d5a7b00ef276f)) - Ivan Larin
+- (**orb**) ghost glow was clipped by the window — the window got margin for the halo - ([5dc45cb](https://github.com/IvanLarinDev/dropwheel/commit/5dc45cb6c89206892098926866fe2c23ae6699c0)) - Ivan Larin
+- (**orb**) no more freeze during capture — UIA hit-testing moved to a background thread - ([12a0d5b](https://github.com/IvanLarinDev/dropwheel/commit/12a0d5bd79eb7300eae1e5ee359d5a7b00ef276f)) - Ivan Larin
 #### Documentation
-- (**demo**) английская версия страницы; общие scenes.js и styles.css - ([76eeb1d](https://github.com/IvanLarinDev/dropwheel/commit/76eeb1d50952105ed3e724be42c8062884688845)) - Ivan Larin
-- (**demo**) секция «Элементы интерфейса» — колесо с пронумерованными частями - ([a884138](https://github.com/IvanLarinDev/dropwheel/commit/a884138029cd9a820ea53f77c6bb969570d4e525)) - Ivan Larin
-- (**demo**) живая аура призрака — радар-кольца при захвате - ([c2f526b](https://github.com/IvanLarinDev/dropwheel/commit/c2f526bf312d5b54fd141ccdb6ff99a28ec6482d)) - Ivan Larin
-- (**demo**) убрал лишний подзаголовок в шапке - ([ebf9da8](https://github.com/IvanLarinDev/dropwheel/commit/ebf9da8ddfd4f6c802b61f6075a3c48fff7487e5)) - Ivan Larin
-- (**demo**) актуализировал README и LLM под полный набор сцен - ([5bf9f1f](https://github.com/IvanLarinDev/dropwheel/commit/5bf9f1f65495b6a13407b33e7de392d367599c9e)) - Ivan Larin
-- (**demo**) вводный текст, блок остальных возможностей и подвал - ([c575c19](https://github.com/IvanLarinDev/dropwheel/commit/c575c19813aa735755e9bcd17b68791a491709b9)) - Ivan Larin
-- (**demo**) сцены ссылок с фавиконом, отмены и поведения орба - ([0600fa6](https://github.com/IvanLarinDev/dropwheel/commit/0600fa6bdbce1d1526f3fda99a0a66a4460facff)) - Ivan Larin
-- (**demo**) сцены групповых кодов и перестановки тайлов - ([29e223b](https://github.com/IvanLarinDev/dropwheel/commit/29e223b15468e3a8f4afd5465a1d891df129b551)) - Ivan Larin
-- (**demo**) сцены запуска, сортера и захвата цели Alt+Shift - ([c6318b4](https://github.com/IvanLarinDev/dropwheel/commit/c6318b432dad39728805a9bba8422a25ea9cb6fb)) - Ivan Larin
-- (**demo**) 4 темы, 4 анимации открытия и интерактивный основной вид - ([0e653eb](https://github.com/IvanLarinDev/dropwheel/commit/0e653eb624ddf5562134b4cf225e21a58abbf65a)) - Ivan Larin
-- (**demo**) сцены приближения, входа в группу и сохранения текста - ([ed68972](https://github.com/IvanLarinDev/dropwheel/commit/ed68972e6a0b9ae637ca7357aaaa2f019a674f0d)) - Ivan Larin
-- (**demo**) сцена приближения орба - ([723173c](https://github.com/IvanLarinDev/dropwheel/commit/723173cc19f990c1954413d8b7f470f196010182)) - Ivan Larin
-- (**demo**) показать дыхание орба на приближение в демо - ([c17e5bc](https://github.com/IvanLarinDev/dropwheel/commit/c17e5bc814186965789bbe6858438c39cd142f33)) - Ivan Larin
-- (**demo**) сцена перетаскивания файла с бейджами и тостом - ([740557f](https://github.com/IvanLarinDev/dropwheel/commit/740557f0c42654f252cf77b9e9bed4bcec21d1f4)) - Ivan Larin
-- (**demo**) основной вид колеса на JS вместо gif - ([59a25b4](https://github.com/IvanLarinDev/dropwheel/commit/59a25b4cf8f5e7094d286f519a33375be8272a3d)) - Ivan Larin
-- (**mockups**) 4 варианта живой ауры призрака над целью - ([c39b84d](https://github.com/IvanLarinDev/dropwheel/commit/c39b84d9b80ccc6bf967ef26fb2214eb7364b81d)) - Ivan Larin
-- заменить gif-демки ссылкой на живое JS-демо - ([0b33cc1](https://github.com/IvanLarinDev/dropwheel/commit/0b33cc1f8803abc0970a6615d53c09a7ac075f01)) - Ivan Larin
+- (**demo**) English page version; shared scenes.js and styles.css - ([76eeb1d](https://github.com/IvanLarinDev/dropwheel/commit/76eeb1d50952105ed3e724be42c8062884688845)) - Ivan Larin
+- (**demo**) "Interface names" section — the wheel with numbered parts - ([a884138](https://github.com/IvanLarinDev/dropwheel/commit/a884138029cd9a820ea53f77c6bb969570d4e525)) - Ivan Larin
+- (**demo**) live ghost aura — radar rings during capture - ([c2f526b](https://github.com/IvanLarinDev/dropwheel/commit/c2f526bf312d5b54fd141ccdb6ff99a28ec6482d)) - Ivan Larin
+- (**demo**) removed a redundant subtitle in the header - ([ebf9da8](https://github.com/IvanLarinDev/dropwheel/commit/ebf9da8ddfd4f6c802b61f6075a3c48fff7487e5)) - Ivan Larin
+- (**demo**) updated README and LLM for the full scene set - ([5bf9f1f](https://github.com/IvanLarinDev/dropwheel/commit/5bf9f1f65495b6a13407b33e7de392d367599c9e)) - Ivan Larin
+- (**demo**) intro text, other-features block and footer - ([c575c19](https://github.com/IvanLarinDev/dropwheel/commit/c575c19813aa735755e9bcd17b68791a491709b9)) - Ivan Larin
+- (**demo**) scenes for link targets with favicon, undo and orb behaviour - ([0600fa6](https://github.com/IvanLarinDev/dropwheel/commit/0600fa6bdbce1d1526f3fda99a0a66a4460facff)) - Ivan Larin
+- (**demo**) scenes for group codes and tile reordering - ([29e223b](https://github.com/IvanLarinDev/dropwheel/commit/29e223b15468e3a8f4afd5465a1d891df129b551)) - Ivan Larin
+- (**demo**) scenes for run targets, sorter and Alt+Shift target capture - ([c6318b4](https://github.com/IvanLarinDev/dropwheel/commit/c6318b432dad39728805a9bba8422a25ea9cb6fb)) - Ivan Larin
+- (**demo**) 4 themes, 4 open animations and an interactive main view - ([0e653eb](https://github.com/IvanLarinDev/dropwheel/commit/0e653eb624ddf5562134b4cf225e21a58abbf65a)) - Ivan Larin
+- (**demo**) scenes for proximity, entering a group and saving text - ([ed68972](https://github.com/IvanLarinDev/dropwheel/commit/ed68972e6a0b9ae637ca7357aaaa2f019a674f0d)) - Ivan Larin
+- (**demo**) orb proximity scene - ([723173c](https://github.com/IvanLarinDev/dropwheel/commit/723173cc19f990c1954413d8b7f470f196010182)) - Ivan Larin
+- (**demo**) show orb breathing on proximity in the demo - ([c17e5bc](https://github.com/IvanLarinDev/dropwheel/commit/c17e5bc814186965789bbe6858438c39cd142f33)) - Ivan Larin
+- (**demo**) file drag scene with badges and a toast - ([740557f](https://github.com/IvanLarinDev/dropwheel/commit/740557f0c42654f252cf77b9e9bed4bcec21d1f4)) - Ivan Larin
+- (**demo**) main wheel view in JS instead of a gif - ([59a25b4](https://github.com/IvanLarinDev/dropwheel/commit/59a25b4cf8f5e7094d286f519a33375be8272a3d)) - Ivan Larin
+- (**mockups**) 4 variants of the live ghost aura over the target - ([c39b84d](https://github.com/IvanLarinDev/dropwheel/commit/c39b84d9b80ccc6bf967ef26fb2214eb7364b81d)) - Ivan Larin
+- replace gif demos with a link to the live JS demo - ([0b33cc1](https://github.com/IvanLarinDev/dropwheel/commit/0b33cc1f8803abc0970a6615d53c09a7ac075f01)) - Ivan Larin
 #### Miscellaneous Chores
-- (**design**) waiver на язык анимации приближения (вариант дыхание) - ([68dfcdf](https://github.com/IvanLarinDev/dropwheel/commit/68dfcdf33f49f92201115055df18fa62b5d7aa02)) - Ivan Larin
-- (**design**) мокапы языка анимации приближения (объект→орб, призрак→объект) - ([2b1c03e](https://github.com/IvanLarinDev/dropwheel/commit/2b1c03ef6a8009a7d5cff63f7396befb850fdb82)) - Ivan Larin
-- (**design**) waiver для UI-правок групповых хоткеев - ([82903cd](https://github.com/IvanLarinDev/dropwheel/commit/82903cd6778c6c68062fc084528b03dbf71335f7)) - Ivan Larin
-- (**harness**) обновление харнесса и релизных хуков - ([b272e37](https://github.com/IvanLarinDev/dropwheel/commit/b272e37c8de2ba27931ab30ada8cc8adc1e8f506)) - Ivan Larin
+- (**design**) waiver for the proximity animation language (breathing variant) - ([68dfcdf](https://github.com/IvanLarinDev/dropwheel/commit/68dfcdf33f49f92201115055df18fa62b5d7aa02)) - Ivan Larin
+- (**design**) mockups for the proximity animation language (object→orb, ghost→object) - ([2b1c03e](https://github.com/IvanLarinDev/dropwheel/commit/2b1c03ef6a8009a7d5cff63f7396befb850fdb82)) - Ivan Larin
+- (**design**) waiver for group hotkey UI changes - ([82903cd](https://github.com/IvanLarinDev/dropwheel/commit/82903cd6778c6c68062fc084528b03dbf71335f7)) - Ivan Larin
+- (**harness**) harness and release hook updates - ([b272e37](https://github.com/IvanLarinDev/dropwheel/commit/b272e37c8de2ba27931ab30ada8cc8adc1e8f506)) - Ivan Larin
 - (**harness**) restore pipeline automation - ([0abeb83](https://github.com/IvanLarinDev/dropwheel/commit/0abeb83284e46c7e8b6993ace622d0b92123279e)) - Ivan Larin
-- (**orb**) диагностика входа в жест захвата (mousedown, begin) - ([7b1863d](https://github.com/IvanLarinDev/dropwheel/commit/7b1863dfa8ef9818775c9669311219e4ddbe81c3)) - Ivan Larin
-- (**orb**) временная диагностика распознавания цели при захвате - ([fcf6669](https://github.com/IvanLarinDev/dropwheel/commit/fcf6669d8da0d9df42f9b780ecaa40da1a39b3b4)) - Ivan Larin
-- игнорировать выхлоп автоматизации inbox/ и reports/ - ([6f08385](https://github.com/IvanLarinDev/dropwheel/commit/6f0838575fdcae22c24460549617d6ca490173d4)) - Ivan Larin
+- (**orb**) diagnostics for entering the capture gesture (mousedown, begin) - ([7b1863d](https://github.com/IvanLarinDev/dropwheel/commit/7b1863dfa8ef9818775c9669311219e4ddbe81c3)) - Ivan Larin
+- (**orb**) temporary diagnostics for target recognition during capture - ([fcf6669](https://github.com/IvanLarinDev/dropwheel/commit/fcf6669d8da0d9df42f9b780ecaa40da1a39b3b4)) - Ivan Larin
+- ignore automation output inbox/ and reports/ - ([6f08385](https://github.com/IvanLarinDev/dropwheel/commit/6f0838575fdcae22c24460549617d6ca490173d4)) - Ivan Larin
 
 - - -
 

@@ -122,7 +122,7 @@ public sealed class HotkeyService : IDisposable
 
     private IntPtr Hook(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)
     {
-        if (msg == WM_HOTKEY && (int)w == Id) { _callback(); handled = true; }
+        if (msg == WM_HOTKEY && checked((int)w) == Id) { _callback(); handled = true; }
         return IntPtr.Zero;
     }
 

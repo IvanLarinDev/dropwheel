@@ -1,0 +1,3 @@
+# Test project: underscore-separated test method names are the xUnit convention.
+[*.cs]
+dotnet_diagnostic.CA1707.severity = none
