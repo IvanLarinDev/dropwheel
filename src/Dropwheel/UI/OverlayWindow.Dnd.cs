@@ -40,10 +40,12 @@ public partial class OverlayWindow
                 return new DropConfidencePreview(
                     DragDropEffects.None, "No", "Can't",
                     "Cannot send this payload to Telegram.",
-                    ConfidenceTone.Danger, CanDrop: false);
+                    ConfidenceTone.Danger, CanDrop: false,
+                    ActiveLabelText: "Cannot send");
             }
 
             var telegramText = !real && !virt && TextDropService.HasText(e.Data);
+            var telegramAction = telegramText ? "Copy text" : "Copy files";
             return new DropConfidencePreview(
                 effect,
                 telegramText ? "Text" : "Copy",
@@ -52,7 +54,8 @@ public partial class OverlayWindow
                     ? $"Drop to copy text for {t.Name}."
                     : $"Drop to copy files for {t.Name}.",
                 ConfidenceTone.Info,
-                CanDrop: true);
+                CanDrop: true,
+                ActiveLabelText: $"{telegramAction} to {t.Name}");
         }
 
         if (real && LaunchService.IsRunTarget(t)) // drop files on an exe/script → run it (open with)
@@ -63,7 +66,8 @@ public partial class OverlayWindow
                 "Run",
                 $"Drop to open {RealFileCount(e)} item(s) with {t.Name}.",
                 ConfidenceTone.Info,
-                CanDrop: true);
+                CanDrop: true,
+                ActiveLabelText: $"Run with {t.Name}");
         }
         if ((!real && !virt && !link && !text) || !LaunchService.IsFolderTarget(t))
         {
@@ -78,7 +82,8 @@ public partial class OverlayWindow
                 "Can't",
                 reason,
                 ConfidenceTone.Danger,
-                CanDrop: false);
+                CanDrop: false,
+                ActiveLabelText: !t.Exists ? "Target missing" : "Cannot receive");
         }
 
         var act = DropDispatch.EffectiveAction(
@@ -98,7 +103,8 @@ public partial class OverlayWindow
                     ? "This link cannot be added from the current drag source."
                     : $"Drop to add this link to the current wheel level.",
                 effect == DragDropEffects.None ? ConfidenceTone.Danger : ConfidenceTone.Info,
-                CanDrop: effect != DragDropEffects.None);
+                CanDrop: effect != DragDropEffects.None,
+                ActiveLabelText: effect == DragDropEffects.None ? "Cannot add" : "Add link");
         }
 
         if (t.IsSorter)
@@ -109,7 +115,8 @@ public partial class OverlayWindow
                 "Sort",
                 $"Drop to sort into {t.Name}.",
                 ConfidenceTone.Info,
-                CanDrop: true);
+                CanDrop: true,
+                ActiveLabelText: $"Sort into {t.Name}");
         }
 
         if (text)
@@ -120,7 +127,8 @@ public partial class OverlayWindow
                 "Text",
                 $"Drop to save text in {t.Name}.",
                 ConfidenceTone.Info,
-                CanDrop: true);
+                CanDrop: true,
+                ActiveLabelText: $"Save text in {t.Name}");
         }
 
         return new DropConfidencePreview(
@@ -131,7 +139,8 @@ public partial class OverlayWindow
                 ? $"Drop to move to {t.Name}."
                 : $"Drop to copy to {t.Name}.",
             act == DropAction.Move ? ConfidenceTone.Warning : ConfidenceTone.Success,
-            CanDrop: true);
+            CanDrop: true,
+            ActiveLabelText: act == DropAction.Move ? $"Move to {t.Name}" : $"Copy to {t.Name}");
     }
 
     private static int RealFileCount(DragEventArgs e) =>

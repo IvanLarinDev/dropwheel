@@ -45,8 +45,8 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
 
     // Два прохода: копирование на Downloads(0) и перемещение на Documents(1).
     const PASSES = [
-      { index: 0, mode: "copy", label: "report.pdf", toast: "Copied to Downloads" },
-      { index: 1, mode: "move", label: "notes.txt",  toast: "Moved to Documents" },
+      { index: 0, mode: "copy", label: "report.pdf", toast: "Copied to Downloads", activeLabel: "Copy to Downloads" },
+      { index: 1, mode: "move", label: "notes.txt",  toast: "Moved to Documents", activeLabel: "Move to Documents" },
     ];
     const PASS_MS = 4200;
     const START = { x: 250, y: 505 };
@@ -76,7 +76,12 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
         };
         if (t > 780) {
           drop.forceHot = pass.index;
-          drop.confidence = { index: pass.index, mode: pass.mode, label: pass.mode === "move" ? "Move" : "Copy" };
+          drop.confidence = {
+            index: pass.index,
+            mode: pass.mode,
+            label: pass.mode === "move" ? "Move" : "Copy",
+            activeLabel: pass.activeLabel,
+          };
         }
       } else if (t < 1500) {
         // сброс: файл гаснет, тайл ещё горит
@@ -87,7 +92,12 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
           alpha: 1 - (t - 1300) / 200,
         };
         drop.forceHot = pass.index;
-        drop.confidence = { index: pass.index, mode: pass.mode, label: pass.mode === "move" ? "Move" : "Copy" };
+        drop.confidence = {
+          index: pass.index,
+          mode: pass.mode,
+          label: pass.mode === "move" ? "Move" : "Copy",
+          activeLabel: pass.activeLabel,
+        };
       }
       // кольцо-вспышка расходится от тайла после сброса
       if (t >= 1300 && t < 1800) {
@@ -185,14 +195,18 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
     function textScene(now) {
       const t = now % 5200;
       const tgt = text.tileCenter(TEXT_TARGET);
-      text.forceHot = -1; text.badges.clear(); text.ghost = null; text.flash = null; text.toast = null;
+      text.forceHot = -1; text.badges.clear(); text.confidence = null; text.ghost = null; text.flash = null; text.toast = null;
       if (t < 1300) {
         const p = easeOut(clamp01(t / 1000));
         text.ghost = { kind: "text", x: lerp(TEXT_START.x, tgt.x, p), y: lerp(TEXT_START.y, tgt.y, p), mode: "txt", label: SEL_TEXT, alpha: 1 };
-        if (t > 780) { text.forceHot = TEXT_TARGET; text.badges.set(TEXT_TARGET, "copy"); }
+        if (t > 780) {
+          text.forceHot = TEXT_TARGET;
+          text.confidence = { index: TEXT_TARGET, mode: "text", label: "Text", activeLabel: "Save text in Documents" };
+        }
       } else if (t < 1500) {
         text.ghost = { kind: "text", x: tgt.x, y: tgt.y, mode: "txt", label: SEL_TEXT, alpha: 1 - (t - 1300) / 200 };
-        text.forceHot = TEXT_TARGET; text.badges.set(TEXT_TARGET, "copy");
+        text.forceHot = TEXT_TARGET;
+        text.confidence = { index: TEXT_TARGET, mode: "text", label: "Text", activeLabel: "Save text in Documents" };
       }
       if (t >= 1300 && t < 1800) text.flash = { index: TEXT_TARGET, p: (t - 1300) / 500 };
       if (t >= 1400 && t < 4600) {
@@ -209,14 +223,18 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
     function runScene(now) {
       const t = now % 4600;
       const tgt = run.tileCenter(RUN_TARGET);
-      run.forceHot = -1; run.badges.clear(); run.ghost = null; run.flash = null; run.toast = null;
+      run.forceHot = -1; run.badges.clear(); run.confidence = null; run.ghost = null; run.flash = null; run.toast = null;
       if (t < 1300) {
         const p = easeOut(clamp01(t / 1000));
         run.ghost = { x: lerp(START.x, tgt.x, p), y: lerp(START.y, tgt.y, p), mode: "run", label: "data.csv", alpha: 1 };
-        if (t > 780) { run.forceHot = RUN_TARGET; run.badges.set(RUN_TARGET, "run"); }
+        if (t > 780) {
+          run.forceHot = RUN_TARGET;
+          run.confidence = { index: RUN_TARGET, mode: "run", label: "Run", activeLabel: "Run with Scripts" };
+        }
       } else if (t < 1500) {
         run.ghost = { x: tgt.x, y: tgt.y, mode: "run", label: "data.csv", alpha: 1 - (t - 1300) / 200 };
-        run.forceHot = RUN_TARGET; run.badges.set(RUN_TARGET, "run");
+        run.forceHot = RUN_TARGET;
+        run.confidence = { index: RUN_TARGET, mode: "run", label: "Run", activeLabel: "Run with Scripts" };
       }
       if (t >= 1300 && t < 1800) run.flash = { index: RUN_TARGET, p: (t - 1300) / 500 };
       if (t >= 1400 && t < 3800) {
@@ -242,13 +260,17 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
     function sortScene(now) {
       const t = now % 5600;
       const tgt = sortW.tileCenter(SORT_TARGET);
-      sortW.forceHot = -1; sortW.badges.clear(); sortW.ghost = null; sortW.chips = null; sortW.toast = null;
+      sortW.forceHot = -1; sortW.badges.clear(); sortW.confidence = null; sortW.ghost = null; sortW.chips = null; sortW.toast = null;
       if (t < 1200) {
         const p = easeOut(clamp01(t / 1000));
         sortW.ghost = { x: lerp(START.x, tgt.x, p), y: lerp(START.y, tgt.y, p), mode: "sorter", label: "6 files", alpha: 1 };
-        if (t > 780) { sortW.forceHot = SORT_TARGET; sortW.badges.set(SORT_TARGET, "sorter"); }
+        if (t > 780) {
+          sortW.forceHot = SORT_TARGET;
+          sortW.confidence = { index: SORT_TARGET, mode: "sorter", label: "Sort", activeLabel: "Sort into Inbox" };
+        }
       } else if (t < 4200) {
         sortW.forceHot = SORT_TARGET;
+        sortW.confidence = { index: SORT_TARGET, mode: "sorter", label: "Sort", activeLabel: "Sort into Inbox" };
         const ft = t - 1200;
         const chips = SUBF.map((s) => ({ x: s.x, y: s.y, label: s.label, color: s.color }));
         for (let i = 0; i < SORT_FILES.length; i++) {

@@ -66,7 +66,8 @@ public partial class OverlayWindow
                     ? "This payload cannot be added as a target."
                     : "Drop to add a target to the current wheel level.",
                 e.Effects == DragDropEffects.None ? ConfidenceTone.Danger : ConfidenceTone.Info,
-                e.Effects != DragDropEffects.None);
+                e.Effects != DragDropEffects.None,
+                activeLabelText: e.Effects == DragDropEffects.None ? "Cannot add" : "Add target");
             e.Handled = true;
         };
         panel.DragLeave += (_, _) => ClearConfidenceTarget(panel);

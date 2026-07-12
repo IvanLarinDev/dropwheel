@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 560" width="980" height="560" font-family="Segoe UI, system-ui, sans-serif" role="img" aria-label="Dropwheel target confidence visual states">
+  <title>Dropwheel target confidence states</title>
+  <desc>Four visual states for the Target-Confidence First direction: valid hover, invalid hover, missing target, and post-drop receipt.</desc>
+  <defs>
+    <filter id="tileShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.36"/>
+    </filter>
+    <filter id="labelShadow" x="-30%" y="-60%" width="160%" height="220%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.1" flood-color="#000000" flood-opacity="0.85"/>
+    </filter>
+    <style>
+      .stage { fill: #0d1017; stroke: rgba(255,255,255,.08); stroke-width: 1; }
+      .panel-title { fill: #eef2f8; font-size: 18px; font-weight: 650; }
+      .panel-note { fill: #8a96a8; font-size: 12px; }
+      .rim { fill: none; stroke: rgba(138,150,168,.12); stroke-width: 22; }
+      .rim-hot { fill: none; stroke-width: 22; stroke-linecap: round; }
+      .spoke { stroke: rgba(192,200,212,.16); stroke-width: 2; }
+      .spoke-hot { stroke-width: 3; stroke-linecap: round; }
+      .tile { fill: rgba(32,38,48,.94); stroke: rgba(255,255,255,.22); stroke-width: 1.2; filter: url(#tileShadow); }
+      .tile-dim { opacity: .38; }
+      .tile-valid { stroke-width: 1.7; }
+      .tile-missing { stroke-dasharray: 5 4; }
+      .label { fill: #c9d2de; font-size: 11.5px; text-anchor: middle; filter: url(#labelShadow); }
+      .label-active { fill: #eef2f8; font-size: 12.5px; font-weight: 650; }
+      .hub { fill: rgba(26,32,42,.96); stroke: rgba(192,200,212,.30); stroke-width: 1; filter: url(#tileShadow); }
+      .core { fill: #9db2cc; }
+      .chip { fill: rgba(26,32,42,.94); stroke-width: 1; }
+      .chip-text { fill: #ffffff; font-size: 11px; font-weight: 650; text-anchor: middle; dominant-baseline: middle; }
+      .badge-text { fill: #0a0e14; font-size: 11px; font-weight: 750; text-anchor: middle; dominant-baseline: middle; }
+      .receipt-text { fill: #ffffff; font-size: 12px; font-weight: 650; dominant-baseline: middle; }
+      .muted { fill: #8a96a8; }
+      .success { stroke: #46c980; }
+      .success-fill { fill: #46c980; }
+      .warning { stroke: #f0a93c; }
+      .warning-fill { fill: #f0a93c; }
+      .danger { stroke: #f0555c; }
+      .danger-fill { fill: #f0555c; }
+      .info { stroke: #6fa8ff; }
+      .info-fill { fill: #6fa8ff; }
+    </style>
+  </defs>
+
+  <rect width="980" height="560" rx="18" fill="#151a22"/>
+  <text x="32" y="38" class="panel-title">Target-Confidence First</text>
+  <text x="32" y="58" class="panel-note">Idle geometry stays familiar; drag states answer: can I drop here, what will happen, can I undo it?</text>
+
+  <g transform="translate(36,88)">
+    <rect class="stage" width="210" height="210" rx="14"/>
+    <text x="0" y="-16" class="panel-note">Valid hover: action + target agree</text>
+    <circle class="rim" cx="105" cy="105" r="74"/>
+    <path class="rim-hot success" d="M105 31 A74 74 0 0 1 179 105"/>
+    <line class="spoke" x1="105" y1="105" x2="105" y2="53"/>
+    <line class="spoke-hot success" x1="105" y1="105" x2="157" y2="105"/>
+    <line class="spoke" x1="105" y1="105" x2="105" y2="157"/>
+    <line class="spoke" x1="105" y1="105" x2="53" y2="105"/>
+    <circle class="hub" cx="105" cy="105" r="28"/>
+    <circle class="core success-fill" cx="105" cy="105" r="10"/>
+    <g class="tile-dim">
+      <rect class="tile" x="73" y="22" width="64" height="64" rx="17"/>
+      <text class="label" x="105" y="101">Desktop</text>
+      <rect class="tile" x="73" y="124" width="64" height="64" rx="17"/>
+      <text class="label" x="105" y="203">Documents</text>
+      <rect class="tile" x="20" y="73" width="64" height="64" rx="17"/>
+      <text class="label" x="52" y="152">Archive</text>
+    </g>
+    <rect class="tile tile-valid success" x="126" y="73" width="64" height="64" rx="17"/>
+    <rect class="chip success" x="121" y="136" width="74" height="20" rx="10"/>
+    <text class="chip-text" x="158" y="146">Copy</text>
+    <rect class="success-fill" x="170" y="66" width="36" height="18" rx="9"/>
+    <text class="badge-text" x="188" y="75">Copy</text>
+    <text class="label label-active" x="158" y="164">Copy to Downloads</text>
+  </g>
+
+  <g transform="translate(278,88)">
+    <rect class="stage" width="210" height="210" rx="14"/>
+    <text x="0" y="-16" class="panel-note">Invalid hover: visible target, clear blocker</text>
+    <circle class="rim" cx="105" cy="105" r="74"/>
+    <line class="spoke" x1="105" y1="105" x2="105" y2="53"/>
+    <line class="spoke-hot danger" x1="105" y1="105" x2="157" y2="105"/>
+    <line class="spoke" x1="105" y1="105" x2="105" y2="157"/>
+    <line class="spoke" x1="105" y1="105" x2="53" y2="105"/>
+    <circle class="hub" cx="105" cy="105" r="28"/>
+    <circle class="core danger-fill" cx="105" cy="105" r="10"/>
+    <g class="tile-dim">
+      <rect class="tile" x="73" y="22" width="64" height="64" rx="17"/>
+      <text class="label" x="105" y="101">Desktop</text>
+      <rect class="tile" x="73" y="124" width="64" height="64" rx="17"/>
+      <text class="label" x="105" y="203">Documents</text>
+      <rect class="tile" x="20" y="73" width="64" height="64" rx="17"/>
+      <text class="label" x="52" y="152">Archive</text>
+    </g>
+    <rect class="tile tile-valid danger" x="126" y="73" width="64" height="64" rx="17"/>
+    <rect class="chip danger" x="117" y="136" width="82" height="20" rx="10"/>
+    <text class="chip-text" x="158" y="146">Can't</text>
+    <rect class="danger-fill" x="173" y="66" width="30" height="18" rx="9"/>
+    <text class="badge-text" x="188" y="75">No</text>
+    <text class="label label-active" x="158" y="164">Cannot receive</text>
+  </g>
+
+  <g transform="translate(520,88)">
+    <rect class="stage" width="210" height="210" rx="14"/>
+    <text x="0" y="-16" class="panel-note">Missing target: warning is not color-only</text>
+    <circle class="rim" cx="105" cy="105" r="74"/>
+    <line class="spoke" x1="105" y1="105" x2="105" y2="53"/>
+    <line class="spoke-hot warning" x1="105" y1="105" x2="157" y2="105" stroke-dasharray="5 4"/>
+    <line class="spoke" x1="105" y1="105" x2="105" y2="157"/>
+    <line class="spoke" x1="105" y1="105" x2="53" y2="105"/>
+    <circle class="hub" cx="105" cy="105" r="28"/>
+    <circle class="core warning-fill" cx="105" cy="105" r="10"/>
+    <g class="tile-dim">
+      <rect class="tile" x="73" y="22" width="64" height="64" rx="17"/>
+      <text class="label" x="105" y="101">Desktop</text>
+      <rect class="tile" x="73" y="124" width="64" height="64" rx="17"/>
+      <text class="label" x="105" y="203">Documents</text>
+      <rect class="tile" x="20" y="73" width="64" height="64" rx="17"/>
+      <text class="label" x="52" y="152">Archive</text>
+    </g>
+    <rect class="tile tile-valid tile-missing warning" x="126" y="73" width="64" height="64" rx="17"/>
+    <rect class="warning-fill" x="177" y="123" width="22" height="18" rx="8"/>
+    <text class="badge-text" x="188" y="132">!</text>
+    <rect class="chip warning" x="118" y="136" width="80" height="20" rx="10"/>
+    <text class="chip-text" x="158" y="146">Locate</text>
+    <text class="label label-active" x="158" y="164">Target missing</text>
+  </g>
+
+  <g transform="translate(762,88)">
+    <rect class="stage" width="210" height="210" rx="14"/>
+    <text x="0" y="-16" class="panel-note">Post-drop receipt: result stays tied to target</text>
+    <circle class="rim" cx="105" cy="105" r="74"/>
+    <path class="rim-hot success" d="M105 31 A74 74 0 0 1 179 105"/>
+    <line class="spoke-hot success" x1="105" y1="105" x2="157" y2="105"/>
+    <circle class="hub" cx="105" cy="105" r="28"/>
+    <circle class="core success-fill" cx="105" cy="105" r="10"/>
+    <rect class="tile tile-valid success" x="126" y="73" width="64" height="64" rx="17"/>
+    <text class="label label-active" x="158" y="164">Downloads</text>
+    <rect x="95" y="172" width="126" height="28" rx="14" fill="rgba(26,32,42,.96)" stroke="#46c980"/>
+    <circle cx="109" cy="186" r="4" class="success-fill"/>
+    <text class="receipt-text" x="119" y="186">Copied - Undo</text>
+  </g>
+
+  <g transform="translate(36,360)">
+    <text class="panel-title" x="0" y="0">Implementation notes</text>
+    <text class="panel-note" x="0" y="28">1. Preserve current geometry: 460 DIP overlay, 56 hub, 170 rim, 64x64 tiles, 17 radius.</text>
+    <text class="panel-note" x="0" y="50">2. Keep idle wheel quiet; increase contrast only while dragging, focusing, or reporting a result.</text>
+    <text class="panel-note" x="0" y="72">3. Use Palette/Theme roles only: Success, Warning, Danger, Info/Accent, Backdrop, Label.</text>
+    <text class="panel-note" x="0" y="94">4. Every visual state needs a keyboard/live-announcement equivalent and a reduced-motion fallback.</text>
+    <text class="panel-note" x="0" y="116">5. If badges collide, keep one tile badge and move the full phrase into the label/hub chip.</text>
+  </g>
+</svg>

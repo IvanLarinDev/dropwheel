@@ -48,7 +48,8 @@ public partial class OverlayWindow
                 panel,
                 "Back",
                 "Hold to return to the previous wheel level.",
-                ConfidenceTone.Info);
+                ConfidenceTone.Info,
+                activeLabelText: "Back");
             e.Handled = true;
         };
         panel.DragLeave += (_, _) =>

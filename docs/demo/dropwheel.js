@@ -346,7 +346,7 @@ const DW = (() => {
         let op = clamp01(tt / (A.opacity / sp));
         if (this.tileMul && this.tileMul[i] != null) op *= this.tileMul[i];
         const locked = this.confidence && this.confidence.index === i;
-        if (this.confidence && !locked) op *= 0.34;
+        if (this.confidence && !locked) op *= (this.confidence.mode === "no" ? 0.58 : 0.42);
         const scale = A.scale + (1 - A.scale) * p;
         // радиальное или касательное стартовое смещение
         const off = A.offMode === "tangential"
@@ -358,7 +358,8 @@ const DW = (() => {
         ctx.globalAlpha = op;
         this._drawTile(ctx, t, x, y, scale * (hot ? 1.06 : 1), hot,
           locked ? null : this.badges.get(i), locked ? this.confidence : null);
-        this._drawCaption(ctx, t.label, s.x, s.y + 40, locked);
+        this._drawCaption(ctx, locked && this.confidence.activeLabel ? this.confidence.activeLabel : t.label,
+          s.x, s.y + 40, locked);
         ctx.globalAlpha = 1;
       }
 

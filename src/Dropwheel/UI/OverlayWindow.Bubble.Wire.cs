@@ -83,7 +83,8 @@ public partial class OverlayWindow
                     panel,
                     "Open",
                     $"Group {t.Name}. Hold to open this group.",
-                    ConfidenceTone.Info);
+                    ConfidenceTone.Info,
+                    activeLabelText: $"Open {t.Name}");
                 e.Handled = true;
             }
             else OnBubbleDragOver(panel, t, badge, e);

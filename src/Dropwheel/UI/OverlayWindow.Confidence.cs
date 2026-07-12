@@ -18,7 +18,8 @@ public partial class OverlayWindow
         string ChipText,
         string StatusText,
         ConfidenceTone Tone,
-        bool CanDrop);
+        bool CanDrop,
+        string? ActiveLabelText = null);
 
     private sealed class ConfidenceVisuals
     {
@@ -33,6 +34,7 @@ public partial class OverlayWindow
         public double BaseLabelMaxWidth { get; init; }
         public double BaseLabelFontSize { get; init; }
         public FontWeight BaseLabelWeight { get; init; }
+        public string BaseLabelText { get; init; } = "";
     }
 
     private readonly Dictionary<FrameworkElement, ConfidenceVisuals> _confidenceVisuals = new();
@@ -61,13 +63,16 @@ public partial class OverlayWindow
             FontWeight = FontWeights.SemiBold,
             Foreground = Brushes.White,
             TextAlignment = TextAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 110,
         };
         var chip = new Border
         {
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(6, 1, 6, 2),
             BorderThickness = new Thickness(1),
-            MaxWidth = 96,
+            MinWidth = 42,
+            MaxWidth = 126,
             Visibility = Visibility.Collapsed,
             IsHitTestVisible = false,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -103,6 +108,7 @@ public partial class OverlayWindow
             BaseLabelMaxWidth = label?.MaxWidth ?? 0,
             BaseLabelFontSize = label?.FontSize ?? 0,
             BaseLabelWeight = label?.FontWeight ?? FontWeights.Normal,
+            BaseLabelText = label?.Text ?? "",
         };
         _keyboardTargets.Add(element);
     }
@@ -124,7 +130,7 @@ public partial class OverlayWindow
 
         var name = AccessibleName(target);
         var status = $"{name}. {preview.StatusText}";
-        ShowConfidence(element, preview.ChipText, status, preview.Tone, preview.CanDrop);
+        ShowConfidence(element, preview.ChipText, status, preview.Tone, preview.CanDrop, preview.ActiveLabelText);
     }
 
     private void ShowGeneralConfidence(
@@ -132,9 +138,10 @@ public partial class OverlayWindow
         string chipText,
         string statusText,
         ConfidenceTone tone,
-        bool canDrop = true)
+        bool canDrop = true,
+        string? activeLabelText = null)
     {
-        ShowConfidence(element, chipText, statusText, tone, canDrop);
+        ShowConfidence(element, chipText, statusText, tone, canDrop, activeLabelText);
     }
 
     private void ShowConfidence(
@@ -142,7 +149,8 @@ public partial class OverlayWindow
         string chipText,
         string statusText,
         ConfidenceTone tone,
-        bool canDrop)
+        bool canDrop,
+        string? activeLabelText = null)
     {
         if (!_confidenceVisuals.TryGetValue(element, out var visuals)) return;
 
@@ -151,7 +159,7 @@ public partial class OverlayWindow
         foreach (var (candidate, candidateVisuals) in _confidenceVisuals)
         {
             bool active = ReferenceEquals(candidate, element);
-            candidate.Opacity = active ? 1.0 : 0.34;
+            candidate.Opacity = active ? 1.0 : canDrop ? 0.42 : 0.58;
             candidateVisuals.Ring.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
             candidateVisuals.Ring.Opacity = active ? 1 : 0;
             candidateVisuals.Chip.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
@@ -164,7 +172,7 @@ public partial class OverlayWindow
         visuals.Chip.BorderBrush = toneBrush;
         visuals.ChipText.Text = chipText;
         visuals.Badge?.SetCurrentValue(VisibilityProperty, Visibility.Collapsed);
-        EmphasizeLabel(visuals);
+        EmphasizeLabel(visuals, activeLabelText);
 
         AutomationProperties.SetName(element, statusText);
         AutomationProperties.SetHelpText(element, chipText);
@@ -193,17 +201,20 @@ public partial class OverlayWindow
         if (ReferenceEquals(_confidenceElement, element)) ClearConfidenceTarget();
     }
 
-    private void EmphasizeLabel(ConfidenceVisuals visuals)
+    private void EmphasizeLabel(ConfidenceVisuals visuals, string? activeLabelText)
     {
         if (visuals.Label == null) return;
+        if (!string.IsNullOrWhiteSpace(activeLabelText))
+            visuals.Label.Text = activeLabelText;
         visuals.Label.FontWeight = FontWeights.SemiBold;
         visuals.Label.FontSize = Math.Max(visuals.BaseLabelFontSize, 12.5);
-        visuals.Label.MaxWidth = Math.Max(visuals.BaseLabelMaxWidth, 116);
+        visuals.Label.MaxWidth = Math.Max(visuals.BaseLabelMaxWidth, 132);
     }
 
     private static void RestoreLabel(ConfidenceVisuals visuals)
     {
         if (visuals.Label == null) return;
+        visuals.Label.Text = visuals.BaseLabelText;
         visuals.Label.FontWeight = visuals.BaseLabelWeight;
         visuals.Label.FontSize = visuals.BaseLabelFontSize;
         visuals.Label.MaxWidth = visuals.BaseLabelMaxWidth;
