@@ -44,6 +44,12 @@ public class AppConfigTests : IDisposable
     }
 
     [Fact]
+    public void Default_hotkey_uses_the_shared_default()
+    {
+        Assert.Equal(AppConfig.DefaultHotkey, new AppConfig().Hotkey);
+    }
+
+    [Fact]
     public void OrderedForDisplay_without_positions_keeps_legacy_pinned_first_order()
     {
         var first = new TargetItem { Name = "first" };
