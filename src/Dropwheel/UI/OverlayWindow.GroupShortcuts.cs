@@ -166,7 +166,7 @@ public partial class OverlayWindow
         ShortcutIndicator.Visibility = Visibility.Collapsed;
         foreach (var element in Cloud.Children.OfType<FrameworkElement>())
         {
-            if (element.Tag is TargetItem target) element.Opacity = target.Exists ? 1.0 : 0.4;
+            if (element.Tag is TargetItem) element.Opacity = 1.0; // broken targets now show a badge, not dimming
         }
     }
 }

@@ -45,6 +45,21 @@ public partial class OverlayWindow
     private void RememberDelete(DeleteOp op)
     { _lastOps.Clear(); _lastAdd = null; _lastDelete = op; }
 
+    /// <summary>Deletes a target from the wheel and arms Undo for it — used by the broken-target menu's
+    /// Remove. Same effect as deleting from the editor, but without opening it.</summary>
+    private void RemoveTargetWithUndo(TargetItem t)
+    {
+        var parent = TargetStore.FindParentGroup(t);
+        IList<TargetItem> list = parent?.Children ?? TargetStore.Config.Targets;
+        int index = Math.Max(0, list.IndexOf(t));
+        TargetStore.DeleteTarget(t);
+        TargetStore.Save();
+        RememberDelete(new DeleteOp(list, t, index));
+        RefreshGroupShortcuts();
+        if (_open) BuildCloud();
+        ShowToast($"Removed {t.Name}", canUndo: true);
+    }
+
     internal static FileOp BuildOpBefore(DropAction act, string[] sources, string dest) =>
         new(act, sources, dest, FileOps.DestinationConflicts(sources, dest));
 

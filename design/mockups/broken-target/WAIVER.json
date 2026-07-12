@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "reason": "Package 5 of the UI/UX consolidation approved in UI-UX-SPEC.md (see DECISIONS.md, 2026-07-12). It replaces the way a broken target (its folder or file is gone) is shown on the wheel: instead of dimming the whole tile to 40% opacity — which read like a rendering bug and offered no action — the tile now stays full opacity, its icon goes grayscale, and a small yellow \"!\" mark sits in the bottom-right corner; a left-click opens a Locate…/Remove mini-menu (Remove deletes with an Undo toast) instead of silently failing to launch. The exact indication (warning corner mark + grayscale + Locate/Remove menu) is the one the owner already approved in the spec's tile-indication table, so this is applying an approved decision, not a new visual proposal; no per-package mockup adds anything. The tile order was reviewed and left as-is: TargetStore.OrderedForDisplay is already a persistent function of the list, pins and TilePosition, so the spec's 'persistent order, even distribution, growth at the end' requirement is already met and rewriting it would only risk regressions.",
+  "approvedBy": "Ivan Larin (repo owner) via chat request on 2026-07-12",
+  "date": "2026-07-12",
+  "uiPaths": [
+    "src/Dropwheel/UI/OverlayWindow.Bubble.cs",
+    "src/Dropwheel/UI/OverlayWindow.Bubble.Wire.cs",
+    "src/Dropwheel/UI/OverlayWindow.Undo.cs",
+    "src/Dropwheel/UI/OverlayWindow.GroupShortcuts.cs",
+    "src/Dropwheel/UI/LLM.md"
+  ]
+}

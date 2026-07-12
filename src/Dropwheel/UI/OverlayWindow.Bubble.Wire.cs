@@ -27,7 +27,6 @@ public partial class OverlayWindow
             Width = 76,
             Tag = t,
             AllowDrop = true,
-            Opacity = t.Exists ? 1.0 : 0.4,
             Background = Brushes.Transparent
         };
         panel.Children.Add(top);
@@ -55,6 +54,7 @@ public partial class OverlayWindow
                 return;
             }
             if (t.IsGroup) EnterGroup(t);
+            else if (!t.Exists) ShowMissingMenu(t);
             else { LaunchService.Launch(t); CloseCloud(); }
             e.Handled = true;
         };
@@ -101,6 +101,22 @@ public partial class OverlayWindow
             else OnBubbleDrop(t, badge, e);
         };
         return panel;
+    }
+
+    /// <summary>A broken target (its folder or file is gone) can't be launched, so a left-click offers
+    /// to fix it: Locate… opens the editor to repoint the path, Remove deletes it with an Undo toast.</summary>
+    private void ShowMissingMenu(TargetItem t)
+    {
+        var menu = new ContextMenu
+        { Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
+        var locate = new MenuItem { Header = "Locate…" };
+        locate.Click += (_, _) => OpenEditor(t);
+        var remove = new MenuItem { Header = "Remove" };
+        remove.Click += (_, _) => RemoveTargetWithUndo(t);
+        menu.Items.Add(locate);
+        menu.Items.Add(remove);
+        Themes.ApplyMenu(menu);
+        menu.IsOpen = true;
     }
 
     private void StartTileReorderDrag(FrameworkElement sourceElement, TargetItem source, MouseEventArgs e)

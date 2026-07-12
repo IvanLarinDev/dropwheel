@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -30,7 +31,7 @@ public partial class OverlayWindow
             {
                 Width = 32,
                 Height = 32,
-                Source = IconService.GetIcon(t),
+                Source = t.Exists ? IconService.GetIcon(t) : Desaturate(IconService.GetIcon(t)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -80,10 +81,33 @@ public partial class OverlayWindow
                 },
             });
         }
+        if (!t.IsGroup && !t.Exists) top.Children.Add(MissingBadge());
         var tile = WireBubble(t, badge, MakeLabel(t.Name), top, sq);
         System.Windows.Automation.AutomationProperties.SetName(tile, AccessibleName(t));
         return tile;
     }
+
+    /// <summary>A small warning mark in the tile's bottom-right corner, shown when the target's folder
+    /// or file is gone. It reads the problem without dimming the whole tile (which looked like a bug).</summary>
+    private static Border MissingBadge() => new()
+    {
+        Background = Palettes.Warning,
+        CornerRadius = new CornerRadius(8),
+        MinWidth = 16,
+        Height = 16,
+        Padding = new Thickness(4, 0, 4, 0),
+        HorizontalAlignment = HorizontalAlignment.Right,
+        VerticalAlignment = VerticalAlignment.Bottom,
+        Child = new TextBlock
+        {
+            Text = "!",
+            Foreground = new SolidColorBrush(OnAccentText(Palettes.Current.Warning)),
+            FontWeight = FontWeights.Bold,
+            FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        },
+    };
 
     /// <summary>Screen-reader label for a wheel tile: the target name plus a hint of what it is, since
     /// the tile itself is drawn from plain shapes and exposes no text of its own to accessibility tools.</summary>
@@ -112,6 +136,16 @@ public partial class OverlayWindow
     }
 
     private static double Luminance(Color c) => (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
+
+    /// <summary>Grayscale version of an icon, used for a broken target so the tile still shows what it
+    /// is but reads as inactive. Non-bitmap sources (rare) are returned unchanged.</summary>
+    private static ImageSource? Desaturate(ImageSource? source)
+    {
+        if (source is not BitmapSource bitmap) return source;
+        var gray = new FormatConvertedBitmap(bitmap, PixelFormats.Gray32Float, null, 0);
+        gray.Freeze();
+        return gray;
+    }
 
     /// <summary>Text color that reads on top of a filled badge: near-white on dark fills,
     /// near-black on light ones, so the digit stays legible whatever the theme's accent is.</summary>
