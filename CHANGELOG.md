@@ -1,6 +1,11 @@
 # Changelog
 
 - - -
+## [v0.15.2](https://github.com/IvanLarinDev/dropwheel/compare/v0.15.1..v0.15.2) - 2026-07-12
+#### Continuous Integration
+- add reliable release automation - ([4eb86ab](https://github.com/IvanLarinDev/dropwheel/commit/4eb86abb6b9102175d62368b9a8947648ea7f628)) - Ivan Larin
+
+- - -
 ## [v0.15.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.15.0..v0.15.1) - 2026-07-12
 #### Bug Fixes
 - log failed virtual-file saves and unify the destination-collision check - ([8e07d9f](https://github.com/IvanLarinDev/dropwheel/commit/8e07d9f56297b3912fbca2afd50d6442095d88b8)) - Ivan Larin
