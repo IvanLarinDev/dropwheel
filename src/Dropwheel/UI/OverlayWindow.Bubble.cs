@@ -48,7 +48,7 @@ public partial class OverlayWindow
         };
         var badge = new Border
         {
-            Background = Brushes.MediumSpringGreen,
+            Background = Palettes.Success,
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(5, 1, 5, 1),
             Visibility = Visibility.Collapsed,
@@ -72,7 +72,7 @@ public partial class OverlayWindow
                 Child = new TextBlock
                 {
                     Text = t.GroupCode,
-                    Foreground = Brushes.Black,
+                    Foreground = new SolidColorBrush(OnAccentText(th.Accent)),
                     FontFamily = new FontFamily("Consolas"),
                     FontWeight = FontWeights.Bold,
                     FontSize = 11,
@@ -112,4 +112,9 @@ public partial class OverlayWindow
     }
 
     private static double Luminance(Color c) => (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
+
+    /// <summary>Text color that reads on top of a filled badge: near-white on dark fills,
+    /// near-black on light ones, so the digit stays legible whatever the theme's accent is.</summary>
+    private static Color OnAccentText(Color bg) =>
+        Luminance(bg) < 0.5 ? Color.FromRgb(0xF0, 0xF4, 0xF8) : Color.FromRgb(0x0A, 0x0E, 0x14);
 }

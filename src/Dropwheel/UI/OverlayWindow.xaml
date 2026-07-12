@@ -60,7 +60,7 @@
                 </Ellipse.RenderTransform>
             </Ellipse>
             <Border x:Name="ShortcutIndicator" Visibility="Collapsed"
-                    Background="#E61A2230" CornerRadius="12" Padding="6,3"
+                    CornerRadius="12" Padding="6,3"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock x:Name="ShortcutIndicatorText" Foreground="White"
                            FontFamily="Consolas" FontWeight="Bold" FontSize="14"/>
@@ -68,11 +68,11 @@
         </Grid>
 
         <Border x:Name="Toast" Canvas.Left="90" Canvas.Top="412" Visibility="Collapsed"
-                Background="#E6161E2C" CornerRadius="8" Padding="10,6" MaxWidth="280">
+                CornerRadius="8" Padding="10,6" MaxWidth="280">
             <StackPanel Orientation="Horizontal">
                 <TextBlock x:Name="ToastText" Foreground="White" FontSize="12"
                            TextTrimming="CharacterEllipsis" MaxWidth="210"/>
-                <TextBlock x:Name="UndoLink" Text="  Undo" Foreground="#7CC4FF" FontSize="12"
+                <TextBlock x:Name="UndoLink" Text="  Undo" FontSize="12"
                            FontWeight="SemiBold" Cursor="Hand" Visibility="Collapsed"
                            MouseLeftButtonUp="OnUndoClick"/>
             </StackPanel>

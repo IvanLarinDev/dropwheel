@@ -13,14 +13,13 @@
                 <ColumnDefinition Width="82"/>
             </Grid.ColumnDefinitions>
             <ComboBox x:Name="OpenAnimationBox" Grid.Column="0" Margin="0,0,10,0"/>
-            <Border Grid.Column="1" BorderBrush="#465365" BorderThickness="1" Background="#131A25"
-                    Height="31">
-                <Canvas>
-                    <Ellipse Width="7" Height="7" Fill="#6ED7FF" Canvas.Left="37" Canvas.Top="12"/>
-                    <Ellipse Width="6" Height="6" Fill="#CC6ED7FF" Canvas.Left="20" Canvas.Top="6"/>
-                    <Ellipse Width="6" Height="6" Fill="#CC6ED7FF" Canvas.Left="54" Canvas.Top="6"/>
-                    <Ellipse Width="5" Height="5" Fill="#8C6ED7FF" Canvas.Left="12" Canvas.Top="21"/>
-                    <Ellipse Width="5" Height="5" Fill="#8C6ED7FF" Canvas.Left="62" Canvas.Top="21"/>
+            <Border x:Name="AnimPreviewBox" Grid.Column="1" BorderThickness="1" Height="31">
+                <Canvas x:Name="AnimPreviewDots">
+                    <Ellipse Width="7" Height="7" Canvas.Left="37" Canvas.Top="12"/>
+                    <Ellipse Width="6" Height="6" Opacity="0.8" Canvas.Left="20" Canvas.Top="6"/>
+                    <Ellipse Width="6" Height="6" Opacity="0.8" Canvas.Left="54" Canvas.Top="6"/>
+                    <Ellipse Width="5" Height="5" Opacity="0.55" Canvas.Left="12" Canvas.Top="21"/>
+                    <Ellipse Width="5" Height="5" Opacity="0.55" Canvas.Left="62" Canvas.Top="21"/>
                 </Canvas>
             </Border>
         </Grid>

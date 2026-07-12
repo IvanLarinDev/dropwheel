@@ -271,7 +271,7 @@ public partial class OverlayWindow
         }
 
         ((TextBlock)badge.Child).Text = "↕";
-        badge.Background = Brushes.DeepSkyBlue;
+        badge.Background = Palettes.Info;
         badge.Visibility = Visibility.Visible;
         e.Effects = DragDropEffects.Move;
         e.Handled = true;

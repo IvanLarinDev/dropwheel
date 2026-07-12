@@ -16,7 +16,11 @@
   «поколение» probe), `GroupShortcuts`, `Undo`, `IdleFade`, `Sort`, `Hotkey`.
 - `SettingsWindow.xaml(.cs)`, `TargetEditorWindow.xaml(.cs)` + `TargetEditorWindow.Rules.cs`,
   `PromptWindow.xaml(.cs)` — прочие окна.
-- `Themes.cs`, `Palette.cs`, `MenuTheme.xaml` — палитры и оформление.
+- `Themes.cs`, `Palette.cs`, `MenuTheme.xaml` — палитры и оформление. `Palette` — единственный
+  источник цвета: помимо окон он держит общие роли обратной связи `Success/Warning/Danger/Info`,
+  которыми красятся и диалоги, и колесо (бейджи дропа, битые цели). `Theme` — цветовая таблица
+  колеса, вычисляется от палитры плюс «колёсные» роли (напр. `Backdrop` — тёмная подложка тоста
+  и индикатора шортката над рабочим столом).
 
 ## Правила именно здесь
 
@@ -25,6 +29,10 @@
   изменения картинки) допустима, но при пуше потребует waiver с пояснением.
 - Новую тему главного окна выноси в отдельный `OverlayWindow.<Тема>.cs`, не раздувай
   существующие части.
+- Цвета — только из ролей `Palette`/`Theme`. Никаких `Brushes.<Имя>` или `#hex` в
+  consumer-файлах (кроме `Brushes.Transparent` и функциональных hit-test/almost-transparent
+  заливок). В XAML-окнах бери роли через `DynamicResource` (`DwTextMuted`, `DwBorder`,
+  `DwDanger` — их выставляет `Themes.ApplyWindow`).
 - Плитки рисуются из фигур без текста — задавай `AutomationProperties.Name` для
   доступности.
 - Координаты курсора из `GetCursorPos` — это device-пиксели; для позиций окон приводи к

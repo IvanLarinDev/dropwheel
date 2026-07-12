@@ -37,16 +37,24 @@ public partial class App
         menu.Items.Add(new WF.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
         StyleTrayMenu(menu);
+        menu.Opening += (_, _) => StyleTrayMenu(menu);
         _tray.ContextMenuStrip = menu;
         _tray.DoubleClick += (_, _) => _overlay?.ToggleCloud();
     }
 
-    /// <summary>WinForms tray menu ignores the WPF theme, so paint it from the palette by hand for
-    /// the dark themes. Applied once at startup; a theme change takes effect on next launch.</summary>
+    /// <summary>WinForms tray menu ignores the WPF theme, so paint it from the palette by hand.
+    /// Re-applied on each open so a theme change takes effect live: dark themes get the custom
+    /// renderer, light themes fall back to the default one.</summary>
     private static void StyleTrayMenu(WF.ContextMenuStrip menu)
     {
         var p = Dropwheel.UI.Palettes.Current;
-        if (!p.Dark) return;
+        if (!p.Dark)
+        {
+            menu.RenderMode = WF.ToolStripRenderMode.ManagerRenderMode;
+            menu.BackColor = SD.SystemColors.Menu;
+            menu.ForeColor = SD.SystemColors.MenuText;
+            return;
+        }
         menu.RenderMode = WF.ToolStripRenderMode.Professional;
         menu.Renderer = new WF.ToolStripProfessionalRenderer(new DarkMenuColors(p)) { RoundedEdges = false };
         menu.BackColor = ToSd(p.Surface);

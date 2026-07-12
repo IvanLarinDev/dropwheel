@@ -68,15 +68,16 @@ const DW = (() => {
     settle: { stagger: 12, dur: 170, opacity: 140, scale: 0.86, offMul: -10,  offMode: "radial",     ease: (t) => backOut(t, 0.28) },
   };
 
-  /** Бейджи действий на тайле (глиф + цвет) по OverlayWindow.Dnd.cs. */
+  /** Бейджи действий на тайле (глиф + цвет) по OverlayWindow.Dnd.cs.
+      Цвета — роли палитры Fluent: copy/text=Success, move=Warning, run/add/reorder=Info. */
   const BADGES = {
-    copy:   { glyph: "⧉", color: "rgb(0,250,154)" },   // MediumSpringGreen
-    move:   { glyph: "➜", color: "rgb(255,165,0)" },   // Orange
-    run:    { glyph: "▶", color: "rgb(100,149,237)" }, // CornflowerBlue
+    copy:   { glyph: "⧉", color: "rgb(31,157,87)" },   // Success
+    move:   { glyph: "➜", color: "rgb(224,134,0)" },   // Warning
+    run:    { glyph: "▶", color: "rgb(44,123,229)" },  // Info
     sorter: { glyph: "⇅", color: "rgb(232,166,72)" },  // amber (sorter)
-    text:   { glyph: "≡", color: "rgb(0,250,154)" },   // text → save (copy)
-    add:    { glyph: "+", color: "rgb(100,149,237)" }, // add as target
-    reorder:{ glyph: "↕", color: "rgb(0,191,255)" },   // DeepSkyBlue
+    text:   { glyph: "≡", color: "rgb(31,157,87)" },   // text → save (Success)
+    add:    { glyph: "+", color: "rgb(44,123,229)" },  // Info
+    reorder:{ glyph: "↕", color: "rgb(44,123,229)" },  // Info
   };
 
   /** Цвет подписи под тайлом: светлый на тёмной подписи темы (как MakeLabel). */
@@ -527,7 +528,7 @@ const DW = (() => {
       ctx.fillText(g.label || "выделенный текст", 0, 28);
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
       if (g.mode) {
-        ctx.fillStyle = "rgb(0,250,154)";
+        ctx.fillStyle = "rgb(31,157,87)";
         roundRect(ctx, 18, -26, 22, 18, 9); ctx.fill();
         ctx.fillStyle = "#06210f"; ctx.font = "bold 10px system-ui";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";

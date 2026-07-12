@@ -52,14 +52,14 @@
                         <TextBox x:Name="LaunchWorkDirBox" Margin="0,3,0,8"
                                  TextChanged="OnLaunchEditChanged"/>
                         <TextBlock Text="{}{target}   {targetDir}   {files}"
-                                   FontFamily="Consolas" FontSize="11" Foreground="Gray"
+                                   FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource DwTextMuted}"
                                    Margin="0,0,0,8"/>
-                        <Border x:Name="LaunchPreviewPanel" BorderBrush="#22000000"
+                        <Border x:Name="LaunchPreviewPanel" BorderBrush="{DynamicResource DwBorder}"
                                 BorderThickness="1" CornerRadius="5" Padding="8">
                             <TextBlock x:Name="LaunchPreviewText" FontFamily="Consolas"
                                        FontSize="11" TextWrapping="Wrap"/>
                         </Border>
-                        <TextBlock x:Name="LaunchStatusText" FontSize="11" Foreground="Gray"
+                        <TextBlock x:Name="LaunchStatusText" FontSize="11" Foreground="{DynamicResource DwTextMuted}"
                                    TextWrapping="Wrap" Margin="0,6,0,0"/>
                     </StackPanel>
                 </Expander>
@@ -73,7 +73,7 @@
             <StackPanel x:Name="MasterPanel" Grid.Column="1" Width="200" Margin="16,0,0,0"
                         Visibility="Collapsed">
                 <TextBlock Text="Routing rules" FontWeight="SemiBold"/>
-                <TextBlock Text="first match wins" FontSize="11" Foreground="Gray" Margin="0,1,0,6"/>
+                <TextBlock Text="first match wins" FontSize="11" Foreground="{DynamicResource DwTextMuted}" Margin="0,1,0,6"/>
                 <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="MasterHost"/>
                 </ScrollViewer>
@@ -87,7 +87,7 @@
             </StackPanel>
 
             <Border x:Name="DetailPanel" Grid.Column="2" Width="430" Margin="16,0,0,0"
-                    Visibility="Collapsed" BorderBrush="#22000000" BorderThickness="1"
+                    Visibility="Collapsed" BorderBrush="{DynamicResource DwBorder}" BorderThickness="1"
                     CornerRadius="6" Padding="10">
                 <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="DetailHost"/>
@@ -96,7 +96,7 @@
         </Grid>
 
         <Border x:Name="PreviewPanel" Grid.Row="1" Margin="0,16,0,0" Visibility="Collapsed"
-                BorderBrush="#22000000" BorderThickness="1" CornerRadius="6" Padding="10">
+                BorderBrush="{DynamicResource DwBorder}" BorderThickness="1" CornerRadius="6" Padding="10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="320"/>
@@ -120,7 +120,7 @@
 
         <DockPanel Grid.Row="2" Margin="0,14,0,0">
             <Button Content="Delete target" Click="OnDelete" DockPanel.Dock="Left"
-                    Foreground="Firebrick" Padding="8,4"/>
+                    Foreground="{DynamicResource DwDanger}" Padding="8,4"/>
             <Button Content="Save" Click="OnSave" Width="100" Padding="8,4"
                     HorizontalAlignment="Right"/>
         </DockPanel>

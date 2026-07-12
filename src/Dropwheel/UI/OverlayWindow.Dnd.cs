@@ -37,7 +37,7 @@ public partial class OverlayWindow
             var telegramText = !real && !virt && TextDropService.HasText(e.Data);
             e.Effects = effect;
             ((TextBlock)badge.Child).Text = telegramText ? "≡" : "⧉";
-            badge.Background = Brushes.CornflowerBlue;
+            badge.Background = Palettes.Info;
             badge.Visibility = Visibility.Visible;
             e.Handled = true;
             return;
@@ -47,7 +47,7 @@ public partial class OverlayWindow
         {
             e.Effects = DragDropEffects.Link;
             ((TextBlock)badge.Child).Text = "▶";
-            badge.Background = Brushes.CornflowerBlue;
+            badge.Background = Palettes.Info;
             badge.Visibility = Visibility.Visible;
             e.Handled = true;
             return;
@@ -64,7 +64,7 @@ public partial class OverlayWindow
         e.Effects = link ? AddTargetDropEffect(e) : act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
         ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : text ? "≡" : act == DropAction.Move ? "➜" : "⧉";
         if (link) ((TextBlock)badge.Child).Text = "+";
-        badge.Background = link ? Brushes.CornflowerBlue : act == DropAction.Move ? Brushes.Orange : Brushes.MediumSpringGreen;
+        badge.Background = link ? Palettes.Info : act == DropAction.Move ? Palettes.Warning : Palettes.Success;
         badge.Visibility = Visibility.Visible;
         e.Handled = true;
     }

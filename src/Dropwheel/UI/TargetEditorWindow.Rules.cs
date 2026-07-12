@@ -303,7 +303,7 @@ public partial class TargetEditorWindow
         var missing = used.Where(t => !available.Contains(t)).ToArray();
         if (missing.Length > 0)
         {
-            _tokenHint.Foreground = Brushes.Firebrick;
+            _tokenHint.Foreground = Palettes.Danger;
             _tokenHint.Text = "No such group: " + string.Join(", ", missing.Select(t => "${" + t + "}"))
                 + " — add a (?<name>…) group in a Name regex condition, or the file goes to the root.";
         }
@@ -533,7 +533,7 @@ public partial class TargetEditorWindow
     private static void MarkValue(TextBox box, RuleCondition cond)
     {
         bool bad = cond.Field == ConditionField.NameRegex && !IsValidRegex(cond.Value);
-        box.BorderBrush = bad ? Brushes.Firebrick : Palettes.Border;
+        box.BorderBrush = bad ? Palettes.Danger : Palettes.Border;
         box.ToolTip = bad ? "Invalid regular expression" : HintFor(cond.Field);
     }
 

@@ -31,6 +31,7 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         Themes.ApplyWindow(this);
+        PaintAnimPreview();
         var c = TargetStore.Config;
         foreach (var name in Themes.All.Keys) ThemeBox.Items.Add(name);
         foreach (var choice in OpenAnimationChoices) OpenAnimationBox.Items.Add(choice);
@@ -57,6 +58,19 @@ public partial class SettingsWindow : Window
         GroupShortcutDelayBox.Text = c.GroupShortcutDelayMs.ToString();
         DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
+    }
+
+    /// <summary>Colors the little orb preview from the current theme so it depicts the real wheel
+    /// look rather than a fixed neon swatch: the backdrop and dots follow the theme, the frame the
+    /// palette border. Dot opacities are set in XAML.</summary>
+    private void PaintAnimPreview()
+    {
+        var th = Themes.Current;
+        AnimPreviewBox.Background = new System.Windows.Media.SolidColorBrush(th.Backdrop);
+        AnimPreviewBox.BorderBrush = Palettes.Border;
+        var accent = new System.Windows.Media.SolidColorBrush(th.Accent);
+        foreach (var dot in AnimPreviewDots.Children)
+            if (dot is System.Windows.Shapes.Ellipse e) e.Fill = accent;
     }
 
     /// <summary>The threshold only applies to the overflow layouts, so it is greyed out for None.</summary>

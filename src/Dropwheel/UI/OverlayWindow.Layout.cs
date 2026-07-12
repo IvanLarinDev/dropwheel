@@ -240,5 +240,9 @@ public partial class OverlayWindow
         Bolt1.Fill = Bolt2.Fill = Bolt3.Fill = Bolt4.Fill = boltBrush;
         Rim.Stroke = new System.Windows.Media.SolidColorBrush(th.Rim);
         PinRing.Stroke = new System.Windows.Media.SolidColorBrush(th.Accent);
+        var backdrop = new System.Windows.Media.SolidColorBrush(th.Backdrop);
+        Toast.Background = backdrop;
+        ShortcutIndicator.Background = backdrop;
+        UndoLink.Foreground = new System.Windows.Media.SolidColorBrush(th.Accent);
     }
 }
