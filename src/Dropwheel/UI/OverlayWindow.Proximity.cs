@@ -6,6 +6,7 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
+    private readonly MouseHook _mouseHook = new();
     private bool _proximityOpened, _movingOrb;
     private bool _prevLeftDown, _suppressProximity;
     private double _orbSX, _orbSY, _openR2, _closeR2;
@@ -13,9 +14,9 @@ public partial class OverlayWindow
     private void InitProximity()
     {
         UpdateOrbScreenPos();
-        MouseHook.MouseMoved += OnGlobalMouse;
-        Closed += (_, _) => { MouseHook.MouseMoved -= OnGlobalMouse; MouseHook.Stop(); StopBreathing(); };
-        MouseHook.Start(); // hook is installed from the UI thread → callback runs there too
+        _mouseHook.MouseMoved += OnGlobalMouse;
+        Closed += (_, _) => { _mouseHook.Dispose(); StopBreathing(); };
+        _mouseHook.Start(); // hook is installed from the UI thread → callback runs there too
     }
 
     private void UpdateOrbScreenPos()
