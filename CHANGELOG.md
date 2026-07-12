@@ -1,6 +1,11 @@
 # Changelog
 
 - - -
+## [v0.16.2](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.1..v0.16.2) - 2026-07-12
+#### Features
+- (**ui**) clarify target confidence states - ([489d0ef](https://github.com/IvanLarinDev/dropwheel/commit/489d0ef8a150095e5951c4a99a3dfe57309eeb48)) - Ivan Larin
+
+- - -
 ## [v0.16.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.0..v0.16.1) - 2026-07-12
 #### Features
 - (**ui**) add confidence layer for wheel actions - ([bb951c6](https://github.com/IvanLarinDev/dropwheel/commit/bb951c64fbf3d11863a65eb38fab0244c93a815f)) - Ivan Larin
