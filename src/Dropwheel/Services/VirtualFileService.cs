@@ -29,7 +29,11 @@ public static partial class VirtualFileService
                 var path = UniquePath(destFolder, names[i]);
                 if (SaveContents(com, i, path)) saved.Add(path);
             }
-            catch { /* one broken item must not fail the whole drop */ }
+            catch (Exception ex)
+            {
+                // One broken item must not fail the whole drop, but leave a trail for diagnosis.
+                ErrorLog.Write($"Could not save virtual file '{names[i]}'", ex);
+            }
         }
         return saved.ToArray();
     }

@@ -31,7 +31,9 @@ public static class FileOps
     public static string[] DestinationConflicts(IEnumerable<string> files, string destFolder)
     {
         return files
-            .Select(f => Path.Combine(destFolder, Path.GetFileName(f)))
+            .Select(Path.GetFileName)
+            .Where(n => !string.IsNullOrEmpty(n))
+            .Select(n => Path.Combine(destFolder, n!))
             .Where(p => File.Exists(p) || Directory.Exists(p))
             .ToArray();
     }
@@ -56,16 +58,7 @@ public static class FileOps
     }
 
     public static bool HasDestinationCollision(IEnumerable<string> sources, string destFolder)
-    {
-        foreach (var source in sources)
-        {
-            var name = Path.GetFileName(source);
-            if (string.IsNullOrEmpty(name)) continue;
-            var dest = Path.Combine(destFolder, name);
-            if (File.Exists(dest) || Directory.Exists(dest)) return true;
-        }
-        return false;
-    }
+        => DestinationConflicts(sources, destFolder).Length > 0;
 
     /// <summary>Delete to Recycle Bin without confirmation (for Undo after a copy).</summary>
     public static bool Delete(IEnumerable<string> paths)
