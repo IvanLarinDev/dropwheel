@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dropwheel — live demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Dropwheel</h1>
+    <nav class="lang"><a href="index.html">RU</a> · <span class="cur">EN</span></nav>
+    <p class="lead">
+      Dropwheel is an overlay launcher for Windows: a floating orb expands into a
+      radial wheel of targets (folders and apps). Drop files to copy or move them,
+      drop text to save it as a file, or route a stream of files into subfolders
+      with rules. Every feature below is shown live and explained beside it.
+    </p>
+  </header>
+
+  <main class="scenes">
+    <section class="scene">
+      <div class="stage" id="stage-open"><canvas id="scene-open"></canvas></div>
+      <div class="about">
+        <h2>The wheel</h2>
+        <p>
+          The orb expands into a radial wheel of targets. At the center is the hub,
+          around it the rim with spokes and the tiles for folders, apps, groups and
+          sorters. Tiles fly out from the center one by one; hover a tile and it
+          highlights while its spoke lights up.
+        </p>
+        <p>
+          Settings pick one of four open animations, a speed and one of four themes.
+          You can play with all of it here — the wheel is drawn by the same formulas
+          as the app:
+        </p>
+        <div class="ctl">
+          <label>Animation
+            <select id="anim-open">
+              <option value="pop">Pop</option>
+              <option value="burst">Radial burst</option>
+              <option value="sweep">Clock sweep</option>
+              <option value="settle">Magnetic settle</option>
+            </select>
+          </label>
+          <label>Speed <span id="spd-val">1.0×</span>
+            <input id="spd-open" type="range" min="0.5" max="2" step="0.25" value="1">
+          </label>
+          <div class="themes" id="themes-open">
+            <button data-th="Fluent">Fluent</button>
+            <button data-th="Dark" class="on">Dark</button>
+            <button data-th="Light">Light</button>
+            <button data-th="Neon">Neon</button>
+          </div>
+          <button class="btn" id="replay-open">▶ Open again</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage" id="stage-gloss">
+        <canvas id="scene-gloss"></canvas>
+        <canvas id="gloss-anno" class="anno"></canvas>
+      </div>
+      <div class="about">
+        <h2>Interface elements</h2>
+        <p>What the parts of the wheel are called — handy when reading settings, bug
+           reports and this documentation. The numbers on the wheel match the list:</p>
+        <ol class="legend">
+          <li><span class="n">1</span><span><b>Hub / orb</b> — the center of the open wheel; closed, it's the orb, a floating button on the desktop. Dropping onto it adds a target.</span></li>
+          <li><span class="n">2</span><span><b>Rim</b> — the outer ring the tiles sit around.</span></li>
+          <li><span class="n">3</span><span><b>Spokes</b> — radial guides from the hub to each tile; they light on hover.</span></li>
+          <li><span class="n">4</span><span><b>Target tile</b> — a square drop destination: a folder, an app (run target), a group or a sorter.</span></li>
+          <li><span class="n">5</span><span><b>Tile label</b> — the target's name under the tile.</span></li>
+          <li><span class="n">6</span><span><b>Add tile</b> — the dashed “+”; creates a new target at the current level.</span></li>
+          <li><span class="n">7</span><span><b>Badge</b> — an action or status marker on a tile: copy ⧉, move ➜, run ▶, sorter ⇅.</span></li>
+          <li><span class="n">8</span><span><b>Group</b> — a tile that opens a nested level; shows the child count and its code.</span></li>
+          <li><span class="n">9</span><span><b>Sorter</b> — a folder with rules (amber border, ⇅) that files fan out into subfolders.</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-drop"></canvas></div>
+      <div class="about">
+        <h2>Dropping a file</h2>
+        <p>
+          Drag a file onto a target tile. While the cursor is over the tile it
+          highlights and a badge appears in the corner: ⧉ for copy, ➜ for move (hold
+          Shift). On drop the file flies into the target, the tile flashes, and a
+          toast rises from below with an undo option. The scene loops: first a copy
+          to Downloads, then a move to Documents.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-prox"></canvas></div>
+      <div class="about">
+        <h2>Open on approach</h2>
+        <p>
+          You don't have to open the wheel by hand. As a dragged file nears the orb
+          it comes alive: the halo glows and the core leans toward the cursor. Get
+          close enough and the wheel opens by itself, targets already at hand. Let go
+          and the orb folds back and waits.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-group"></canvas></div>
+      <div class="about">
+        <h2>Entering a group</h2>
+        <p>
+          A group is a tile that opens a nested wheel level instead of receiving
+          files. Clicking the Projects group rebuilds the rim: the root targets give
+          way to the group's contents, with a “Back” tile appearing first. Clicking
+          it returns to the root level. The reflow is the same “Pop” animation as the
+          open.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-text"></canvas></div>
+      <div class="about">
+        <h2>Saving text</h2>
+        <p>
+          You can drop not only a file onto a folder tile but also selected text from
+          a browser or editor. Dropwheel saves it to
+          <code>text_YYYY-MM-DD_HH-mm-ss.txt</code> (or <code>.md</code> when the text
+          looks like Markdown). The badge shows “txt”, and a toast confirms the name
+          of the created file with an undo option.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-run"></canvas></div>
+      <div class="about">
+        <h2>Run: “open with”</h2>
+        <p>
+          If a target is a program or script (<code>.exe</code>, <code>.bat</code>,
+          <code>.ps1</code>, <code>.py</code>, <code>.jar</code> and the like), files
+          dropped on its tile aren't copied — they're passed to the program as
+          arguments, the Windows “open with” behavior. The badge is blue with a ▶
+          triangle. Scripts the shell would only open in an editor are launched
+          through their interpreter (e.g. <code>.py</code> via <code>py</code>). This
+          is a launch, not a file operation, so it isn't undoable.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-sort"></canvas></div>
+      <div class="about">
+        <h2>Sorter: routing by rules</h2>
+        <p>
+          A sorter is a folder target with rules (an amber-bordered tile with a ⇅
+          badge). A batch dropped on it fans out into subfolders: the first rule
+          whose conditions all match takes the file. Conditions are extension, name
+          (substring or regex), size and age; a rule with no conditions is the
+          catch-all.
+        </p>
+        <p>
+          A destination can build the subfolder name from the file via
+          <code>${name}</code> tokens, so one rule both matches and routes into a
+          dated or named structure. The same engine powers “watch folder” — the
+          sorter files new arrivals in the background.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage" id="stage-capture"><canvas id="scene-capture"></canvas></div>
+      <div class="about">
+        <h2>Capturing a target with the orb (Alt+Shift)</h2>
+        <p>
+          To pin a folder, app or file straight from Explorer or the desktop, hold
+          <b>Alt+Shift</b> and drag the orb onto the target. A ghost orb follows the
+          cursor: over a valid target it arms — the core fills with the accent color,
+          the halo glows, and a frame appears around the target itself. While the
+          ghost is locked on, its aura is alive: three radar rings ping outward on a
+          steady beat, brighter the stronger the lock.
+        </p>
+        <p>
+          On release the ghost furls back into the orb, which pings a confirming
+          ring, holds a short beat — and the wheel opens with the new pinned tile
+          first, next to the hub. A “Pinned: …” toast lets you undo the add.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-codes"></canvas></div>
+      <div class="about">
+        <h2>Group codes</h2>
+        <p>
+          Every group has a one- or two-digit code. Hover the orb (or with the wheel
+          open) and type the code to jump straight into that group. While you type,
+          the hub shows the input, matching groups stay bright and the other tiles
+          dim.
+        </p>
+        <p>
+          If both <code>1</code> and <code>11</code> exist, <code>1</code> opens after
+          a short timeout waiting for a second digit, while a second <code>1</code>
+          typed before the timeout opens <code>11</code> at once. Codes stay attached
+          to their groups and don't shift when tiles are reordered.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-reorder"></canvas></div>
+      <div class="about">
+        <h2>Reordering tiles</h2>
+        <p>
+          A tile can be dragged to a new spot on the rim: grab it with the left
+          button and move along the ring. The dragged tile glides along an arc behind
+          the cursor, and the tiles it passes slide over smoothly to free the slot.
+          The order is remembered; the “Add” tile always stays last. Dropping on “+”
+          sends the tile to the very end.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-link"></canvas></div>
+      <div class="about">
+        <h2>Links, title and favicon</h2>
+        <p>
+          A link — a plain URL, <code>tg://</code> or <code>t.me/…</code> — can be
+          dropped on the orb or on “+”, and a quick-access tile appears. At first it
+          just shows the site's address; in the background Dropwheel fetches the page
+          title and favicon (png/jpg/ico/webp) and the tile updates in place: the name
+          becomes the page title and the icon becomes the site's favicon.
+        </p>
+        <p>
+          Telegram web links are converted to desktop <code>tg://</code> deep links
+          where possible, so a <code>t.me</code> tile opens Telegram Desktop.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-undo"></canvas></div>
+      <div class="about">
+        <h2>Undo</h2>
+        <p>
+          Almost any action can be reverted. After a move, copy, text save or adding
+          a target, a toast with an “Undo” link appears at the bottom, active for 6
+          seconds. Clicking it puts files back (copies to the Recycle Bin, moved files
+          back to their source) or removes the tile you just added. Launching a program
+          and background auto-sort are not undoable.
+        </p>
+      </div>
+    </section>
+
+    <section class="scene">
+      <div class="stage"><canvas id="scene-orb"></canvas></div>
+      <div class="about">
+        <h2>Orb behavior</h2>
+        <p>
+          The orb can be dragged anywhere on screen by holding <b>Alt</b> and
+          left-dragging (to any monitor; adding Shift pins instead of moving). Its
+          position is remembered between runs.
+        </p>
+        <p>
+          With idle fade on, the orb dims to near-invisible after a set time, and any
+          mouse movement nearby brings it right back. The orb also hides itself in
+          full-screen apps — games and presentations — and reappears when they exit.
+        </p>
+      </div>
+    </section>
+
+    <section class="more">
+      <h2>More features</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Send to Telegram</h3>
+          <p>Files or text dropped on a Telegram tile are copied to the clipboard,
+             Dropwheel brings the chat or topic to the foreground and pastes the
+             content (Ctrl+V) — you just press Send.</p>
+        </div>
+        <div class="card">
+          <h3>Virtual files</h3>
+          <p>Outlook attachments and browser images that aren't on disk yet are
+             accepted directly: Dropwheel extracts their stream and saves a real file.
+             Such files are always copied.</p>
+        </div>
+        <div class="card">
+          <h3>Watch a folder</h3>
+          <p>A sorter can watch its own folder: files that appear are routed by the
+             same rules in the background. Dropwheel waits for a file to finish
+             copying, sweeps the top level, and sends one notification per batch.</p>
+        </div>
+        <div class="card">
+          <h3>Rules: presets and preview</h3>
+          <p>Rules are edited in a master–detail list; there are ready categories
+             (Images, Documents, Archives…) and a “test files” box that shows at once
+             which files land in the selected rule.</p>
+        </div>
+        <div class="card">
+          <h3>Launch options</h3>
+          <p>For programs and scripts you can set a custom command with tokens
+             <code>{target}</code>, <code>{targetDir}</code>, <code>{files}</code> and
+             see a preview of the resulting command line.</p>
+        </div>
+        <div class="card">
+          <h3>Startup and placement</h3>
+          <p>The orb can start with Windows, remembers its spot on any monitor, and
+             settings live in <code>%AppData%\Dropwheel\config.json</code>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Wheel source — <a href="dropwheel.js">dropwheel.js</a> ·
+    project on <a href="https://github.com/IvanLarinDev/dropwheel">GitHub</a>
+  </footer>
+
+  <script src="dropwheel.js"></script>
+  <script>window.DW_TXT = { selectedText: "selected text" };</script>
+  <script src="scenes.js"></script>
+</body>
+</html>

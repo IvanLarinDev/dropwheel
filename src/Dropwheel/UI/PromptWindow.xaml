@@ -1,0 +1,15 @@
+<Window x:Class="Dropwheel.UI.PromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:Dropwheel.UI"
+        Title="Dropwheel" Width="320" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" Topmost="True">
+    <ui:DialogShell x:Name="Shell" PrimaryText="Create">
+        <StackPanel Margin="0,4,0,0">
+            <TextBlock x:Name="Caption" Margin="0,0,0,6" TextWrapping="Wrap"/>
+            <TextBox x:Name="Input"/>
+            <TextBlock x:Name="Hint" FontSize="11" Margin="0,4,0,0"
+                       Foreground="{DynamicResource DwTextMuted}" Text="Enter a name"/>
+        </StackPanel>
+    </ui:DialogShell>
+</Window>

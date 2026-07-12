@@ -1,0 +1,13 @@
+bin/
+obj/
+*.user
+*.LLM
+.vs/
+dist/
+
+# agent runtime
+.claude/settings.local.json
+
+# harness automation output
+inbox/
+reports/

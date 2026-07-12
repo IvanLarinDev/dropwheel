@@ -1,0 +1,91 @@
+using System.IO;
+using System.Text.Json.Serialization;
+
+namespace Dropwheel.Models;
+
+public enum DropAction { Inherit, Copy, Move }
+
+public class TargetItem
+{
+    public string Name { get; set; } = "";
+    public string Path { get; set; } = "";
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SourceUrl { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? IconPath { get; set; }
+
+    public DropAction Override { get; set; } = DropAction.Inherit;
+    public bool Pinned { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? TilePosition { get; set; }
+
+    /// <summary>Optional one- or two-digit shortcut used while the pointer is over the orb.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GroupCode { get; set; }
+
+    /// <summary>null — regular target; otherwise a group (one nesting level).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<TargetItem>? Children { get; set; }
+
+    /// <summary>Legacy sort rules: key — space-separated extensions ("jpg png") or "*",
+    /// value — subfolder relative to Path or an absolute path. null — regular target.
+    /// Superseded by Rules; kept for backward compatibility and migrated on editor open.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? SortRules { get; set; }
+
+    /// <summary>Ordered routing rules with conditions (size/date/name/regex). First match wins.
+    /// null — regular target. When present, takes precedence over the legacy SortRules.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<SortRule>? Rules { get; set; }
+
+    /// <summary>When true and this is a folder sorter, a background watcher auto-sorts files that
+    /// appear in Path by the same rules. Auto-sort moves files and is not tracked by Undo.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Watch { get; set; }
+
+    /// <summary>Custom command for this executable/script target. null means built-in default
+    /// launch behavior. Tokens: {target}, {targetDir}, {files}.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LaunchOptions? Launch { get; set; }
+
+    /// <summary>Extensions treated as "drop files to run it with them as arguments" targets.</summary>
+    public static readonly string[] ExeExtensions =
+        { ".exe", ".com", ".bat", ".cmd", ".ps1", ".py", ".pyw", ".vbs", ".wsf", ".js", ".jar" };
+
+    public static bool IsExeExtension(string path) =>
+        ExeExtensions.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant());
+
+    public static bool IsLaunchUri(string path) =>
+        Uri.TryCreate(path, UriKind.Absolute, out var uri)
+        && (uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+            || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            || uri.Scheme.Equals("tg", StringComparison.OrdinalIgnoreCase));
+
+    [JsonIgnore] public bool IsGroup => Children != null;
+    [JsonIgnore] public bool IsSorter => SortRules is { Count: > 0 } || Rules is { Count: > 0 };
+    [JsonIgnore] public bool IsFolder => !IsGroup && Directory.Exists(Path);
+
+    /// <summary>An executable or script by its own extension. A .lnk that points at an executable
+    /// is handled by LaunchService.IsRunTarget, which resolves the shortcut first.</summary>
+    [JsonIgnore] public bool IsExecutable => !IsGroup && IsExeExtension(Path);
+    [JsonIgnore] public bool IsUri => !IsGroup && IsLaunchUri(Path);
+
+    [JsonIgnore] public bool Exists => IsGroup || IsFolder || File.Exists(Path) || IsUri;
+}
+
+public sealed class LaunchOptions
+{
+    public string FileName { get; set; } = "{target}";
+    public string Arguments { get; set; } = "{files}";
+    public string WorkingDirectory { get; set; } = "{targetDir}";
+
+    public LaunchOptions Clone() => new()
+    {
+        FileName = FileName,
+        Arguments = Arguments,
+        WorkingDirectory = WorkingDirectory,
+    };
+}
