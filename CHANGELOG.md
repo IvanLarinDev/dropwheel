@@ -1,6 +1,20 @@
 # Changelog
 
 - - -
+## [v0.15.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.15.0..v0.15.1) - 2026-07-12
+#### Bug Fixes
+- log failed virtual-file saves and unify the destination-collision check - ([8e07d9f](https://github.com/IvanLarinDev/dropwheel/commit/8e07d9f56297b3912fbca2afd50d6442095d88b8)) - Ivan Larin
+#### Refactoring
+- MouseHook rewritten as IDisposable after the KeyboardHook pattern, with tests - ([0bb4317](https://github.com/IvanLarinDev/dropwheel/commit/0bb431728dad244f887800069b4faf71dc0618fa)) - Ivan Larin
+#### Documentation
+- root LLM.md; refreshed README and folder notes - ([3c83a02](https://github.com/IvanLarinDev/dropwheel/commit/3c83a02a90a45bc830aa83ac2a4541140661da82)) - Ivan Larin
+- translated the 0.13.0 changelog section into English - ([8276fc0](https://github.com/IvanLarinDev/dropwheel/commit/8276fc09ab4ac233bb3374322632b9fb5155720e)) - Ivan Larin
+#### Continuous Integration
+- restored the release workflow from the stash and added a CI test run - ([098bcd0](https://github.com/IvanLarinDev/dropwheel/commit/098bcd064576512702d2ff116cc7d1dcd0de0eec)) - Ivan Larin
+#### Miscellaneous Chores
+- enabled .NET analyzers and added .editorconfig - ([5a40395](https://github.com/IvanLarinDev/dropwheel/commit/5a40395a0b041e47421c331314ae283c3c3b71fb)) - Ivan Larin
+
+- - -
 ## [v0.13.0](https://github.com/IvanLarinDev/dropwheel/compare/0abeb83284e46c7e8b6993ace622d0b92123279e..v0.13.0) - 2026-07-10
 #### Features
 - (**groups**) add sequential numeric shortcuts - ([f1e8885](https://github.com/IvanLarinDev/dropwheel/commit/f1e8885801dfae9fbef08be001c1ff40dbaa179c)) - Ivan Larin
