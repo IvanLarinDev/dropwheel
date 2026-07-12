@@ -45,10 +45,12 @@ public partial class OverlayWindow
         if (!_open)
         {
             ResetGroupShortcutInput();
+            ClearConfidenceTarget();
             return;
         }
         _open = false;
         ResetGroupShortcutInput();
+        ClearConfidenceTarget();
         _currentGroup = null;
         _groupHover?.Stop();
         Cloud.Children.Clear();
@@ -69,6 +71,7 @@ public partial class OverlayWindow
     private void BuildCloud(HashSet<TargetItem>? arriving = null,
         Dictionary<TargetItem, Point>? from = null, Point? origin = null)
     {
+        ResetConfidenceRegistry();
         Cloud.Children.Clear();
         _spokes.Clear();
 
