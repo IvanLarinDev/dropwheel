@@ -202,7 +202,9 @@ If a target is an executable or script (`.exe`, `.com`, `.bat`, `.cmd`, `.ps1`,
 `.py`, `.pyw`, `.vbs`, `.wsf`, `.js`, `.jar`, or a `.lnk` to one), dropping files
 on its tile runs it with the dropped files as arguments — the Windows "open with"
 behaviour, shown with a `Run` badge. Scripts the shell would only open in an editor
-(`.ps1`, `.py`, `.jar`) are launched through their interpreter. This is a launch,
+(`.ps1`, `.py`, `.jar`) are launched through their interpreter. PowerShell scripts
+run with `-ExecutionPolicy Bypass` (otherwise the drop would open an editor instead
+of running), so only add scripts you trust as run targets. This is a launch,
 not a file operation, so it isn't undoable.
 
 ## Link targets
@@ -232,12 +234,17 @@ Light and Neon.
 
     src/Dropwheel/
       Models/    TargetItem, AppConfig, SortRule (conditions), FilePreset
-      Services/  TargetStore (JSON config), FileOps (SHFileOperation),
-                 VirtualFileService, TextDropService, SortService, SortMigration,
-                 WatcherService (auto-sort watched folders), FileMeta, PresetService,
-                 ShortcutResolver, MouseHook, HotkeyService, LaunchService,
-                 IconService, LinkTargetService, LinkMetadataService,
-                 TelegramDropService, StartupService, FullscreenDetector
+      Services/  storage: TargetStore (JSON config), PresetService, SortMigration;
+                 files & drops: FileOps (SHFileOperation), DropDispatch,
+                 VirtualFileService, TextDropService, LinkTargetService,
+                 TelegramDropService, FileMeta;
+                 launching: LaunchService, ShortcutResolver, StartupService;
+                 input & presence: MouseHook, KeyboardHook, HotkeyService,
+                 OrbGesture, GroupShortcutActivation, GroupShortcutSequence,
+                 CursorTargetLocator, ProximityState, FullscreenDetector;
+                 sorting & layout: SortService, WheelLayout, WatcherService
+                 (auto-sort watched folders), HintPolicy, IconService,
+                 LinkMetadataService, ErrorLog
       UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
                  DialogShell (shared dialog frame) + DwMessageBox + ToastHost,
                  TargetEditorWindow (+ .Rules master-detail),
@@ -261,6 +268,10 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to
 propose changes, [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community
 expectations, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities
 privately. Bug reports and feature requests use the issue templates.
+
+Note: the per-folder `README.md`/`LLM.md` files inside `src/` and `docs/demo/`
+are written in Russian, the maintainer's working language; code and comments
+are English.
 
 ## License
 

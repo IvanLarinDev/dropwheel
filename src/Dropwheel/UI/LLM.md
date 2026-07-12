@@ -7,13 +7,18 @@
 ## Ключевые файлы
 
 - `OverlayWindow.*.cs` — одно окно, разбитое на `partial class` по темам:
-  `Layout` (размер/позиция окна, ручное перемещение орба в DIP), `Cloud` (построение и
-  анимация плиток; `TileElementsByTarget` — общий безопасный поиск тайла), `Bubble`/
-  `Bubble.Wire`/`Plus`/`Back` (плитки и их события), `Dnd`/`OrbDrop`/`PinDrop`
-  (перетаскивание; приоритеты дропа считает `DropDispatch` из сервисов), `Proximity`/
-  `Charge` (реакция на приближение; rendering-loop стартует только при заряде),
-  `Capture` (Alt+Shift-захват: координаты приводятся к DIP, есть гард повторного входа и
-  «поколение» probe), `GroupShortcuts`, `Undo`, `IdleFade`, `Sort`, `Hotkey`.
+  - `Layout` — размер/позиция окна, ручное перемещение орба в DIP;
+  - `Cloud` — построение и анимация плиток; `TileElementsByTarget` — общий безопасный
+    поиск тайла;
+  - `Bubble`/`Bubble.Wire`/`Plus`/`Back` — плитки и их события;
+  - `Dnd`/`OrbDrop`/`PinDrop` — перетаскивание; приоритеты дропа считает `DropDispatch`
+    из сервисов;
+  - `Proximity`/`Charge` — реакция на приближение; rendering-loop стартует только
+    при заряде;
+  - `Capture` — Alt+Shift-захват: координаты приводятся к DIP, есть гард повторного
+    входа и «поколение» probe;
+  - `GroupShortcuts`, `Undo`, `IdleFade`, `Sort`, `Hotkey` — шорткаты групп, отмена,
+    затухание бездействия, сортировка, глобальный хоткей.
 - `SettingsWindow.xaml(.cs)`, `TargetEditorWindow.xaml(.cs)` + `TargetEditorWindow.Rules.cs`,
   `PromptWindow.xaml(.cs)`, `GroupDeleteWindow.xaml(.cs)` — прочие окна. Все они кладут своё
   содержимое внутрь `DialogShell` (общий каркас: заголовок+подзаголовок, разделитель, футер).
