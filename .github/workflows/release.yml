@@ -1,22 +1,75 @@
 name: Release
 
-# Tag push like v1.2.3 -> publish single-file exe -> zip -> GitHub Release
+# An annotated vX.Y.Z tag is the release boundary. workflow_dispatch allows a
+# failed or missed tag run to be repaired without moving or recreating the tag.
 on:
   push:
-    tags: ['v*']
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable SemVer tag to publish (vX.Y.Z)
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - name: Validate tag format
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$') {
+            throw "Release tag '$env:RELEASE_TAG' is not a stable vX.Y.Z SemVer."
+          }
 
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Validate release commit and project version
+        shell: pwsh
+        run: |
+          $content = Get-Content -Raw src/Dropwheel/Dropwheel.csproj
+          $matches = [regex]::Matches($content, '<Version>([^<]+)</Version>')
+          if ($matches.Count -ne 1) {
+            throw "Expected exactly one <Version> element; found $($matches.Count)."
+          }
+          $projectTag = "v$($matches[0].Groups[1].Value)"
+          if ($projectTag -ne $env:RELEASE_TAG) {
+            throw "Tag '$env:RELEASE_TAG' does not match project version '$projectTag'."
+          }
+
+          $tagCommit = (git rev-list -n 1 "refs/tags/$env:RELEASE_TAG").Trim()
+          $headCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $tagCommit -ne $headCommit) {
+            throw "Checkout commit '$headCommit' does not match tag commit '$tagCommit'."
+          }
+
+          git fetch origin main --no-tags
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch origin/main.' }
+          git merge-base --is-ancestor $headCommit origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release commit '$headCommit' is not an ancestor of origin/main."
+          }
+
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --nologo -c Release
 
       - name: Publish (framework-dependent, single file)
         run: dotnet publish src/Dropwheel -c Release -o dist-fd
@@ -26,17 +79,31 @@ jobs:
           dotnet publish src/Dropwheel -c Release -r win-x64 --self-contained true
           -p:IncludeNativeLibrariesForSelfExtract=true -o dist-sc
 
-      - name: Zip
+      - name: Package and checksum
         shell: pwsh
         run: |
-          Compress-Archive -Path dist-fd/* -DestinationPath "Dropwheel-${{ github.ref_name }}-win-x64.zip"
-          Compress-Archive -Path dist-sc/* -DestinationPath "Dropwheel-${{ github.ref_name }}-win-x64-self-contained.zip"
+          $fd = "Dropwheel-$env:RELEASE_TAG-win-x64.zip"
+          $sc = "Dropwheel-$env:RELEASE_TAG-win-x64-self-contained.zip"
+          $checksums = "Dropwheel-$env:RELEASE_TAG-SHA256SUMS.txt"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+          Compress-Archive -Path dist-fd/* -DestinationPath $fd
+          Compress-Archive -Path dist-sc/* -DestinationPath $sc
+          Get-FileHash $fd, $sc -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))" } |
+            Set-Content -Encoding utf8NoBOM $checksums
+
+      - name: Create or repair GitHub Release
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # softprops/action-gh-release@v3
         with:
-          files: Dropwheel-*.zip
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            Dropwheel-${{ env.RELEASE_TAG }}-win-x64.zip
+            Dropwheel-${{ env.RELEASE_TAG }}-win-x64-self-contained.zip
+            Dropwheel-${{ env.RELEASE_TAG }}-SHA256SUMS.txt
+          fail_on_unmatched_files: true
+          overwrite_files: true
           generate_release_notes: true
+          make_latest: true
           body: |
             Dropwheel — overlay launcher & drag-and-drop wheel for Windows 10/11.
             Unzip and run Dropwheel.exe. Config: %AppData%\Dropwheel\config.json
