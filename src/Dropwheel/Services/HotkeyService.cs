@@ -64,6 +64,20 @@ public sealed class HotkeyService : IDisposable
     /// <summary>Whether the string is a hotkey the app can actually register.</summary>
     public static bool IsValid(string s) => TryParse(s, out _, out _);
 
+    private const int TrialId = 0x0D28; // distinct from the live Id so a trial never clashes with it
+
+    /// <summary>Whether the combination is free to register right now: a trial registration under a
+    /// throwaway id, released immediately. Returns false for bad syntax or a combo another app already
+    /// holds. NOTE: the app's own active hotkey reads as taken (we hold it), so callers must treat
+    /// "same as the current hotkey" as available before calling this.</summary>
+    public static bool IsAvailable(string s)
+    {
+        if (!TryParse(s, out uint mods, out uint vk)) return false;
+        if (!RegisterHotKey(IntPtr.Zero, TrialId, mods, vk)) return false;
+        UnregisterHotKey(IntPtr.Zero, TrialId);
+        return true;
+    }
+
     /// <summary>Russian (JCUKEN) layout: a single Cyrillic letter maps to the Latin key at the same
     /// physical position. Without this a user on a Russian layout types a letter that looks right in
     /// the hotkey field, but KeyConverter can't parse it and the combo is wrongly treated as broken.

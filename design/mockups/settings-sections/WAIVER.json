@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "reason": "Package 4 of the UI/UX consolidation approved in UI-UX-SPEC.md (see DECISIONS.md, 2026-07-12). It reworks the Settings window from one tall column into a two-pane layout — a section list (Wheel behavior, Appearance, Hotkey & shortcuts, System) on the left, that section's controls on the right — and introduces one inline validation language everywhere: bad values show a red line under their own field, invalid sections get a red dot in the list, Save stays disabled until every field is valid, and the hotkey field checks itself live via a trial registration. It also moves the target editor's four pop-up validation errors to an inline line, converts a preset notice to the themed DwMessageBox, and makes deleting a plain target instant with an Undo toast. The layout WAS reviewed: four Settings layouts were rendered as real mockups in design/mockups/settings-sections/index.html (published as an artifact and shown to the owner), who chose variant 4 (two-pane list) on 2026-07-12. This waiver records that approval and scopes gate coverage to the files that implement it.",
+  "approvedBy": "Ivan Larin (repo owner) via chat request on 2026-07-12",
+  "date": "2026-07-12",
+  "uiPaths": [
+    "src/Dropwheel/UI/SettingsWindow.xaml",
+    "src/Dropwheel/UI/SettingsWindow.xaml.cs",
+    "src/Dropwheel/UI/TargetEditorWindow.xaml",
+    "src/Dropwheel/UI/TargetEditorWindow.xaml.cs",
+    "src/Dropwheel/UI/TargetEditorWindow.Rules.cs",
+    "src/Dropwheel/UI/OverlayWindow.Undo.cs",
+    "src/Dropwheel/UI/OverlayWindow.Layout.cs",
+    "src/Dropwheel/UI/LLM.md"
+  ]
+}

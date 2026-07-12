@@ -462,8 +462,8 @@ public partial class TargetEditorWindow
         var ext = rule.All.FirstOrDefault(c => c.Field == ConditionField.Extension)?.Value;
         if (string.IsNullOrWhiteSpace(ext))
         {
-            MessageBox.Show(this, "Presets are extension-based — add an Extension condition first.",
-                "Save as preset", MessageBoxButton.OK, MessageBoxImage.Information);
+            DwMessageBox.Show(this, "Save as preset",
+                "Presets are extension-based — add an Extension condition first.");
             return;
         }
         var prompt = new PromptWindow("Save as preset", "Preset name:") { Owner = this };

@@ -221,6 +221,11 @@ public partial class OverlayWindow
         TargetStore.Save();
         RefreshGroupShortcuts();
         if (_open) BuildCloud();
+        if (dlg.Deleted is { } del)
+        {
+            RememberDelete(new DeleteOp(del.List, del.Item, del.Index));
+            ShowToast($"Deleted {del.Item.Name}", canUndo: true);
+        }
     }
 
     /// <summary>Repaint the hub and rim with the current theme colors.</summary>

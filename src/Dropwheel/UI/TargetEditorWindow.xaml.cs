@@ -65,29 +65,26 @@ public partial class TargetEditorWindow : Window
         if (dlg.ShowDialog() == WF.DialogResult.OK) PathBox.Text = dlg.SelectedPath;
     }
 
+    /// <summary>Shows a validation problem inline above the footer instead of a pop-up, so the user
+    /// stays in the form. Cleared on the next save attempt.</summary>
+    private void ShowEditorError(string message)
+    {
+        EditorError.Text = message;
+        EditorError.Visibility = Visibility.Visible;
+    }
+
     private void OnSave(object sender, RoutedEventArgs e)
     {
-        if (_rulesMode && !TryValidateRules(out var error))
-        {
-            MessageBox.Show(this, error, "Rules", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+        EditorError.Visibility = Visibility.Collapsed;
+        if (_rulesMode && !TryValidateRules(out var error)) { ShowEditorError(error); return; }
         if (_target.IsGroup)
         {
             var code = GroupShortcutBox.Text.Trim();
             if (code.Length > 0 && !GroupShortcutSequence.IsValidCode(code))
-            {
-                MessageBox.Show(this, "Use one or two digits, or leave the shortcut empty.",
-                    "Group shortcut", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+            { ShowEditorError("Use one or two digits for the shortcut, or leave it empty."); return; }
             if (code.Length > 0 && TargetStore.Groups.Any(group =>
                     !ReferenceEquals(group, _target) && group.GroupCode == code))
-            {
-                MessageBox.Show(this, $"Shortcut {code} is already assigned to another group.",
-                    "Group shortcut", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+            { ShowEditorError($"Shortcut {code} is already assigned to another group."); return; }
             _target.GroupCode = code.Length == 0 ? null : code;
         }
         _target.Name = NameBox.Text.Trim();
@@ -108,6 +105,13 @@ public partial class TargetEditorWindow : Window
         Close();
     }
 
+    /// <summary>Set when a plain target (or an empty group) was deleted, so the overlay can offer an
+    /// Undo that re-inserts it where it was. Group deletions that dissolve or wipe children go through
+    /// the GroupDeleteWindow confirmation instead and are not reported.</summary>
+    public readonly record struct DeletedTarget(IList<TargetItem> List, TargetItem Item, int Index);
+
+    public DeletedTarget? Deleted { get; private set; }
+
     private void OnDelete(object sender, RoutedEventArgs e)
     {
         // A group with children can lose a lot of configuration in one click, so confirm and offer a
@@ -122,8 +126,16 @@ public partial class TargetEditorWindow : Window
                 Close();
                 return;
             }
+            TargetStore.DeleteTarget(_target);
+            Close();
+            return;
         }
+        // A plain target (or an empty group) deletes instantly; report it so the overlay can offer Undo.
+        var parent = TargetStore.FindParentGroup(_target);
+        IList<TargetItem> list = parent?.Children ?? TargetStore.Config.Targets;
+        int index = Math.Max(0, list.IndexOf(_target));
         TargetStore.DeleteTarget(_target);
+        Deleted = new DeletedTarget(list, _target, index);
         Close();
     }
 
@@ -199,8 +211,7 @@ public partial class TargetEditorWindow : Window
         var options = CurrentLaunchOptions();
         if (string.IsNullOrWhiteSpace(options.FileName))
         {
-            MessageBox.Show(this, "Program is required for custom launch.",
-                "Launch options", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowEditorError("Custom launch needs a program.");
             return false;
         }
         _target.Launch = options;

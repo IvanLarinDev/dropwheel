@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Threading;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -27,12 +29,19 @@ public partial class SettingsWindow : Window
         new("Concentric columns — radial pairs", OverflowLayout.Columns),
     ];
 
+    private readonly StackPanel[] _sections;
+    private readonly DispatcherTimer _validateTimer;
+
     public SettingsWindow()
     {
         InitializeComponent();
         Themes.ApplyWindow(this);
         PaintAnimPreview();
         Shell.PrimaryClick += OnSave;
+        _sections = new[] { WheelPanel, AppearancePanel, HotkeyPanel, SystemPanel };
+        _validateTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) };
+        _validateTimer.Tick += (_, _) => { _validateTimer.Stop(); ValidateAll(); };
+
         var c = TargetStore.Config;
         foreach (var name in Themes.All.Keys) ThemeBox.Items.Add(name);
         foreach (var choice in OpenAnimationChoices) OpenAnimationBox.Items.Add(choice);
@@ -45,7 +54,7 @@ public partial class SettingsWindow : Window
         OverflowLayoutBox.SelectedItem = OverflowLayoutChoices.FirstOrDefault(x => x.Value == c.OverflowLayout)
             ?? OverflowLayoutChoices[0];
         OverflowThresholdBox.Text = WheelLayout.ClampThreshold(c.OverflowThreshold).ToString();
-        OverflowLayoutBox.SelectionChanged += (_, _) => UpdateThresholdEnabled();
+        OverflowLayoutBox.SelectionChanged += (_, _) => { UpdateThresholdEnabled(); ValidateAll(); };
         UpdateThresholdEnabled();
         OpenAnimationSpeedSlider.Value = Math.Clamp(c.OpenAnimationSpeed, 0.5, 2.0);
         OpenAnimationSpeedText.Text = $"{OpenAnimationSpeedSlider.Value:0.##}x";
@@ -59,6 +68,68 @@ public partial class SettingsWindow : Window
         GroupShortcutDelayBox.Text = c.GroupShortcutDelayMs.ToString();
         DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
+
+        foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox, HotkeyBox })
+            box.TextChanged += (_, _) => { _validateTimer.Stop(); _validateTimer.Start(); };
+        SectionList.SelectedIndex = 0;
+        ValidateAll();
+    }
+
+    private void OnSectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        for (int i = 0; i < _sections.Length; i++)
+            _sections[i].Visibility = i == SectionList.SelectedIndex ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Validates every field, shows inline errors, marks the sections that hold a problem,
+    /// and disables Save until all is well — so a bad value can never be saved and its section is
+    /// findable even when hidden behind another one.</summary>
+    private void ValidateAll()
+    {
+        bool hover = ValidateNumber(HoverBox, HoverError);
+        bool threshold = !OverflowThresholdBox.IsEnabled || ValidateNumber(OverflowThresholdBox, ThresholdError);
+        bool idle = ValidateNumber(IdleBox, IdleError);
+        bool delay = ValidateNumber(GroupShortcutDelayBox, DelayError);
+        bool hotkey = ValidateHotkey();
+        WheelErrDot.Visibility = hover && threshold ? Visibility.Collapsed : Visibility.Visible;
+        AppearanceErrDot.Visibility = idle ? Visibility.Collapsed : Visibility.Visible;
+        HotkeyErrDot.Visibility = hotkey && delay ? Visibility.Collapsed : Visibility.Visible;
+        Shell.IsPrimaryEnabled = hover && threshold && idle && delay && hotkey;
+    }
+
+    /// <summary>A field that must hold a whole number. Empty is allowed and means "keep the current
+    /// value", matching how save applies it.</summary>
+    private static bool ValidateNumber(TextBox box, TextBlock error)
+    {
+        var t = box.Text.Trim();
+        bool ok = t.Length == 0 || int.TryParse(t, out _);
+        error.Visibility = ok ? Visibility.Collapsed : Visibility.Visible;
+        box.BorderBrush = ok ? Palettes.Border : Palettes.Danger;
+        return ok;
+    }
+
+    /// <summary>Live hotkey check: empty keeps the current combo; a combo equal to the active one is
+    /// always fine (we hold it, so a trial registration would wrongly report it taken); otherwise it
+    /// must parse and be free right now.</summary>
+    private bool ValidateHotkey()
+    {
+        var hk = HotkeyBox.Text.Trim();
+        if (hk.Length == 0) return SetHotkeyStatus("", null);
+        if (string.Equals(hk, TargetStore.Config.Hotkey, StringComparison.OrdinalIgnoreCase))
+            return SetHotkeyStatus("Available", true);
+        if (!HotkeyService.IsValid(hk))
+            return SetHotkeyStatus("Not a valid combination — needs a modifier and one key", false);
+        if (HotkeyService.IsAvailable(hk)) return SetHotkeyStatus("Available", true);
+        return SetHotkeyStatus("Already taken by another app", false);
+    }
+
+    private bool SetHotkeyStatus(string text, bool? ok)
+    {
+        HotkeyStatus.Text = text;
+        HotkeyStatus.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        HotkeyStatus.Foreground = ok == true ? Palettes.Success : Palettes.Danger;
+        HotkeyBox.BorderBrush = ok == false ? Palettes.Danger : Palettes.Border;
+        return ok != false;
     }
 
     /// <summary>Colors the little orb preview from the current theme so it depicts the real wheel
@@ -84,33 +155,9 @@ public partial class SettingsWindow : Window
 
     private void OnSave(object sender, RoutedEventArgs e)
     {
+        // Save is disabled while any field is invalid, so validation has already passed here.
         var c = TargetStore.Config;
         var hk = HotkeyBox.Text.Trim();
-        // An empty field means "keep the current hotkey"; a non-empty but unrecognized one is an
-        // input error: don't save and don't overwrite the working combo in config.
-        if (hk.Length > 0 && !HotkeyService.IsValid(hk))
-        {
-            MessageBox.Show(this,
-                "Could not recognize the key combination.\n" +
-                "A valid example: Ctrl+Alt+Space. It needs modifier(s) and one key.",
-                "Hotkey", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-        // A non-empty numeric field that isn't a whole number was previously discarded silently, so the
-        // dialog "saved" while quietly dropping the typo. Tell the user instead of losing their input.
-        var invalid = new List<string>();
-        CheckNumeric(OverflowThresholdBox.Text, "Overflow threshold", invalid);
-        CheckNumeric(HoverBox.Text, "Hover delay", invalid);
-        CheckNumeric(IdleBox.Text, "Idle fade", invalid);
-        CheckNumeric(GroupShortcutDelayBox.Text, "Group shortcut delay", invalid);
-        if (invalid.Count > 0)
-        {
-            MessageBox.Show(this,
-                "These fields need a whole number:\n• " + string.Join("\n• ", invalid),
-                "Settings", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
         if (ThemeBox.SelectedItem is string theme) c.Theme = theme;
         if (OpenAnimationBox.SelectedItem is OpenAnimationChoice animation) c.OpenAnimation = animation.Value;
         if (OverflowLayoutBox.SelectedItem is OverflowLayoutChoice overflow) c.OverflowLayout = overflow.Value;
@@ -130,17 +177,10 @@ public partial class SettingsWindow : Window
         catch (Exception ex)
         {
             ErrorLog.Write("Could not change the 'start with Windows' setting", ex);
-            MessageBox.Show(this,
-                "Your other settings were saved, but the “start with Windows” option couldn't be changed.",
-                "Autostart", MessageBoxButton.OK, MessageBoxImage.Warning);
+            DwMessageBox.Show(this, "Start with Windows",
+                "Your other settings were saved, but the “start with Windows” option couldn't be changed.");
         }
         (Owner as OverlayWindow)?.ApplySettings();
         Close();
-    }
-
-    private static void CheckNumeric(string text, string label, List<string> invalid)
-    {
-        var t = text.Trim();
-        if (t.Length > 0 && !int.TryParse(t, out _)) invalid.Add(label); // empty means "keep current"
     }
 }
