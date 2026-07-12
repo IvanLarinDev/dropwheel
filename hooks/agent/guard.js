@@ -33,7 +33,7 @@ const { loadConfig, isUiPath, normRel, isProtectedPath, isProtectedShellWrite,
 
 const TTL_MS = 2 * 60 * 60 * 1000;
 const SEEN_MAX = 200;
-const BYPASS_HINT = "Bypass requires explicit user approval; ask the user first. The escape hatch is documented in AGENTS.md.";
+const BYPASS_HINT = "Runner-level bypass requires explicit user approval and HARNESS_ACK_BYPASS=1 in the hook process environment before the agent starts; chat approval alone cannot change that environment.";
 
 // ---------- profiles ----------
 const ALL_CHECKS = ["bypass", "protected", "lintconfig", "corruption", "entropy", "loops", "main-note", "design-note", "fact-force"];
@@ -50,6 +50,9 @@ function checkEnabled(id, env) {
   const off = String(env.HARNESS_DISABLED_CHECKS || "").split(",").map((s) => s.trim().toLowerCase());
   if (off.includes(id)) return false;
   return PROFILES[getProfile(env)].has(id);
+}
+function advisoryInStandard(id, env) {
+  return getProfile(env) === "standard" && new Set(["protected", "lintconfig", "entropy", "loops"]).has(id);
 }
 function envAllow(env, name) {
   return ["1", "true", "yes", "on"].includes(String(env[name] || "").trim().toLowerCase());
@@ -145,15 +148,15 @@ function loopCheck(st, p, T) {
   const rep = tailRepeat(st.hist);
   if (rep >= T) {
     writeState(p, { hist: [], streak: 0, seen: st.seen });
-    return blockRes(`guard: same action repeated ${rep} times; this looks like a loop.\n` +
+    return `guard: same action repeated ${rep} times; this looks like a loop.\n` +
       `   ${st.hist[st.hist.length - 1].slice(0, 120)}\n` +
-      `   Stop, compare with the plan/TodoWrite, and change approach. Threshold: ${T}.`);
+      `   Stop, compare with the plan/TodoWrite, and change approach. Threshold: ${T}.`;
   }
   const alt = tailAlt(st.hist);
   if (alt >= 2 * T) {
     writeState(p, { hist: [], streak: 0, seen: st.seen });
-    return blockRes(`guard: two actions alternated for ${alt} steps (A-B-A-B); this is a no-progress loop.\n` +
-      `   Stop, compare with the plan/TodoWrite, and change approach. Threshold: ${2 * T}.`);
+    return `guard: two actions alternated for ${alt} steps (A-B-A-B); this is a no-progress loop.\n` +
+      `   Stop, compare with the plan/TodoWrite, and change approach. Threshold: ${2 * T}.`;
   }
   return null;
 }
@@ -222,15 +225,19 @@ function run(ctx, env = process.env) {
       const scrubbed = scrubQuotes(command);
       const pathScan = unquoteShellPaths(scrubGitMessageArgs(command));
 
-      // 1) harness bypass or shell writes to protected paths and lint configs
-      const hit =
-        (checkEnabled("bypass", env) &&
-          (BYPASS.find((b) => b.re.test(scrubbed)) ||
-            (isGitHooksWrite(pathScan) ? { why: "direct write/delete under .git/hooks" } : null))) ||
-        (checkEnabled("protected", env) && isProtectedShellWrite(pathScan, cfg.protected)
-          ? { why: "shell write to harness files (hooks/, configs, workflows)" } : null) ||
-        (checkEnabled("lintconfig", env) && isLintConfigShellWrite(pathScan, cfg.lintConfigs)
-          ? { why: "shell write to lint/format config; fix code instead of weakening config" } : null);
+      // 1) bypasses stay blocking. Protected-file edits are audited in standard
+      // mode because chat approval cannot be transported into a pre-start hook
+      // environment; strict/minimal keep the hard protection contract.
+      const bypassHit = checkEnabled("bypass", env) &&
+        (BYPASS.find((b) => b.re.test(scrubbed)) ||
+          (isGitHooksWrite(pathScan) ? { why: "direct write/delete under .git/hooks" } : null));
+      const protectedHit = checkEnabled("protected", env) && isProtectedShellWrite(pathScan, cfg.protected)
+        ? { why: "shell write to harness files (hooks/, configs, workflows)" } : null;
+      const lintHit = checkEnabled("lintconfig", env) && isLintConfigShellWrite(pathScan, cfg.lintConfigs)
+        ? { why: "shell write to lint/format config; review why project policy must change" } : null;
+      const hit = bypassHit ||
+        (protectedHit && !advisoryInStandard("protected", env) ? protectedHit : null) ||
+        (lintHit && !advisoryInStandard("lintconfig", env) ? lintHit : null);
       if (hit) {
         if (envAllow(env, "HARNESS_ACK_BYPASS")) {
           notes.push(`guard: harness bypass was explicitly approved by the user: ${hit.why}. Explain this in the report.`);
@@ -238,6 +245,9 @@ function run(ctx, env = process.env) {
           return blockRes(`guard: command bypasses the harness; blocked.\n   Reason: ${hit.why}.\n   ${BYPASS_HINT}`);
         }
       }
+      if (protectedHit && advisoryInStandard("protected", env))
+        notes.push(`guard advisory: ${protectedHit.why}; verify the user-approved scope and explain it in the report.`);
+      if (lintHit && advisoryInStandard("lintconfig", env)) notes.push(`guard advisory: ${lintHit.why}.`);
 
       // 1c) writes to harness files through inline interpreter eval.
       if (checkEnabled("protected", env)) {
@@ -245,6 +255,8 @@ function run(ctx, env = process.env) {
         if (ip) {
           if (envAllow(env, "HARNESS_ACK_BYPASS")) {
             notes.push(`guard: inline-eval write to harness file (${ip}) was explicitly approved by the user. Explain this in the report.`);
+          } else if (advisoryInStandard("protected", env)) {
+            notes.push(`guard advisory: inline-eval may write a harness file (${ip}); verify the user-approved scope and explain it in the report.`);
           } else {
             return blockRes(`guard: command looks like an inline-eval write to a harness file (${ip}).\n` +
               `   Reason: node -e / python -c / bash -c hides the write from normal shell detection.\n   ${BYPASS_HINT}`);
@@ -259,7 +271,9 @@ function run(ctx, env = process.env) {
       }
       if (checkEnabled("entropy", env) && isLowEntropy(command)) {
         writeState(p, { hist: [], streak: 0, seen: st.seen });
-        return blockRes(`guard: command token entropy is abnormally low.\n   ${JSON.stringify(command.slice(0, 120))}`);
+        const message = `guard: command token entropy is abnormally low.\n   ${JSON.stringify(command.slice(0, 120))}`;
+        if (advisoryInStandard("entropy", env)) notes.push(message);
+        else return blockRes(message);
       }
 
       // 3) loops
@@ -269,11 +283,16 @@ function run(ctx, env = process.env) {
         if (st.hist.length > HIST_MAX) st.hist.shift();
         if (st.streak >= T_SH) {
           writeState(p, { hist: [], streak: 0, seen: st.seen });
-          return blockRes(`guard: ${st.streak} trivial commands in a row; this is a degenerate pattern.\n` +
-            `   Stop and make one meaningful step. Threshold: HARNESS_LOOP_THRESHOLD=${T_SH}.`);
+          const message = `guard: ${st.streak} trivial commands in a row; this is a degenerate pattern.\n` +
+            `   Stop and make one meaningful step. Threshold: HARNESS_LOOP_THRESHOLD=${T_SH}.`;
+          if (advisoryInStandard("loops", env)) notes.push(message);
+          else return blockRes(message);
         }
         const lr = loopCheck(st, p, T_SH);
-        if (lr) return lr;
+        if (lr) {
+          if (advisoryInStandard("loops", env)) notes.push(lr);
+          else return blockRes(lr);
+        }
         writeState(p, st);
       }
 
@@ -296,6 +315,8 @@ function run(ctx, env = process.env) {
       if (isFile && checkEnabled("protected", env) && isProtectedPath(rel, cfg.protected)) {
         if (envAllow(env, "HARNESS_ACK_BYPASS")) {
           notes.push(`guard: harness file edit (${rel}) was explicitly approved by the user.`);
+        } else if (advisoryInStandard("protected", env)) {
+          notes.push(`guard advisory: editing harness file ${rel}; verify the user-approved scope and explain it in the report.`);
         } else {
           return blockRes(`guard: harness file edit blocked: ${rel}\n` +
             `   Agents must not change harness hooks/configs without approval.\n   ${BYPASS_HINT}`);
@@ -311,6 +332,8 @@ function run(ctx, env = process.env) {
         if (exists) {
           if (envAllow(env, "HARNESS_ACK_BYPASS")) {
             notes.push(`guard: lint config edit (${rel}) was explicitly approved by the user.`);
+          } else if (advisoryInStandard("lintconfig", env)) {
+            notes.push(`guard advisory: editing lint/format policy ${rel}; explain the project-policy reason in the report.`);
           } else {
             return blockRes(`guard: existing lint/format config edit blocked: ${rel}\n` +
               `   Fix failing gates in code instead of weakening config.\n` +
@@ -336,7 +359,10 @@ function run(ctx, env = process.env) {
         st.hist.push(tool.toLowerCase() + "::" + rel);
         if (st.hist.length > HIST_MAX) st.hist.shift();
         const lr = loopCheck(st, p, T_FT);
-        if (lr) return lr;
+        if (lr) {
+          if (advisoryInStandard("loops", env)) notes.push(lr);
+          else return blockRes(lr);
+        }
       }
       writeState(p, st);
 

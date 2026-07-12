@@ -11,6 +11,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const taskState = require(path.join(__dirname, "..", "task-state.js"));
 
 function stateFile(cwd) {
   const id = crypto.createHash("sha1").update(String(cwd)).digest("hex").slice(0, 12);
@@ -90,6 +91,9 @@ function isHarnessOrLocalStatus(line) {
       .toString().trim();
   } catch {}
   if (!status) process.exit(0);
+  // `task start` records pre-existing dirt. Do not interrupt a read-only task
+  // when that exact baseline is still present and nothing new was introduced.
+  if (taskState.unchangedFromBaseline(cwd)) process.exit(0);
 
   const file = stateFile(cwd);
   const hash = statusHash(status);

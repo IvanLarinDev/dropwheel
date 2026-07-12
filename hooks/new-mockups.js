@@ -5,6 +5,7 @@
 //   node hooks/new-mockups.js <feature> --kind existing-ui --baseline <repo-path>
 //   node hooks/new-mockups.js <feature> --kind new-ui
 //   node hooks/new-mockups.js <feature> --kind animation --fidelity text|js --example <scenario>
+//   node hooks/new-mockups.js <feature> --kind cosmetic --ui <repo-path> --reason <why-low-risk> --verification <evidence> --approved-by <user/source>
 //   node hooks/new-mockups.js <feature> --kind backend
 //
 // The command creates DESIGN.json, NOTES.md, and four mode-specific variants.
@@ -14,7 +15,7 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = process.env.HARNESS_ROOT || path.join(__dirname, "..");
-const VALID_KINDS = new Set(["existing-ui", "new-ui", "animation", "backend"]);
+const VALID_KINDS = new Set(["existing-ui", "new-ui", "animation", "cosmetic", "backend"]);
 
 const LAYOUTS = [
   { id: "01-inline", name: "Inline", focus: "Place the new or changed element in the primary content flow." },
@@ -75,6 +76,7 @@ function usage() {
     "  node hooks/new-mockups.js <feature> --kind existing-ui --baseline <repo-path>",
     "  node hooks/new-mockups.js <feature> --kind new-ui",
     "  node hooks/new-mockups.js <feature> --kind animation --fidelity text|js --example <scenario>",
+    "  node hooks/new-mockups.js <feature> --kind cosmetic --ui <repo-path> --reason <why-low-risk> --verification <evidence> --approved-by <user/source>",
     "  node hooks/new-mockups.js <feature> --kind backend",
   ].join("\n");
 }
@@ -94,23 +96,29 @@ function parseArgs(argv) {
   const feature = rawFeature.replace(/[^a-zA-Z0-9._-]/g, "-");
   if (!feature) fail("feature name is required.");
 
-  const out = { feature, kind: "", fidelity: "", example: "", baselines: [] };
+  const out = { feature, kind: "", fidelity: "", example: "", baselines: [], uiPaths: [], reason: "", verification: "", approvedBy: "" };
   for (let i = 1; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--kind") out.kind = String(argv[++i] || "").trim();
     else if (arg === "--fidelity") out.fidelity = String(argv[++i] || "").trim();
     else if (arg === "--example") out.example = String(argv[++i] || "").trim();
     else if (arg === "--baseline") out.baselines.push(String(argv[++i] || "").trim());
+    else if (arg === "--ui") out.uiPaths.push(String(argv[++i] || "").trim());
+    else if (arg === "--reason") out.reason = String(argv[++i] || "").trim();
+    else if (arg === "--verification") out.verification = String(argv[++i] || "").trim();
+    else if (arg === "--approved-by") out.approvedBy = String(argv[++i] || "").trim();
     else fail(`unknown argument: ${arg}`);
   }
 
-  if (!VALID_KINDS.has(out.kind)) fail("--kind must be existing-ui, new-ui, animation, or backend.");
+  if (!VALID_KINDS.has(out.kind)) fail("--kind must be existing-ui, new-ui, animation, cosmetic, or backend.");
   if (out.kind === "existing-ui" && out.baselines.length === 0)
     fail("existing-ui mockups require at least one --baseline path from the current UI.");
   if (out.kind === "animation") {
     if (!new Set(["text", "js"]).has(out.fidelity)) fail("animation mockups require --fidelity text or js.");
     if (!out.example) fail("animation mockups require --example with a concrete user-visible scenario.");
   }
+  if (out.kind === "cosmetic" && (!out.uiPaths.length || !out.reason || !out.verification || !out.approvedBy))
+    fail("cosmetic evidence requires --ui, --reason, --verification, and --approved-by.");
   return out;
 }
 
@@ -319,6 +327,7 @@ ${variants.map((variant) => `- \`${variant.file}\` - ${variant.focus}`).join("\n
 function main() {
   const args = parseArgs(process.argv.slice(2));
   args.baselines = normalizeBaselines(args.baselines);
+  args.uiPaths = normalizeBaselines(args.uiPaths);
 
   if (args.kind === "backend") {
     console.log(`SKIP mockups: ${args.feature} is backend-only with no user-visible UI impact.`);
@@ -329,6 +338,21 @@ function main() {
   const dir = path.join(ROOT, "design", "mockups", args.feature);
   if (fs.existsSync(dir)) fail(`already exists: design/mockups/${args.feature}/; not overwriting.`);
   fs.mkdirSync(dir, { recursive: true });
+
+  if (args.kind === "cosmetic") {
+    const cosmetic = {
+      schemaVersion: 1,
+      feature: args.feature,
+      uiPaths: args.uiPaths,
+      reason: args.reason,
+      verification: args.verification,
+      date: new Date().toISOString().slice(0, 10),
+      approvedBy: args.approvedBy,
+    };
+    fs.writeFileSync(path.join(dir, "COSMETIC.json"), JSON.stringify(cosmetic, null, 2) + "\n");
+    console.log(`created low-risk cosmetic evidence: design/mockups/${args.feature}/COSMETIC.json`);
+    return;
+  }
 
   let variants;
   if (args.kind === "existing-ui") {

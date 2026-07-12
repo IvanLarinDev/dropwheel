@@ -131,6 +131,25 @@ const HARNESS_CHANGED = [
   "hooks/", "lefthook.yml", "harness.config.json", ".gitleaks.toml", "cog.toml",
   ".github/rulesets/", ".github/workflows/", "settings.example.json", "AGENTS.md",
 ];
+const HARNESS_TEST_GROUPS = ["configs", "guard", "design-gate", "verify", "doctor", "release", "topology", "task", "stop-reminder", "installer", "hygiene"];
+
+function testGroupsForFiles(files) {
+  const normalized = (files || []).map((file) => String(file).replace(/\\/g, "/"));
+  if (normalized.includes("hooks/test.js")) return [...HARNESS_TEST_GROUPS];
+  const groups = new Set(["hygiene"]);
+  const any = (...patterns) => normalized.some((file) => patterns.some((pattern) => pattern.test(file)));
+  if (any(/^\.github\//, /^(?:lefthook\.yml|cog\.toml|\.gitleaks\.toml|harness\.config\.json|\.gitattributes)$/)) groups.add("configs");
+  if (any(/^hooks\/agent\//, /^hooks\/(?:_lib|branch-guard|no-coauthor)\.js$/)) groups.add("guard");
+  if (any(/^hooks\/(?:design-gate|new-mockups)\.js$/, /^design\//)) groups.add("design-gate");
+  if (any(/^hooks\/verify(?:-core)?\.js$/)) groups.add("verify");
+  if (any(/^hooks\/doctor\.js$/)) groups.add("doctor");
+  if (any(/^hooks\/(?:release-.*|github-branch-cleanup|post-merge-cleanup)\.js$/, /^scripts\/papercuts-release\.js$/, /^\.github\/workflows\/release\.yml$/)) groups.add("release");
+  if (any(/^hooks\/(?:repo-state-audit|branch-state)\.js$/)) groups.add("topology");
+  if (any(/^hooks\/task(?:-state)?\.js$/)) groups.add("task");
+  if (any(/^hooks\/agent\/stop-reminder\.js$/)) groups.add("stop-reminder");
+  if (any(/^install\.(?:js|cmd|sh)$/, /^hooks\/uninstall\.js$/, /^templates\//, /^settings\.example\.json$/)) groups.add("installer");
+  return HARNESS_TEST_GROUPS.filter((group) => groups.has(group));
+}
 
 function loadStacks(root) {
   try {
@@ -149,8 +168,9 @@ function isHarnessChangedFile(file) {
   return HARNESS_CHANGED.some((p) => p.endsWith("/") ? f.startsWith(p) : f === p);
 }
 
-function harnessTarget(root) {
-  return { stack: { id: "source-harness", steps: [{ name: "self-test", run: "node test.js", cwdRel: "hooks" }] }, dir: root, rel: "." };
+function harnessTarget(root, groups = []) {
+  const suffix = groups.length ? ` --only ${groups.join(",")}` : "";
+  return { stack: { id: "source-harness", steps: [{ name: "self-test", run: `node test.js${suffix}`, cwdRel: "hooks" }] }, dir: root, rel: "." };
 }
 
 function isSourceHarness(root) {
@@ -158,10 +178,10 @@ function isSourceHarness(root) {
     fs.existsSync(path.join(root, "hooks", "verify.js"));
 }
 
-function ensureSourceHarnessTarget(root, targets) {
+function ensureSourceHarnessTarget(root, targets, groups = []) {
   if (!isSourceHarness(root)) return targets;
   const filtered = targets.filter((target) => !new Set(["harness", "source-harness"]).has(target.stack && target.stack.id));
-  return filtered.concat([harnessTarget(root)]);
+  return filtered.concat([harnessTarget(root, groups)]);
 }
 
 function harnessSyntaxTarget(root) {
@@ -239,7 +259,7 @@ function planVerifyTargets(root, stacks, opts = {}) {
     const files = cf.files.map((f) => String(f).replace(/\\/g, "/"));
     targets = files.length ? targets.filter((t) => files.some((f) => fileUnder(t.rel, f))) : [];
     targets = maybeAddHarnessTarget(root, targets, files);
-    targets = ensureSourceHarnessTarget(root, targets);
+    targets = ensureSourceHarnessTarget(root, targets, opts.fast ? testGroupsForFiles(files) : []);
     return { targets, scope: cf, files };
   }
   targets = ensureSourceHarnessTarget(root, targets);
@@ -249,9 +269,9 @@ function planVerifyTargets(root, stacks, opts = {}) {
 }
 
 module.exports = {
-  DEBUG_HARD, DEBUG_SOFT, DEFAULT_STACKS,
+  DEBUG_HARD, DEBUG_SOFT, DEFAULT_STACKS, HARNESS_TEST_GROUPS,
   fileUnder, loadDebugAudit, scanFileForDebug, debugAudit,
-  loadStacks, detect, planVerifyTargets,
+  loadStacks, detect, planVerifyTargets, testGroupsForFiles,
   isSourceHarness, ensureSourceHarnessTarget,
   ensureHarnessSyntaxTarget, ensureGitHygieneTarget, maybeAddHarnessTarget,
 };

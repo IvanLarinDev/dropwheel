@@ -4,13 +4,10 @@
 // Checks the migrated stack (lefthook + gitleaks + cocogitto). Run: node hooks/doctor.js
 //
 // [--root <dir>] [--server] [--json] [--strict-env].
-// Result levels: FAIL = the harness's own files/contract are wrong (fix in repo);
-// ENV = the environment cannot support the harness (git lock ops unavailable on
-// this mount, or a required external tool is not installed) - not a repo defect;
-// WARN = advisory; PASS = ok.
-// Exit codes: 0 = no FAIL and no ENV; 1 = at least one FAIL; 3 = only ENV/SKIP
-// (visible but non-blocking). --strict-env promotes ENV to blocking (exit 1),
-// for CI/automation that requires a fully provisioned environment.
+// Result levels: FAIL = repository contract defect; ENV = unavailable runtime,
+// mount, network, or external tool; WARN = advisory; PASS = ready.
+// Exit 0 = repository contract valid, 1 = FAIL (or ENV under --strict-env).
+// JSON keeps environmentCode=3 for callers that want to classify ENV separately.
 
 const fs = require("fs");
 const path = require("path");
@@ -122,6 +119,28 @@ function workflowRunCommands(body) {
   }
   return commands;
 }
+function workflowNeeds(body) {
+  const lines = String(body || "").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const inline = lines[i].match(/^\s*needs:\s*(.*?)\s*$/);
+    if (!inline) continue;
+    const value = inline[1];
+    if (value.startsWith("[") && value.endsWith("]")) {
+      return value.slice(1, -1).split(",").map((item) => item.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean);
+    }
+    if (value) return [value.replace(/^['"]|['"]$/g, "")];
+    const out = [];
+    const indent = (lines[i].match(/^\s*/) || [""])[0].length;
+    for (let j = i + 1; j < lines.length; j++) {
+      const childIndent = (lines[j].match(/^\s*/) || [""])[0].length;
+      if (lines[j].trim() && childIndent <= indent) break;
+      const item = lines[j].match(/^\s*-\s*['"]?([A-Za-z0-9_-]+)['"]?\s*$/);
+      if (item) out.push(item[1]);
+    }
+    return out;
+  }
+  return [];
+}
 function rulesetRequiredChecks(rel) {
   let ruleset = {};
   try { ruleset = JSON.parse(readText(rel)); } catch { return []; }
@@ -171,16 +190,46 @@ function checkVerifyJobContract(workflowPath, required) {
   if (!required.includes("verify")) return;
   const body = workflowJobBody(workflowPath, "verify");
   if (!body) { fail("CI job verify is required by ruleset but its workflow body was not found"); return; }
-  const commands = workflowRunCommands(body).join("\n");
   const checks = [
     { name: "doctor", re: /node\s+hooks\/doctor\.js\b/ },
     { name: "verify", re: /node\s+hooks\/verify\.js\b/ },
     { name: "design-gate strict", re: /node\s+hooks\/design-gate\.js\b[^\n]*--strict\b/ },
     { name: "secret scan", re: /gitleaks/i },
   ];
-  const missing = checks.filter((c) => !c.re.test(commands)).map((c) => c.name);
-  if (missing.length) fail(`CI job verify does not run required harness step(s): ${missing.join(", ")}`);
-  else ok("CI job verify runs doctor, verify.js, design-gate --strict and secret scan");
+  const missingChecks = (jobBody) => {
+    const commands = workflowRunCommands(jobBody).join("\n");
+    return checks.filter((c) => !c.re.test(commands)).map((c) => c.name);
+  };
+  const directMissing = missingChecks(body);
+  if (!directMissing.length) {
+    ok("CI job verify runs doctor, verify.js, design-gate --strict and secret scan");
+    return;
+  }
+
+  const needs = workflowNeeds(body);
+  const aggregatorCommands = workflowRunCommands(body).join("\n");
+  const problems = [];
+  if (!/^\s{4}if:\s*\$\{\{\s*always\(\)\s*\}\}\s*$/m.test(body)) problems.push("missing job-level if: always()");
+  if (/^\s{4}continue-on-error:\s*true\s*$/mi.test(body)) problems.push("required aggregator uses job-level continue-on-error");
+  if (!needs.length) problems.push("missing dependency jobs");
+  if (!/\bexit\s+1\b/.test(aggregatorCommands)) problems.push("missing explicit failing exit");
+  for (const dependency of needs) {
+    const depRef = new RegExp(`^\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*\\$\\{\\{\\s*needs\\.${escapeRe(dependency)}\\.result\\s*\\}\\}\\s*$`, "m").exec(body);
+    if (!depRef) { problems.push(`does not bind ${dependency}.result`); continue; }
+    const variable = escapeRe(depRef[1]);
+    const rejectsNonSuccess = new RegExp(`["']?\\$\\{?${variable}\\}?["']?\\s*!=\\s*["']success["']`).test(aggregatorCommands);
+    if (!rejectsNonSuccess) problems.push(`does not reject non-success ${dependency}.result`);
+  }
+  const dependencyBodies = needs.map((id) => ({ id, body: workflowJobBody(workflowPath, id) }));
+  const missingBodies = dependencyBodies.filter((entry) => !entry.body).map((entry) => entry.id);
+  if (missingBodies.length) problems.push(`dependency job body missing: ${missingBodies.join(", ")}`);
+  const advisoryDependencies = dependencyBodies.filter((entry) => /^\s{4}continue-on-error:\s*true\s*$/mi.test(entry.body)).map((entry) => entry.id);
+  if (advisoryDependencies.length) problems.push(`dependency job uses job-level continue-on-error: ${advisoryDependencies.join(", ")}`);
+  const fullDependency = dependencyBodies.find((entry) => entry.body && missingChecks(entry.body).length === 0);
+  if (!fullDependency) problems.push(`no dependency runs all required harness steps: ${directMissing.join(", ")}`);
+
+  if (problems.length) fail(`CI job verify does not run required harness steps directly and is not a fail-closed aggregator: ${problems.join("; ")}`);
+  else ok(`CI job verify is a fail-closed aggregator over full harness gate ${fullDependency.id}`);
 }
 function checkWorkflowSupplyChain(workflowPath) {
   const text = readText(workflowPath);
@@ -321,6 +370,9 @@ const requiredHarnessFiles = [
   "hooks/post-merge-cleanup.js",
   "hooks/release-cleanup.js",
   "hooks/repo-state-audit.js",
+  "hooks/task-state.js",
+  "hooks/task.js",
+  "hooks/uninstall.js",
   "hooks/new-mockups.js",
   "hooks/doctor.js",
   "hooks/apply-ruleset.js",
@@ -503,12 +555,10 @@ if (serverProvider === "github" && fs.existsSync(path.join(ROOT, rulesetPath))) 
     checkWorkflowSupplyChain(branchCleanupWorkflowPath);
   }
 }
-// L0 (server policy) visibility: state the strongest layer's status explicitly so
-// a green doctor never hides that the remote gate is disabled or merely unverified.
 if (serverProvider === "none") {
-  ok("L0 (server ruleset) disabled by config (serverPolicy=none); protection relies on Layer 1 (local hooks) + Layer 2 (agent guard)");
+  ok("L0 (server ruleset) disabled by config; protection relies on local hooks and the agent guard");
 } else if (serverProvider === "github" && fs.existsSync(path.join(ROOT, rulesetPath)) && !process.argv.includes("--server")) {
-  ok("L0 (server ruleset) configured; live status unverified this run - run 'doctor --server' to confirm it is active on the remote");
+  ok("L0 (server ruleset) configured; live status unverified - run 'doctor --server' when live evidence is needed");
 }
 if (process.argv.includes("--server")) {
   if (serverProvider === "none") {
@@ -524,18 +574,14 @@ if (process.argv.includes("--server")) {
       } else if ((live.mismatches || []).length) {
         fail(`L0 (server ruleset) drift: ${(live.mismatches || []).join("; ")}`);
       } else {
-        env(`L0 (server ruleset) unavailable: ${live.error || "unknown"}. Falls back to Layer 1 (local hooks) + Layer 2 (agent guard).`, "l0-unavailable");
+        env(`L0 (server ruleset) unavailable: ${live.error || "unknown"}`, "l0-unavailable");
       }
     } catch (e) {
       let live = null;
       try { live = JSON.parse(String(e.stdout || "")); } catch {}
-      const mism = live && Array.isArray(live.mismatches) ? live.mismatches : [];
-      if (mism.length) {
-        fail(`L0 (server ruleset) drift: ${mism.join("; ")}`);
-      } else {
-        const reason = (live && live.error) || String(e.stderr || e.message || "").trim() || "live ruleset could not be read";
-        env(`L0 (server ruleset) unavailable: ${reason}. Falls back to Layer 1 (local hooks) + Layer 2 (agent guard).`, "l0-unavailable");
-      }
+      const mismatches = live && Array.isArray(live.mismatches) ? live.mismatches : [];
+      if (mismatches.length) fail(`L0 (server ruleset) drift: ${mismatches.join("; ")}`);
+      else env(`L0 (server ruleset) unavailable: ${(live && live.error) || String(e.stderr || e.message || "").trim() || "unavailable"}`, "l0-unavailable");
     }
   }
 }
@@ -575,24 +621,17 @@ if (auditReleaseWorkflow && fs.existsSync(path.join(ROOT, releaseWorkflowPath)))
 const strictEnv = process.argv.includes("--strict-env");
 const fails = results.filter((r) => r.level === "FAIL").length;
 const envs = results.filter((r) => r.level === "ENV").length;
-const blocking = fails + (strictEnv ? envs : 0);
-const exitCode = blocking ? 1 : (envs ? 3 : 0);
+const blocked = fails > 0 || (strictEnv && envs > 0);
+const exitCode = blocked ? 1 : 0;
+const environmentCode = !fails && envs ? 3 : 0;
 if (process.argv.includes("--json")) {
-  console.log(JSON.stringify({ ok: fails === 0, blocked: blocking > 0, fails, envs, strictEnv, exitCode, results }));
+  console.log(JSON.stringify({ ok: fails === 0, blocked, fails, envs, strictEnv, exitCode, environmentCode, results }));
 } else {
   console.log("harness doctor:");
   const icon = { PASS: "OK", WARN: "WARN", ENV: "ENV", FAIL: "FAIL" };
   for (const r of results) console.log("  " + icon[r.level] + " " + r.msg);
-  const parts = [];
-  if (fails) parts.push(fails + " FAIL");
-  if (envs) parts.push(envs + " ENV");
-  if (fails) {
-    console.log("\ndoctor: " + parts.join(", ") + " - fix FAIL before work.");
-  } else if (envs) {
-    console.log("\ndoctor: repo contract OK; " + envs + " ENV (environment/mount, not a repo defect" +
-      (strictEnv ? "; blocking under --strict-env" : "") + ").");
-  } else {
-    console.log("\ndoctor: environment is ready.");
-  }
+  if (fails) console.log(`\ndoctor: ${fails} FAIL - fix the repository contract before work.`);
+  else if (envs) console.log(`\ndoctor: repository contract is valid; ${envs} ENV condition(s) need provisioning${strictEnv ? " and block strict mode" : ""}.`);
+  else console.log("\ndoctor: environment is ready.");
 }
 process.exit(exitCode);

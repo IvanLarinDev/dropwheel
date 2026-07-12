@@ -28,6 +28,7 @@ const DEFAULT_MOCKUPS = {
   manifestFile: "DESIGN.json",
   approvalFile: "APPROVED",
   waiverFile: "WAIVER.json",
+  cosmeticFile: "COSMETIC.json",
 };
 const DEFAULT_PROTECTED = [
   "hooks/", ".harness/", "lefthook.yml", "harness.config.json", ".gitleaks.toml", "cog.toml",
@@ -177,7 +178,7 @@ function isLintConfigPath(rel, lintConfigs) {
 // cannot be inspected before execution.
 const INTERP_EVAL_RE = /\b(?:node|nodejs|deno|bun|python|python3|py|perl|ruby|php|pwsh|powershell|bash|sh|zsh)\b[^\n]*?(?:\s-e\b|\s--eval\b|\s-c\b|\seval\b|\s-Command\b|\s-EncodedCommand\b)/i;
 const INTERP_ENCODED_RE = /\b(?:pwsh|powershell)\b[^\n]*\s-EncodedCommand\b/i;
-const INTERP_WRITE_RE = /writefile|writefilesync|appendfile|createwritestream|write_text|write_bytes|unlink\s*\(|rmtree\s*\(|\brm(?:sync)?\s*\(|remove\s*\(|replace\s*\(|rename\s*\(|shutil\.(?:rmtree|move)|os\.(?:remove|unlink|replace|rename)|path\([^)]*\)\.(?:write_text|write_bytes|unlink)|fs\.write|\.write\s*\(|\[\s*['"]write|['"]write['"]\s*\+|\+\s*['"]filesync['"]|open\s*\([^)]*['"][aw]|set-content|add-content|out-file|>{1,2}|\b(?:rm|del|erase|move|mv|remove-item|ren|rename)\b/i;
+const INTERP_WRITE_RE = /writefile|writefilesync|appendfile|createwritestream|write_text|write_bytes|unlink\s*\(|rmtree\s*\(|\brm(?:sync)?\s*\(|remove\s*\(|replace\s*\(|rename\s*\(|shutil\.(?:rmtree|move)|os\.(?:remove|unlink|replace|rename)|path\([^)]*\)\.(?:write_text|write_bytes|unlink)|(?:fs|file)\.write|\[\s*['"]write|['"]write['"]\s*\+|\+\s*['"]filesync['"]|open\s*\([^)]*['"][aw]|set-content|add-content|out-file|>{1,2}|\b(?:rm|del|erase|move|mv|remove-item|ren|rename)\b/i;
 function interpreterProtectedHint(rawCmd, protectedList) {
   const s = String(rawCmd);
   if (!INTERP_EVAL_RE.test(s)) return null;
@@ -281,10 +282,15 @@ function mergeFiles(root, ...lists) {
   return out;
 }
 
+function doctorEnvironmentReady(report) {
+  return Boolean(report && report.ok === true && report.blocked !== true && Number(report.envs || 0) === 0);
+}
+
 module.exports = {
   DEFAULT_UI_GLOBS, DEFAULT_UI_EXCLUDE, DEFAULT_MOCKUPS, DEFAULT_PROTECTED, DEFAULT_LINT_CONFIGS,
   globToRe, loadConfig, isUiPath, normRel, isProtectedPath,
   isProtectedShellWrite, isLintConfigShellWrite, isLintConfigPath,
   interpreterProtectedHint,
   changedFiles, workingTreeChangedFiles,
+  doctorEnvironmentReady,
 };

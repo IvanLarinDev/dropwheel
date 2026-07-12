@@ -38,6 +38,6 @@ pre-commit:
 pre-push:
   commands:
     verify:
-      run: node hooks/verify.js
+      run: node hooks/verify.js --mode full
     design-gate:
       run: node hooks/design-gate.js --base origin/main
