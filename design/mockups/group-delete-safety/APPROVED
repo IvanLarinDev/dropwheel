@@ -1,5 +1,0 @@
-Approved concept: 02-dark-pro — confirmation with a non-destructive alternative
-(keep the targets by moving them to the main wheel, or delete the group and all targets).
-Approved by: user (chat selection) on 2026-07-11.
-
-ui: src/Dropwheel/UI/GroupDeleteWindow.xaml, src/Dropwheel/UI/GroupDeleteWindow.xaml.cs, src/Dropwheel/UI/TargetEditorWindow.xaml.cs

@@ -1,6 +1,0 @@
-Approved motion: 04-guided-arc — the newly added tile flies in on a shallow arc from the hub
-to its slot (matching the existing pin-arrival feel), while tiles already on the wheel slide to
-their new slots instead of replaying the opening animation.
-Approved by: user (chat selection) on 2026-07-11.
-
-ui: src/Dropwheel/UI/OverlayWindow.Cloud.cs, src/Dropwheel/UI/OverlayWindow.OrbDrop.cs
