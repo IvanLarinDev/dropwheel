@@ -51,4 +51,8 @@ public class AppConfig
     /// run, then user-editable. null (missing key) triggers reseeding on load.</summary>
     public List<FilePreset>? Presets { get; set; }
 
+    /// <summary>How many times each one-off hint has been shown, keyed by hint id. Housekeeping, not a
+    /// user setting — it just stops a tip (fullscreen notice, hidden gestures) from repeating forever.</summary>
+    public Dictionary<string, int> HintShows { get; set; } = new();
+
 }

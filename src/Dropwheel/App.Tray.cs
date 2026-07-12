@@ -15,6 +15,11 @@ public partial class App
             Text = "Dropwheel"
         };
         var menu = new WF.ContextMenuStrip();
+        // Shown only while a fullscreen app has hidden the orb: the tray is the one place the user can
+        // reach then, so it explains where the orb went instead of leaving them to think it crashed.
+        var fsStatus = new WF.ToolStripMenuItem("Orb hidden — fullscreen app active")
+        { Enabled = false, Visible = false };
+        menu.Items.Add(fsStatus);
         var header = new WF.ToolStripMenuItem($"Dropwheel {AppVersion()}") { Enabled = false };
         menu.Items.Add(header);
         menu.Items.Add(new WF.ToolStripSeparator());
@@ -37,7 +42,11 @@ public partial class App
         menu.Items.Add(new WF.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
         StyleTrayMenu(menu);
-        menu.Opening += (_, _) => StyleTrayMenu(menu);
+        menu.Opening += (_, _) =>
+        {
+            fsStatus.Visible = Dropwheel.Services.FullscreenDetector.IsFullscreenActive();
+            StyleTrayMenu(menu);
+        };
         _tray.ContextMenuStrip = menu;
         _tray.DoubleClick += (_, _) => _overlay?.ToggleCloud();
     }

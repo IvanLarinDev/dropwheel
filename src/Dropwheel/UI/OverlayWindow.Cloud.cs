@@ -37,6 +37,7 @@ public partial class OverlayWindow
         if (_open) return;
         _open = true;
         BuildCloud();
+        TryShowOpenHint();
     }
 
     private void CloseCloud()

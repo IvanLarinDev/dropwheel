@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "reason": "Package 6 (final) of the UI/UX consolidation approved in UI-UX-SPEC.md (see DECISIONS.md, 2026-07-12). It explains things the app used to do silently, using the existing ToastHost — no new visual surface. Hidden gestures get post-trigger Info toasts: on opening the wheel, one tip about the group digit shortcut or middle-click sorting (each shown at most three times); when the orb returns from hiding behind a fullscreen app, a one-time note about why it vanished (a balloon can't show during fullscreen because Focus Assist mutes it). Show counts live in AppConfig.HintShows via the pure HintPolicy helper. The tray also gains a disabled 'Orb hidden — fullscreen app active' status line while a fullscreen app is up (App.Tray.cs, not a UI-glob path, so not listed here). These are exactly the fullscreen and hint decisions the owner approved in the spec's intersection resolutions; the toasts reuse the package-3 component, so no per-package mockup adds anything.",
+  "approvedBy": "Ivan Larin (repo owner) via chat request on 2026-07-12",
+  "date": "2026-07-12",
+  "uiPaths": [
+    "src/Dropwheel/UI/OverlayWindow.Hints.cs",
+    "src/Dropwheel/UI/OverlayWindow.Cloud.cs",
+    "src/Dropwheel/UI/OverlayWindow.Hotkey.cs",
+    "src/Dropwheel/UI/LLM.md"
+  ]
+}

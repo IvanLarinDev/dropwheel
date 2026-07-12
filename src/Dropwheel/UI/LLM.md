@@ -50,6 +50,9 @@
   системный — только для ошибок старта; всё прочее — inline или `DwMessageBox`.
 - Фидбек — словами, не глифами: тосты и бейджи дропа пишут `Copy`/`Move`/`Sort`/`Undone`,
   а не `⧉`/`➜`/`⇅`/`↩`. Исход кодируй ролью тоста (`ToastKind`), а не значком.
+- Скрытые жесты объясняем пост-триггерными хинтами (`OverlayWindow.Hints.cs`): Info-тост
+  ПОСЛЕ события (открытие колеса с группой/сортером; возврат орба из fullscreen), не по hover.
+  Счётчик показов в `AppConfig.HintShows` через `HintPolicy` (жесты — до 3 раз, fullscreen — 1).
 - Цвета — только из ролей `Palette`/`Theme`. Никаких `Brushes.<Имя>` или `#hex` в
   consumer-файлах (кроме `Brushes.Transparent` и функциональных hit-test/almost-transparent
   заливок). В XAML-окнах бери роли через `DynamicResource` (`DwTextMuted`, `DwBorder`,

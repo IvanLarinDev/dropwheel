@@ -21,7 +21,12 @@ public partial class OverlayWindow
         {
             bool fs = FullscreenDetector.IsFullscreenActive();
             if (fs && !_hiddenByFullscreen) { _hiddenByFullscreen = true; CloseCloud(); Hide(); }
-            else if (!fs && _hiddenByFullscreen) { _hiddenByFullscreen = false; Show(); }
+            else if (!fs && _hiddenByFullscreen)
+            {
+                _hiddenByFullscreen = false;
+                Show();
+                ShowFullscreenReturnHint();
+            }
         };
         _fsTimer.Start();
 
