@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
 using System.Windows.Threading;
 
 namespace Dropwheel.UI;
@@ -41,7 +43,13 @@ public partial class ToastHost : UserControl
         };
         Root.Background = new SolidColorBrush(Themes.Current.Backdrop);
         UndoLink.Foreground = new SolidColorBrush(Themes.Current.Accent);
+        AutomationProperties.SetLiveSetting(this,
+            kind == ToastKind.Danger ? AutomationLiveSetting.Assertive : AutomationLiveSetting.Polite);
+        AutomationProperties.SetName(this, undo != null ? $"{message}. Undo available." : message);
         Visibility = Visibility.Visible;
+        var peer = UIElementAutomationPeer.FromElement(this)
+                   ?? UIElementAutomationPeer.CreatePeerForElement(this);
+        peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
         Restart(kind == ToastKind.Danger || undo != null ? 8 : 4);
     }
 
@@ -63,6 +71,18 @@ public partial class ToastHost : UserControl
     private void OnUndo(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        InvokeUndo();
+    }
+
+    private void OnUndoKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Space)) return;
+        e.Handled = true;
+        InvokeUndo();
+    }
+
+    private void InvokeUndo()
+    {
         var undo = _undo;
         Hide();
         undo?.Invoke();

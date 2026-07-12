@@ -56,10 +56,12 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
       const pass = PASSES[Math.floor(total / PASS_MS)];
       const t = total % PASS_MS;
       const target = drop.tileCenter(pass.index);
+      const lockPoint = { x: target.x - 30, y: target.y - 44 };
 
       // сброс состояния кадра
       drop.forceHot = -1;
       drop.badges.clear();
+      drop.confidence = null;
       drop.ghost = null;
       drop.flash = null;
       drop.toast = null;
@@ -68,19 +70,24 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
         // подлёт файла к тайлу
         const p = easeOut(clamp01(t / 1000));
         drop.ghost = {
-          x: lerp(START.x, target.x, p),
-          y: lerp(START.y, target.y, p),
+          x: lerp(START.x, lockPoint.x, p),
+          y: lerp(START.y, lockPoint.y, p),
           mode: pass.mode, label: pass.label, alpha: 1,
         };
-        if (t > 780) { drop.forceHot = pass.index; drop.badges.set(pass.index, pass.mode); }
+        if (t > 780) {
+          drop.forceHot = pass.index;
+          drop.confidence = { index: pass.index, mode: pass.mode, label: pass.mode === "move" ? "Move" : "Copy" };
+        }
       } else if (t < 1500) {
         // сброс: файл гаснет, тайл ещё горит
+        const p = clamp01((t - 1300) / 200);
         drop.ghost = {
-          x: target.x, y: target.y, mode: pass.mode, label: pass.label,
+          x: lerp(lockPoint.x, target.x, p), y: lerp(lockPoint.y, target.y, p),
+          mode: pass.mode, label: pass.label,
           alpha: 1 - (t - 1300) / 200,
         };
         drop.forceHot = pass.index;
-        drop.badges.set(pass.index, pass.mode);
+        drop.confidence = { index: pass.index, mode: pass.mode, label: pass.mode === "move" ? "Move" : "Copy" };
       }
       // кольцо-вспышка расходится от тайла после сброса
       if (t >= 1300 && t < 1800) {

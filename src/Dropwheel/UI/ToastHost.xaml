@@ -10,7 +10,10 @@
                        TextTrimming="CharacterEllipsis" MaxWidth="220"/>
             <TextBlock x:Name="UndoLink" Text="  Undo" FontSize="12" FontWeight="SemiBold"
                        VerticalAlignment="Center" Cursor="Hand" Visibility="Collapsed"
-                       MouseLeftButtonUp="OnUndo"/>
+                       Focusable="True"
+                       AutomationProperties.Name="Undo last Dropwheel action"
+                       MouseLeftButtonUp="OnUndo"
+                       KeyDown="OnUndoKeyDown"/>
         </StackPanel>
     </Border>
 </UserControl>

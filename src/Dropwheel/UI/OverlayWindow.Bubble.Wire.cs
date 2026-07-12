@@ -19,7 +19,7 @@ public partial class OverlayWindow
     private int?[]? _tileDragOriginalPositions;
     private bool _tileReorderCommitted;
 
-    private StackPanel WireBubble(TargetItem t, Border badge, FrameworkElement label, Grid top, Border sq)
+    private StackPanel WireBubble(TargetItem t, Border badge, TextBlock label, Grid top, Border sq)
     {
         var th = Themes.Current;
         var panel = new StackPanel
@@ -79,19 +79,26 @@ public partial class OverlayWindow
             {
                 StartGroupHover(t, back: false);
                 e.Effects = CanAddTarget(e.Data) ? AddTargetDropEffect(e) : DragDropEffects.None;
+                ShowGeneralConfidence(
+                    panel,
+                    "Open",
+                    $"Group {t.Name}. Hold to open this group.",
+                    ConfidenceTone.Info);
                 e.Handled = true;
             }
-            else OnBubbleDragOver(t, badge, e);
+            else OnBubbleDragOver(panel, t, badge, e);
         };
         panel.DragLeave += (_, _) =>
         {
             badge.Visibility = Visibility.Collapsed;
+            ClearConfidenceTarget(panel);
             SetSpokeLit(panel, false);
             if (t.IsGroup) _groupHover?.Stop();
         };
         panel.Drop += (_, e) =>
         {
             SetSpokeLit(panel, false);
+            ClearConfidenceTarget(panel);
             if (IsTileReorderDrag(e))
             {
                 OnTileReorderDrop(t, badge, e);

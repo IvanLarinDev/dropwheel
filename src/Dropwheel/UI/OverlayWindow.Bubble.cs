@@ -57,8 +57,10 @@ public partial class OverlayWindow
             VerticalAlignment = VerticalAlignment.Top,
             Child = new TextBlock { Text = "Copy", FontWeight = FontWeights.Bold, FontSize = 11 }
         };
+        var confidence = MakeConfidenceOverlay();
         var top = new Grid { Width = 70, Height = 66 };
         top.Children.Add(sq);
+        top.Children.Add(confidence.Ring);
         top.Children.Add(badge);
         if (t.IsGroup && GroupShortcutSequence.IsValidCode(t.GroupCode))
         {
@@ -82,8 +84,25 @@ public partial class OverlayWindow
             });
         }
         if (!t.IsGroup && !t.Exists) top.Children.Add(MissingBadge());
-        var tile = WireBubble(t, badge, MakeLabel(t.Name), top, sq);
+        top.Children.Add(confidence.Chip);
+        var label = MakeLabel(t.Name);
+        var tile = WireBubble(t, badge, label, top, sq);
         System.Windows.Automation.AutomationProperties.SetName(tile, AccessibleName(t));
+        RegisterConfidenceVisuals(
+            tile,
+            confidence.Ring,
+            confidence.Chip,
+            confidence.ChipText,
+            label,
+            AccessibleName(t),
+            () =>
+            {
+                if (t.IsGroup) EnterGroup(t);
+                else if (!t.Exists) ShowMissingMenu(t);
+                else { LaunchService.Launch(t); CloseCloud(); }
+            },
+            KeyboardStatus(t),
+            badge);
         return tile;
     }
 
@@ -119,7 +138,7 @@ public partial class OverlayWindow
     /// <summary>Tile label: light text with a dark shadow so it reads on the overlay's dark
     /// backdrop. Themes whose in-tile text is dark (Light) get a light label instead — the dark
     /// color is only right on the white tile, not under it. No pill.</summary>
-    private static FrameworkElement MakeLabel(string text)
+    private static TextBlock MakeLabel(string text)
     {
         var th = Themes.Current;
         var color = Luminance(th.Label) < 0.5 ? Color.FromRgb(0xEC, 0xF1, 0xF7) : th.Label;
@@ -134,6 +153,12 @@ public partial class OverlayWindow
             Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 3, ShadowDepth = 1, Opacity = 0.85 },
         };
     }
+
+    private static string KeyboardStatus(TargetItem t) =>
+        t.IsGroup ? $"Group {t.Name}. Press Enter to open."
+        : !t.Exists ? $"{t.Name}. Target is missing. Press Enter to locate or remove."
+        : LaunchService.IsRunTarget(t) ? $"{t.Name}. Press Enter to launch."
+        : $"{t.Name}. Press Enter to open.";
 
     private static double Luminance(Color c) => (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
 

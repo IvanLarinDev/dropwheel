@@ -77,6 +77,7 @@ const DW = (() => {
     sorter: { glyph: "⇅", color: "rgb(232,166,72)" },  // amber (sorter)
     text:   { glyph: "≡", color: "rgb(31,157,87)" },   // text → save (Success)
     add:    { glyph: "+", color: "rgb(44,123,229)" },  // Info
+    no:     { glyph: "!", color: "rgb(209,52,56)" },   // Danger
     reorder:{ glyph: "↕", color: "rgb(44,123,229)" },  // Info
   };
 
@@ -208,6 +209,7 @@ const DW = (() => {
       // Программное состояние для сценариев (drop файла и т.п.):
       this.forceHot = -1;             // подсвеченный тайл помимо наведения
       this.badges = new Map();        // index → "copy" | "move"
+      this.confidence = null;         // {index, mode, label, tone} — locked drop target + action chip
       this.ghost = null;              // {x, y, label, mode, alpha, kind} — призрак файла/текста
       this.toast = null;              // {text, alpha}
       this.flash = null;              // {index, p} — вспышка при сбросе
@@ -320,7 +322,8 @@ const DW = (() => {
       ctx.globalAlpha = rimO;
       for (let i = 0; i < n; i++) {
         const s = this._slotOf(i, n);
-        const lit = (this.hoverEnabled && this.hover === i) || this.forceHot === i;
+        const lit = (this.hoverEnabled && this.hover === i) || this.forceHot === i
+          || (this.confidence && this.confidence.index === i);
         ctx.strokeStyle = lit ? th.accent : th.spoke;
         ctx.lineWidth = lit ? 2.5 : 2;
         ctx.beginPath();
@@ -342,6 +345,8 @@ const DW = (() => {
         const p = A.ease(clamp01(tt / (A.dur / sp)));
         let op = clamp01(tt / (A.opacity / sp));
         if (this.tileMul && this.tileMul[i] != null) op *= this.tileMul[i];
+        const locked = this.confidence && this.confidence.index === i;
+        if (this.confidence && !locked) op *= 0.34;
         const scale = A.scale + (1 - A.scale) * p;
         // радиальное или касательное стартовое смещение
         const off = A.offMode === "tangential"
@@ -349,10 +354,11 @@ const DW = (() => {
           : { x: A.offMul * Math.cos(s.a), y: A.offMul * Math.sin(s.a) };
         const x = s.x + off.x * (1 - p);
         const y = s.y - 8 + off.y * (1 - p);
-        const hot = (this.hoverEnabled && this.hover === i) || this.forceHot === i;
+        const hot = (this.hoverEnabled && this.hover === i) || this.forceHot === i || locked;
         ctx.globalAlpha = op;
-        this._drawTile(ctx, t, x, y, scale * (hot ? 1.06 : 1), hot, this.badges.get(i));
-        this._drawCaption(ctx, t.label, s.x, s.y + 40);
+        this._drawTile(ctx, t, x, y, scale * (hot ? 1.06 : 1), hot,
+          locked ? null : this.badges.get(i), locked ? this.confidence : null);
+        this._drawCaption(ctx, t.label, s.x, s.y + 40, locked);
         ctx.globalAlpha = 1;
       }
 
@@ -414,8 +420,10 @@ const DW = (() => {
 
     /** Подпись под тайлом: светлый текст с тенью, либо тёмный текст на светлой
      * подложке-пилюле (тема Light, у которой задан labelBg). */
-    _drawCaption(ctx, text, x, y) {
-      ctx.font = "11.5px system-ui,-apple-system,Segoe UI,sans-serif";
+    _drawCaption(ctx, text, x, y, active = false) {
+      ctx.font = active
+        ? "600 12.5px system-ui,-apple-system,Segoe UI,sans-serif"
+        : "11.5px system-ui,-apple-system,Segoe UI,sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       if (this.theme.labelBg) {
         const w = ctx.measureText(text).width + 12;
@@ -638,7 +646,7 @@ const DW = (() => {
       ctx.restore();
     }
 
-    _drawTile(ctx, t, x, y, scale, hot, badge) {
+    _drawTile(ctx, t, x, y, scale, hot, badge, confidence) {
       ctx.save();
       ctx.translate(x, y);
       ctx.scale(scale, scale);
@@ -654,6 +662,7 @@ const DW = (() => {
         ctx.moveTo(0, -11); ctx.lineTo(0, 11);
         ctx.moveTo(-11, 0); ctx.lineTo(11, 0);
         ctx.stroke();
+        if (confidence) this._drawConfidence(ctx, confidence);
         ctx.restore();
         return;
       }
@@ -671,6 +680,7 @@ const DW = (() => {
         ctx.beginPath();
         ctx.moveTo(5, -11); ctx.lineTo(-7, 0); ctx.lineTo(5, 11);
         ctx.stroke();
+        if (confidence) this._drawConfidence(ctx, confidence);
         ctx.restore();
         return;
       }
@@ -723,8 +733,48 @@ const DW = (() => {
         ctx.fillText(b.glyph, s - 5, -s + 1);
       }
 
+      if (confidence) this._drawConfidence(ctx, confidence);
       ctx.restore();
     }
+
+    _drawConfidence(ctx, confidence) {
+      const color = confidenceColor(confidence);
+      const label = confidence.label || confidenceLabel(confidence);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = confidence.mode === "no" ? 3 : 2.4;
+      roundRect(ctx, -34, -34, 68, 68, 19); ctx.stroke();
+
+      ctx.font = "600 11px system-ui,-apple-system,Segoe UI,sans-serif";
+      const w = Math.min(96, Math.max(42, ctx.measureText(label).width + 14));
+      ctx.fillStyle = "rgba(22,30,44,.94)";
+      roundRect(ctx, -w / 2, 21, w, 19, 10); ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      roundRect(ctx, -w / 2, 21, w, 19, 10); ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, 0, 30.5);
+      ctx.restore();
+    }
+  }
+
+  function confidenceLabel(confidence) {
+    const mode = confidence.mode || confidence.tone;
+    if (mode === "move") return "Move";
+    if (mode === "sorter") return "Sort";
+    if (mode === "run") return "Run";
+    if (mode === "text") return "Text";
+    if (mode === "add") return "Add";
+    if (mode === "no") return "Can't";
+    return "Copy";
+  }
+
+  function confidenceColor(confidence) {
+    const mode = confidence.mode || confidence.tone;
+    const b = BADGES[mode] || BADGES.copy;
+    return b.color;
   }
 
   return { Wheel, THEMES, SIZE };

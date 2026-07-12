@@ -5,7 +5,8 @@
         Title="Dropwheel" Width="460" Height="460"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ShowActivated="False"
-        ResizeMode="NoResize">
+        ResizeMode="NoResize"
+        Focusable="True">
     <Canvas x:Name="Root">
         <!-- wheel rim -->
         <Ellipse x:Name="Rim" Width="340" Height="340" Canvas.Left="60" Canvas.Top="60"
@@ -69,5 +70,9 @@
         </Grid>
 
         <ui:ToastHost x:Name="Toast" Canvas.Left="90" Canvas.Top="412"/>
+        <TextBlock x:Name="ConfidenceLiveText"
+                   Width="1" Height="1" Opacity="0"
+                   IsHitTestVisible="False"
+                   AutomationProperties.LiveSetting="Polite"/>
     </Canvas>
 </Window>

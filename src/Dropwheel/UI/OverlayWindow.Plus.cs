@@ -15,6 +15,8 @@ public partial class OverlayWindow
         var th = Themes.Current;
         var rect = new Rectangle
         {
+            Width = 64,
+            Height = 64,
             RadiusX = 17,
             RadiusY = 17,
             Stroke = new SolidColorBrush(th.TileBorder),
@@ -30,13 +32,17 @@ public partial class OverlayWindow
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
-        var g = new Grid { Width = 64, Height = 64 };
+        var confidence = MakeConfidenceOverlay();
+        var g = new Grid { Width = 70, Height = 66 };
         g.Children.Add(rect);
         g.Children.Add(plus);
+        g.Children.Add(confidence.Ring);
+        g.Children.Add(confidence.Chip);
         var panel = new StackPanel
         { Width = 76, AllowDrop = true, Background = Brushes.Transparent, Opacity = 0.85 };
-        panel.Children.Add(new Grid { Width = 70, Height = 66, Children = { g } });
-        panel.Children.Add(MakeLabel("Add"));
+        panel.Children.Add(g);
+        var label = MakeLabel("Add");
+        panel.Children.Add(label);
         panel.MouseEnter += (_, _) => { rect.Fill = new SolidColorBrush(th.TileHot); SetSpokeLit(panel, true); };
         panel.MouseLeave += (_, _) => { rect.Fill = Brushes.Transparent; SetSpokeLit(panel, false); };
         panel.MouseLeftButtonUp += (_, e) =>
@@ -53,10 +59,20 @@ public partial class OverlayWindow
                 return;
             }
             e.Effects = CanAddTarget(e.Data) ? AddTargetDropEffect(e) : DragDropEffects.None;
+            ShowGeneralConfidence(
+                panel,
+                e.Effects == DragDropEffects.None ? "Can't" : "Add",
+                e.Effects == DragDropEffects.None
+                    ? "This payload cannot be added as a target."
+                    : "Drop to add a target to the current wheel level.",
+                e.Effects == DragDropEffects.None ? ConfidenceTone.Danger : ConfidenceTone.Info,
+                e.Effects != DragDropEffects.None);
             e.Handled = true;
         };
+        panel.DragLeave += (_, _) => ClearConfidenceTarget(panel);
         panel.Drop += (_, e) =>
         {
+            ClearConfidenceTarget(panel);
             if (IsTileReorderDrag(e))
             {
                 OnTileReorderDropToEnd(e);
@@ -65,6 +81,15 @@ public partial class OverlayWindow
             OnOrbDrop(panel, e); // same logic: add to the current level
         };
         System.Windows.Automation.AutomationProperties.SetName(panel, "Add target");
+        RegisterConfidenceVisuals(
+            panel,
+            confidence.Ring,
+            confidence.Chip,
+            confidence.ChipText,
+            label,
+            "Add target",
+            () => OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup),
+            "Add target. Press Enter to create a new target.");
         return panel;
     }
 }

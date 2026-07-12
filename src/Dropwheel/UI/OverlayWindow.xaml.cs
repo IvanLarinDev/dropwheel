@@ -68,6 +68,7 @@ public partial class OverlayWindow : Window
         PreviewDrop += OnTileReorderPreviewDrop;
         DragEnter += (_, _) => _closeTimer.Stop();
         DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
+        PreviewKeyDown += OnOverlayPreviewKeyDown;
         Deactivated += (_, _) => CloseCloud();
 
         Loaded += (_, _) =>

@@ -17,7 +17,15 @@ public partial class OverlayWindow
             t.Override,
             TargetStore.Config.GlobalAction);
 
-    private void OnBubbleDragOver(TargetItem t, Border badge, DragEventArgs e)
+    private void OnBubbleDragOver(FrameworkElement tile, TargetItem t, Border badge, DragEventArgs e)
+    {
+        var preview = PreviewBubbleDrop(t, e);
+        e.Effects = preview.Effects;
+        ShowDropConfidence(tile, t, badge, preview);
+        e.Handled = true;
+    }
+
+    private DropConfidencePreview PreviewBubbleDrop(TargetItem t, DragEventArgs e)
     {
         bool real = e.Data.GetDataPresent(DataFormats.FileDrop);
         bool virt = !real && VirtualFileService.HasVirtualFiles(e.Data);
@@ -29,31 +37,49 @@ public partial class OverlayWindow
             var effect = TelegramDropEffect(e);
             if (effect == DragDropEffects.None)
             {
-                e.Effects = DragDropEffects.None;
-                e.Handled = true;
-                return;
+                return new DropConfidencePreview(
+                    DragDropEffects.None, "No", "Can't",
+                    "Cannot send this payload to Telegram.",
+                    ConfidenceTone.Danger, CanDrop: false);
             }
 
             var telegramText = !real && !virt && TextDropService.HasText(e.Data);
-            e.Effects = effect;
-            ((TextBlock)badge.Child).Text = telegramText ? "Text" : "Copy";
-            badge.Background = Palettes.Info;
-            badge.Visibility = Visibility.Visible;
-            e.Handled = true;
-            return;
+            return new DropConfidencePreview(
+                effect,
+                telegramText ? "Text" : "Copy",
+                telegramText ? "Text" : "Copy",
+                telegramText
+                    ? $"Drop to copy text for {t.Name}."
+                    : $"Drop to copy files for {t.Name}.",
+                ConfidenceTone.Info,
+                CanDrop: true);
         }
 
         if (real && LaunchService.IsRunTarget(t)) // drop files on an exe/script → run it (open with)
         {
-            e.Effects = DragDropEffects.Link;
-            ((TextBlock)badge.Child).Text = "Run";
-            badge.Background = Palettes.Info;
-            badge.Visibility = Visibility.Visible;
-            e.Handled = true;
-            return;
+            return new DropConfidencePreview(
+                DragDropEffects.Link,
+                "Run",
+                "Run",
+                $"Drop to open {RealFileCount(e)} item(s) with {t.Name}.",
+                ConfidenceTone.Info,
+                CanDrop: true);
         }
         if ((!real && !virt && !link && !text) || !LaunchService.IsFolderTarget(t))
-        { e.Effects = DragDropEffects.None; e.Handled = true; return; }
+        {
+            var reason = !t.Exists
+                ? $"{t.Name} is missing. Locate or remove this target."
+                : !real && !virt && !link && !text
+                    ? "This payload is not supported."
+                    : $"{t.Name} cannot receive this drop.";
+            return new DropConfidencePreview(
+                DragDropEffects.None,
+                "No",
+                "Can't",
+                reason,
+                ConfidenceTone.Danger,
+                CanDrop: false);
+        }
 
         var act = DropDispatch.EffectiveAction(
             virt || text, // virtual files and text: copy only
@@ -61,13 +87,55 @@ public partial class OverlayWindow
             e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey),
             t.Override,
             TargetStore.Config.GlobalAction);
-        e.Effects = link ? AddTargetDropEffect(e) : act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
-        ((TextBlock)badge.Child).Text = t.IsSorter ? "Sort" : text ? "Text" : act == DropAction.Move ? "Move" : "Copy";
-        if (link) ((TextBlock)badge.Child).Text = "Add";
-        badge.Background = link ? Palettes.Info : act == DropAction.Move ? Palettes.Warning : Palettes.Success;
-        badge.Visibility = Visibility.Visible;
-        e.Handled = true;
+        if (link)
+        {
+            var effect = AddTargetDropEffect(e);
+            return new DropConfidencePreview(
+                effect,
+                effect == DragDropEffects.None ? "No" : "Add",
+                effect == DragDropEffects.None ? "Can't" : "Add",
+                effect == DragDropEffects.None
+                    ? "This link cannot be added from the current drag source."
+                    : $"Drop to add this link to the current wheel level.",
+                effect == DragDropEffects.None ? ConfidenceTone.Danger : ConfidenceTone.Info,
+                CanDrop: effect != DragDropEffects.None);
+        }
+
+        if (t.IsSorter)
+        {
+            return new DropConfidencePreview(
+                act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy,
+                "Sort",
+                "Sort",
+                $"Drop to sort into {t.Name}.",
+                ConfidenceTone.Info,
+                CanDrop: true);
+        }
+
+        if (text)
+        {
+            return new DropConfidencePreview(
+                DragDropEffects.Copy,
+                "Text",
+                "Text",
+                $"Drop to save text in {t.Name}.",
+                ConfidenceTone.Info,
+                CanDrop: true);
+        }
+
+        return new DropConfidencePreview(
+            act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy,
+            act == DropAction.Move ? "Move" : "Copy",
+            act == DropAction.Move ? "Move" : "Copy",
+            act == DropAction.Move
+                ? $"Drop to move to {t.Name}."
+                : $"Drop to copy to {t.Name}.",
+            act == DropAction.Move ? ConfidenceTone.Warning : ConfidenceTone.Success,
+            CanDrop: true);
     }
+
+    private static int RealFileCount(DragEventArgs e) =>
+        e.Data.GetData(DataFormats.FileDrop) is string[] files ? files.Length : 0;
 
     private void OnBubbleDrop(TargetItem t, Border badge, DragEventArgs e)
     {
