@@ -19,7 +19,6 @@ public partial class OverlayWindow : Window
 
     private readonly DispatcherTimer _hoverTimer;
     private readonly DispatcherTimer _closeTimer;
-    private readonly DispatcherTimer _toastTimer;
     private bool _open;
 
     public OverlayWindow()
@@ -35,9 +34,6 @@ public partial class OverlayWindow : Window
 
         _closeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _closeTimer.Tick += (_, _) => { _closeTimer.Stop(); CloseCloud(); };
-
-        _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-        _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); Toast.Visibility = Visibility.Collapsed; };
 
         Orb.Opacity = TargetStore.Config.OrbOpacity;
         Orb.MouseEnter += (_, _) =>

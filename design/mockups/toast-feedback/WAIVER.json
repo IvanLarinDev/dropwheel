@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "reason": "Package 3 of the UI/UX consolidation approved in UI-UX-SPEC.md (see DECISIONS.md, 2026-07-12). This package turns the wheel's inline toast into a reusable ToastHost control (self-theming dark backdrop, self-timing 4s / 8s for danger and undo, a small role-colored dot for Success/Warning/Danger/Info, an optional Undo link, hover-to-freeze) and routes all overlay feedback through it, and it replaces the undocumented glyph language (⧉ ➜ ⇅ ≡ ▶ ↕ ↩) with plain words (Copy, Move, Sort, Text, Run, Add, Reorder, Undone) in both toasts and drop badges. It is a wording-and-token change on the existing feedback surface: no new screen or dialog composition, layout and behavior unchanged, colors from the palette roles added in package 1. The wording-vs-glyph decision and the single-channel toast policy are the ones the owner already approved in the spec; per-package mockups add nothing here.",
+  "approvedBy": "Ivan Larin (repo owner) via chat request on 2026-07-12",
+  "date": "2026-07-12",
+  "uiPaths": [
+    "src/Dropwheel/UI/ToastHost.xaml",
+    "src/Dropwheel/UI/ToastHost.xaml.cs",
+    "src/Dropwheel/UI/OverlayWindow.xaml",
+    "src/Dropwheel/UI/OverlayWindow.xaml.cs",
+    "src/Dropwheel/UI/OverlayWindow.Layout.cs",
+    "src/Dropwheel/UI/OverlayWindow.Undo.cs",
+    "src/Dropwheel/UI/OverlayWindow.Dnd.cs",
+    "src/Dropwheel/UI/OverlayWindow.Sort.cs",
+    "src/Dropwheel/UI/OverlayWindow.Hotkey.cs",
+    "src/Dropwheel/UI/OverlayWindow.GroupShortcuts.cs",
+    "src/Dropwheel/UI/OverlayWindow.Bubble.cs",
+    "src/Dropwheel/UI/OverlayWindow.Bubble.Wire.cs",
+    "src/Dropwheel/UI/LLM.md"
+  ]
+}

@@ -22,6 +22,10 @@
   слева (`DangerText`). Окно подписывает `PrimaryClick`/`DangerClick`; Cancel и Esc сами
   закрывают диалог с `DialogResult=false`. `DwMessageBox.cs` — темизированная замена
   `MessageBox` (с fallback на системный, если палитра ещё не готова).
+- `ToastHost.xaml(.cs)` — переиспользуемый одиночный тост: сам красится от темы (тёмная
+  подложка `Backdrop`), сам считает время (4 с, 8 с для Danger/undo), точка-роль
+  `Success/Warning/Danger/Info`, опциональная ссылка Undo, наведение замораживает таймер.
+  Оверлей встраивает его как `Toast`; фидбек даётся через `ShowToast(msg, canUndo, kind)`.
 - `Themes.cs`, `Palette.cs`, `MenuTheme.xaml` — палитры и оформление. `Palette` — единственный
   источник цвета: помимо окон он держит общие роли обратной связи `Success/Warning/Danger/Info`,
   которыми красятся и диалоги, и колесо (бейджи дропа, битые цели). `Theme` — цветовая таблица
@@ -39,6 +43,8 @@
   (системный `MessageBox` оставляем только для ошибок старта до загрузки конфига).
 - Новую тему главного окна выноси в отдельный `OverlayWindow.<Тема>.cs`, не раздувай
   существующие части.
+- Фидбек — словами, не глифами: тосты и бейджи дропа пишут `Copy`/`Move`/`Sort`/`Undone`,
+  а не `⧉`/`➜`/`⇅`/`↩`. Исход кодируй ролью тоста (`ToastKind`), а не значком.
 - Цвета — только из ролей `Palette`/`Theme`. Никаких `Brushes.<Имя>` или `#hex` в
   consumer-файлах (кроме `Brushes.Transparent` и функциональных hit-test/almost-transparent
   заливок). В XAML-окнах бери роли через `DynamicResource` (`DwTextMuted`, `DwBorder`,

@@ -270,7 +270,7 @@ public partial class OverlayWindow
             return;
         }
 
-        ((TextBlock)badge.Child).Text = "↕";
+        ((TextBlock)badge.Child).Text = "Reorder";
         badge.Background = Palettes.Info;
         badge.Visibility = Visibility.Visible;
         e.Effects = DragDropEffects.Move;

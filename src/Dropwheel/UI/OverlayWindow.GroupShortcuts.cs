@@ -88,7 +88,7 @@ public partial class OverlayWindow
                 break;
             case GroupShortcutMatchKind.NoMatch:
                 ResetGroupShortcutInput();
-                ShowToast($"No group shortcut {match.Input}");
+                ShowToast($"No group shortcut {match.Input}", kind: ToastKind.Warning);
                 break;
         }
         return true;
@@ -105,7 +105,7 @@ public partial class OverlayWindow
         }
 
         ResetGroupShortcutInput();
-        if (match.Input.Length > 0) ShowToast($"No group shortcut {match.Input}");
+        if (match.Input.Length > 0) ShowToast($"No group shortcut {match.Input}", kind: ToastKind.Warning);
     }
 
     private void OpenGroupByShortcut(string code)
@@ -114,7 +114,7 @@ public partial class OverlayWindow
         ResetGroupShortcutInput();
         if (group == null)
         {
-            ShowToast($"No group shortcut {code}");
+            ShowToast($"No group shortcut {code}", kind: ToastKind.Warning);
             return;
         }
 

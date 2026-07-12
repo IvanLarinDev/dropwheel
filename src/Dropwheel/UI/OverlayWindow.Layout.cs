@@ -190,14 +190,9 @@ public partial class OverlayWindow
         try { ShowToast(message); } catch { /* toast unavailable — already logged */ }
     }
 
-    private void ShowToast(string msg, bool canUndo = false)
+    private void ShowToast(string msg, bool canUndo = false, ToastKind kind = ToastKind.Info)
     {
-        ToastText.Text = msg;
-        UndoLink.Visibility = canUndo ? Visibility.Visible : Visibility.Collapsed;
-        Toast.Visibility = Visibility.Visible;
-        _toastTimer.Stop();
-        _toastTimer.Interval = TimeSpan.FromSeconds(canUndo ? 6 : 3);
-        _toastTimer.Start();
+        Toast.Show(msg, kind, canUndo ? Undo : null);
     }
 
     private void CreateGroup()
@@ -240,9 +235,6 @@ public partial class OverlayWindow
         Bolt1.Fill = Bolt2.Fill = Bolt3.Fill = Bolt4.Fill = boltBrush;
         Rim.Stroke = new System.Windows.Media.SolidColorBrush(th.Rim);
         PinRing.Stroke = new System.Windows.Media.SolidColorBrush(th.Accent);
-        var backdrop = new System.Windows.Media.SolidColorBrush(th.Backdrop);
-        Toast.Background = backdrop;
-        ShortcutIndicator.Background = backdrop;
-        UndoLink.Foreground = new System.Windows.Media.SolidColorBrush(th.Accent);
+        ShortcutIndicator.Background = new System.Windows.Media.SolidColorBrush(th.Backdrop);
     }
 }

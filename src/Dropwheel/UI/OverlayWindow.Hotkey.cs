@@ -75,6 +75,6 @@ public partial class OverlayWindow
         if (notify)
             ShowToast(rolledBack
                 ? $"Hotkey {hotkey} is taken — kept the previous {_hotkeyActive}"
-                : $"Hotkey {hotkey} is taken by another app");
+                : $"Hotkey {hotkey} is taken by another app", kind: ToastKind.Warning);
     }
 }

@@ -54,7 +54,7 @@ public partial class OverlayWindow
             Visibility = Visibility.Collapsed,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
-            Child = new TextBlock { Text = "⧉", FontWeight = FontWeights.Bold, FontSize = 12 }
+            Child = new TextBlock { Text = "Copy", FontWeight = FontWeights.Bold, FontSize = 11 }
         };
         var top = new Grid { Width = 70, Height = 66 };
         top.Children.Add(sq);

@@ -1,5 +1,4 @@
 using System.IO;
-using System.Windows.Input;
 using Dropwheel.Models;
 using Dropwheel.Services;
 using IOPath = System.IO.Path;
@@ -42,12 +41,6 @@ public partial class OverlayWindow
     internal static FileOp BuildCreatedCopyOp(string[] sources, string dest) =>
         new(DropAction.Copy, sources, dest, Array.Empty<string>());
 
-    private void OnUndoClick(object sender, MouseButtonEventArgs e)
-    {
-        e.Handled = true;
-        Undo();
-    }
-
     /// <summary>Best-effort: copy → delete the copies (to Recycle Bin), move → move back.
     /// Files renamed by the conflict dialog are not tracked. Adding a target is undone by
     /// restoring the level snapshot.</summary>
@@ -59,7 +52,7 @@ public partial class OverlayWindow
             RestoreLevel(add);
             TargetStore.Save();
             if (_open) BuildCloud();
-            ShowToast("↩ Undone");
+            ShowToast("Undone");
             return;
         }
 
@@ -67,7 +60,8 @@ public partial class OverlayWindow
         bool ok = true;
         foreach (var op in _lastOps) ok &= UndoOne(op);
         _lastOps.Clear();
-        ShowToast(ok ? "↩ Undone" : "Could not undo completely");
+        if (ok) ShowToast("Undone");
+        else ShowToast("Could not undo completely", kind: ToastKind.Warning);
     }
 
     /// <summary>Rebuilds a level to its snapshot: same items, same order, same pin positions. Any

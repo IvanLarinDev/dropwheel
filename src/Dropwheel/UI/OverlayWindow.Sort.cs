@@ -44,8 +44,9 @@ public partial class OverlayWindow
         }
         if (ops.Count > 0) RememberOps(ops);
         ShowToast(ok
-            ? $"⇅ Sorted: {files.Length} item(s) → {t.Name}"
-            : "Sorting was not completed", ops.Count > 0);
+            ? $"Sorted: {files.Length} item(s) → {t.Name}"
+            : "Sorting was not completed", ops.Count > 0,
+            ok ? ToastKind.Success : ToastKind.Danger);
     }
 
     /// <summary>Virtual files are already saved into the sorter root — distribute
@@ -73,14 +74,14 @@ public partial class OverlayWindow
         {
             if (!Directory.Exists(t.Path))
             {
-                ShowToast("Sorter folder is unavailable");
+                ShowToast("Sorter folder is unavailable", kind: ToastKind.Warning);
                 return;
             }
 
             var plan = SortService.MovePlan(t, Directory.GetFiles(t.Path));
             if (plan.Count == 0)
             {
-                ShowToast("Nothing to sort");
+                ShowToast("Nothing to sort", kind: ToastKind.Info);
                 return;
             }
 
@@ -101,13 +102,14 @@ public partial class OverlayWindow
 
             if (ops.Count > 0) RememberOps(ops);
             ShowToast(ok
-                ? $"⇅ Sorted: {moved} item(s) → {t.Name}"
-                : "Sorting was not completed", ops.Count > 0);
+                ? $"Sorted: {moved} item(s) → {t.Name}"
+                : "Sorting was not completed", ops.Count > 0,
+                ok ? ToastKind.Success : ToastKind.Danger);
         }
         catch (Exception ex)
         {
             ErrorLog.Write($"Manual sort of '{t.Name}' failed", ex);
-            ShowToast("Sorting was not completed");
+            ShowToast("Sorting was not completed", kind: ToastKind.Danger);
         }
     }
 }

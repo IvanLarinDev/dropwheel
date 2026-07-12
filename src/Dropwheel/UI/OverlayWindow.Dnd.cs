@@ -36,7 +36,7 @@ public partial class OverlayWindow
 
             var telegramText = !real && !virt && TextDropService.HasText(e.Data);
             e.Effects = effect;
-            ((TextBlock)badge.Child).Text = telegramText ? "≡" : "⧉";
+            ((TextBlock)badge.Child).Text = telegramText ? "Text" : "Copy";
             badge.Background = Palettes.Info;
             badge.Visibility = Visibility.Visible;
             e.Handled = true;
@@ -46,7 +46,7 @@ public partial class OverlayWindow
         if (real && LaunchService.IsRunTarget(t)) // drop files on an exe/script → run it (open with)
         {
             e.Effects = DragDropEffects.Link;
-            ((TextBlock)badge.Child).Text = "▶";
+            ((TextBlock)badge.Child).Text = "Run";
             badge.Background = Palettes.Info;
             badge.Visibility = Visibility.Visible;
             e.Handled = true;
@@ -62,8 +62,8 @@ public partial class OverlayWindow
             t.Override,
             TargetStore.Config.GlobalAction);
         e.Effects = link ? AddTargetDropEffect(e) : act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy;
-        ((TextBlock)badge.Child).Text = t.IsSorter ? "⇅" : text ? "≡" : act == DropAction.Move ? "➜" : "⧉";
-        if (link) ((TextBlock)badge.Child).Text = "+";
+        ((TextBlock)badge.Child).Text = t.IsSorter ? "Sort" : text ? "Text" : act == DropAction.Move ? "Move" : "Copy";
+        if (link) ((TextBlock)badge.Child).Text = "Add";
         badge.Background = link ? Palettes.Info : act == DropAction.Move ? Palettes.Warning : Palettes.Success;
         badge.Visibility = Visibility.Visible;
         e.Handled = true;
@@ -76,7 +76,7 @@ public partial class OverlayWindow
         catch (Exception ex)
         {
             ErrorLog.Write($"Error dropping onto '{t.Name}'", ex);
-            ShowToast("The operation could not be completed");
+            ShowToast("The operation could not be completed", kind: ToastKind.Danger);
         }
         CloseCloud();
         e.Handled = true;
@@ -94,7 +94,7 @@ public partial class OverlayWindow
             {
                 ErrorLog.Write(
                     $"Telegram drop had no extractable payload. AllowedEffects={e.AllowedEffects}; Formats={TextDropService.DescribeFormats(e.Data)}");
-                ShowToast("Nothing to send");
+                ShowToast("Nothing to send", kind: ToastKind.Warning);
                 return;
             }
 
@@ -104,8 +104,8 @@ public partial class OverlayWindow
                 ? DragDropEffects.Copy
                 : DragDropEffects.None;
             ShowToast(result.Kind == TelegramDropKind.Files
-                ? $"⧉ Copied {result.Count} file(s); pasting in Telegram"
-                : "≡ Copied text; pasting in Telegram");
+                ? $"Copied {result.Count} file(s); pasting in Telegram"
+                : "Copied text; pasting in Telegram", kind: ToastKind.Success);
             return;
         }
 
@@ -122,8 +122,8 @@ public partial class OverlayWindow
                 case FileDropRoute.Run:
                     bool launched = LaunchService.LaunchWith(t, files);
                     ShowToast(launched
-                        ? $"▶ Opened {files.Length} item(s) with {t.Name}"
-                        : "Could not launch");
+                        ? $"Opened {files.Length} item(s) with {t.Name}"
+                        : "Could not launch", kind: launched ? ToastKind.Success : ToastKind.Danger);
                     return;
             }
             var act = Resolve(t, e);
@@ -131,8 +131,8 @@ public partial class OverlayWindow
             bool ok = FileOps.Execute(files, dest, act);
             if (ok) RememberOp(op);
             ShowToast(ok
-                ? $"{(act == DropAction.Move ? "➜ Moved" : "⧉ Copied")}: {files.Length} item(s) → {t.Name}"
-                : "Operation was not completed", ok);
+                ? $"{(act == DropAction.Move ? "Moved" : "Copied")}: {files.Length} item(s) → {t.Name}"
+                : "Operation was not completed", ok, ok ? ToastKind.Success : ToastKind.Danger);
         }
         else if (VirtualFileService.HasVirtualFiles(e.Data))
         {
@@ -143,15 +143,16 @@ public partial class OverlayWindow
                 else RememberOp(BuildCreatedCopyOp(saved, dest));
             }
             ShowToast(saved.Length > 0
-                ? $"⧉ Saved: {saved.Length} item(s) → {t.Name}"
-                : "Nothing to save", saved.Length > 0);
+                ? $"Saved: {saved.Length} item(s) → {t.Name}"
+                : "Nothing to save", saved.Length > 0,
+                saved.Length > 0 ? ToastKind.Success : ToastKind.Warning);
         }
         else if (AddTargetsFromDrop(e.Data, _currentGroup))
         {
         }
         else if (LinkTargetService.HasSavedMessagesLabel(e.Data))
         {
-            ShowToast("Saved Messages target was not added");
+            ShowToast("Saved Messages target was not added", kind: ToastKind.Warning);
         }
         else if (TextDropService.HasText(e.Data))
         {
@@ -162,8 +163,9 @@ public partial class OverlayWindow
                 else RememberOp(BuildCreatedCopyOp(new[] { path }, dest));
             }
             ShowToast(saved != null
-                ? $"≡ Saved text → {System.IO.Path.GetFileName(saved)}"
-                : "No text to save", saved != null);
+                ? $"Saved text → {System.IO.Path.GetFileName(saved)}"
+                : "No text to save", saved != null,
+                saved != null ? ToastKind.Success : ToastKind.Warning);
         }
     }
 
