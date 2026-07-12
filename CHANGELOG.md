@@ -1,6 +1,13 @@
 # Changelog
 
 - - -
+## [v0.16.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.15.2..v0.16.0) - 2026-07-12
+#### Features
+- (**settings**) add advanced hotkey editor - ([1c1def1](https://github.com/IvanLarinDev/dropwheel/commit/1c1def1938db98dedd7e0fc72e70cd3426614431)) - Ivan Larin
+#### Bug Fixes
+- (**release**) handle delayed workflow discovery - ([8dc4675](https://github.com/IvanLarinDev/dropwheel/commit/8dc4675f6b0b589f99f82d549918f315337a8211)) - Ivan Larin
+
+- - -
 ## [v0.15.2](https://github.com/IvanLarinDev/dropwheel/compare/v0.15.1..v0.15.2) - 2026-07-12
 #### Continuous Integration
 - add reliable release automation - ([4eb86ab](https://github.com/IvanLarinDev/dropwheel/commit/4eb86abb6b9102175d62368b9a8947648ea7f628)) - Ivan Larin
