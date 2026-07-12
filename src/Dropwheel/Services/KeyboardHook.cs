@@ -76,7 +76,7 @@ public sealed class KeyboardHook : IDisposable
     {
         if (code >= 0)
         {
-            var message = (int)wParam;
+            var message = checked((int)wParam);
             var data = Marshal.PtrToStructure<KbdLlHookStruct>(lParam);
             if (TryGetDigit(data.VkCode, out var digit))
             {
