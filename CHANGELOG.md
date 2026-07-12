@@ -1,6 +1,11 @@
 # Changelog
 
 - - -
+## [v0.16.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.0..v0.16.1) - 2026-07-12
+#### Features
+- (**ui**) add confidence layer for wheel actions - ([bb951c6](https://github.com/IvanLarinDev/dropwheel/commit/bb951c64fbf3d11863a65eb38fab0244c93a815f)) - Ivan Larin
+
+- - -
 ## [v0.16.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.15.2..v0.16.0) - 2026-07-12
 #### Features
 - (**settings**) add advanced hotkey editor - ([1c1def1](https://github.com/IvanLarinDev/dropwheel/commit/1c1def1938db98dedd7e0fc72e70cd3426614431)) - Ivan Larin

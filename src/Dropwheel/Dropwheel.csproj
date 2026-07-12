@@ -11,7 +11,7 @@
     <RootNamespace>Dropwheel</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>dropwheel.ico</ApplicationIcon>
-    <Version>0.16.0</Version>
+    <Version>0.16.1</Version>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <!-- ThemeMode (Fluent light/dark chrome) is still an experimental WPF API -->
