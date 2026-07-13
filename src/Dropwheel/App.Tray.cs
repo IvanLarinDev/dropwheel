@@ -86,10 +86,12 @@ public partial class App
     private void PopulateRecentDrops(WF.ToolStripMenuItem recentDrops)
     {
         recentDrops.DropDownItems.Clear();
+        recentDrops.DropDown.ShowItemToolTips = true;
         var entries = DropHistoryService.LoadForMenu();
         if (entries.Count == 0)
         {
-            recentDrops.DropDownItems.Add(new WF.ToolStripMenuItem("No drops yet") { Enabled = false });
+            recentDrops.DropDownItems.Add(new WF.ToolStripMenuItem("No drops yet")
+            { Enabled = false, ToolTipText = "Drop actions will appear here." });
         }
         else
         {
@@ -97,7 +99,10 @@ public partial class App
             {
                 var folder = DropHistoryService.DestinationFolder(entry);
                 var item = new WF.ToolStripMenuItem(DropHistoryService.MenuSummary(entry))
-                { Enabled = folder != null };
+                {
+                    Enabled = folder != null,
+                    ToolTipText = DropHistoryService.MenuToolTip(entry),
+                };
                 if (folder != null)
                     item.Click += (_, _) => OpenDropHistoryFolder(folder);
                 recentDrops.DropDownItems.Add(item);

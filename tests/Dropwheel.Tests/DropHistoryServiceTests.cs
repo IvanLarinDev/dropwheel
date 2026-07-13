@@ -111,6 +111,46 @@ public sealed class DropHistoryServiceTests : IDisposable
     }
 
     [Fact]
+    public void MenuToolTip_includes_open_folder_and_detail()
+    {
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "destination"));
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch,
+            Action = DropHistoryAction.Copy,
+            Payload = DropPayloadKind.Files,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Pictures",
+            TargetPath = destination.FullName,
+            Destination = destination.FullName,
+            ItemCount = 1,
+            Detail = "Dropped from Explorer SendTo.",
+        };
+
+        var tooltip = DropHistoryService.MenuToolTip(entry);
+
+        Assert.Contains($"Open: {destination.FullName}", tooltip);
+        Assert.Contains("Detail: Dropped from Explorer SendTo.", tooltip);
+    }
+
+    [Fact]
+    public void MenuToolTip_keeps_non_file_uri_target_visible()
+    {
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch,
+            Action = DropHistoryAction.Telegram,
+            Payload = DropPayloadKind.Files,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Telegram",
+            TargetPath = "tg://privatepost?channel=1&post=1",
+            ItemCount = 1,
+        };
+
+        Assert.Equal("Target: tg://privatepost?channel=1&post=1", DropHistoryService.MenuToolTip(entry));
+    }
+
+    [Fact]
     public void DestinationFolder_prefers_existing_destination()
     {
         var target = Directory.CreateDirectory(Path.Combine(_root, "target"));

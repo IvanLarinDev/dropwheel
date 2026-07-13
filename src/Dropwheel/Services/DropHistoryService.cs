@@ -52,6 +52,16 @@ public static class DropHistoryService
     public static string? DestinationFolder(DropHistoryEntry entry) =>
         ExistingFolderFor(entry.Destination) ?? ExistingFolderFor(entry.TargetPath);
 
+    public static string MenuToolTip(DropHistoryEntry entry)
+    {
+        var lines = new List<string>();
+        if (DestinationFolder(entry) is { } folder) lines.Add($"Open: {folder}");
+        AddLine(lines, "Destination", entry.Destination);
+        AddLine(lines, "Target", entry.TargetPath);
+        AddLine(lines, "Detail", entry.Detail);
+        return lines.Count > 0 ? string.Join(Environment.NewLine, lines) : "No folder destination";
+    }
+
     public static void EnsureFileExists()
     {
         lock (Gate)
@@ -168,5 +178,12 @@ public static class DropHistoryService
         if (Directory.Exists(fullPath)) return fullPath;
         if (File.Exists(fullPath)) return Path.GetDirectoryName(fullPath);
         return null;
+    }
+
+    private static void AddLine(List<string> lines, string label, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        var line = $"{label}: {value}";
+        if (!lines.Contains(line, StringComparer.Ordinal)) lines.Add(line);
     }
 }
