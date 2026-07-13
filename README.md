@@ -210,12 +210,36 @@ one pattern both matches and routes, and the editor lists the tokens a rule can 
 right under the destination box. A file that matches the rule but leaves a token empty
 goes to the target root rather than into a half-built path.
 
+Besides the name groups there are built-in tokens that need no regex. Drop-time date and
+time: `${date}` (ISO `2026-07-13`, so folders sort by date), `${year}`, `${month}`,
+`${day}`, `${time}`, `${week}` (ISO week number) and `${quarter}` (`Q1`…`Q4`). Each of these
+has two file-date twins that read a date out of the file itself instead of the drop time: an
+`f`-prefix for the last-modified date (`${fyear}`, `${fmonth}`…) and a `c`-prefix for the
+creation date (`${cyear}`, `${cmonth}`…). And three file-name pieces: `${ext}` (extension),
+`${stem}` (name without extension) and `${initial}` (first letter, for A/B/C buckets). Add a
+.NET format after a colon on any date token to shape it — `${date:dd-MM-yy}`,
+`${date:yyyy-MM}`, `${month:MMMM}`. So `Downloads\${date}` files everything dropped today
+into a dated folder, and `Archive\${cyear}\${cmonth}` lays files out by the month they were
+created. The **Presets** menu has a **Dated folders** section with these ready to add in one
+click.
+
+**Files, folders, or both** — each rule has an **Applies to** setting: Files (the default),
+Folders, or both. A rule only catches the kinds it is set to, so an existing file rule never
+starts grabbing folders on its own — you opt a rule in. Folders carry no extension (so
+extension conditions skip them) and report size 0, but their created/modified dates work, so
+`${cyear}\${cmonth}` files whole folders by the month they were made. The dated presets are
+set to catch both. Two safety rules apply to folders: a folder is never moved into itself,
+and a folder that already sits at a location matching the rule's destination shape (for
+example a `2026-07-13` folder the sorter itself created) is left in place, so a watched sorter
+never re-files its own dated output.
+
 **Watch a folder** — a folder sorter can watch itself. Tick **Watch folder, auto-sort
-new files** in the rule editor and Dropwheel routes files that appear in the folder by
-the same rules, in the background. When watch is enabled, Dropwheel immediately sweeps
-existing top-level files once, then keeps watching for new arrivals. It waits for a file
-to finish copying before moving it, watches only the top level (files routed into
-subfolders don't re-trigger it), and leaves a file in place when no rule matches. A tray
+new files** in the rule editor and Dropwheel routes items that appear in the folder by
+the same rules, in the background — files always, and subfolders too when a rule's
+**Applies to** includes folders. When watch is enabled, Dropwheel immediately sweeps
+existing top-level items once, then keeps watching for new arrivals. It waits for a file
+to finish copying before moving it, watches only the top level (items routed into
+subfolders don't re-trigger it), and leaves an item in place when no rule matches. A tray
 notification reports how many files were sorted. Auto-sort **moves** files and is **not**
 tracked by Undo — revert from Explorer if needed. While Watch is on, dropping files onto
 the sorter by hand is confirmed first: a **Sort with watched rules?** dialog — warning

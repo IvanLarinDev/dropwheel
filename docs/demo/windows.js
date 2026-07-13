@@ -216,7 +216,7 @@
       '<div class="wmaster-sub">first match wins</div>' +
       rule("1", "Images", "ext is png jpg webp", true) +
       rule("2", "Docs", "ext is pdf docx", false) +
-      rule("3", "(root)", "catch-all", false) +
+      rule("3", "${cyear}\\${cmonth}", "[files and folders] catch-all", false) +
       '<div class="wmaster-btns"><span class="wbtn wmini">+ Rule</span><span class="wbtn wmini">Presets ▾</span></div>' +
       '<label class="wcheck"><span class="wbox"></span>Watch folder, auto-sort new files</label>' +
       "</div>";
@@ -225,8 +225,12 @@
       '<div class="wed-col-d">' +
       '<div class="wd-head"><span class="wd-title">Rule 1</span>' +
       '<span class="wd-tools"><span class="wminibtn">▲</span><span class="wminibtn">▼</span><span class="wminibtn">✕</span></span></div>' +
+      '<div class="wd-lbl">Applies to</div>' +
+      select("Files") +
       '<div class="wd-lbl">Destination (subfolder or absolute)</div>' +
       '<div class="wpath"><div class="wnum wflex">Images</div><span class="wbtn wmini">…</span></div>' +
+      '<div class="wmaster-sub">Built-in: ${date} ${year} ${month} ${week} ${quarter} · ' +
+      'file ${cdate}… · ${ext} ${stem} ${initial}. Format after a colon: ${date:dd-MM-yy}.</div>' +
       '<div class="wd-lbl">Conditions (all must match)</div>' +
       '<div class="wcond"><div class="wcond-top">' +
       '<div class="wselect wflex"><span class="wsval">Extension</span><span class="wchev">⌄</span></div>' +

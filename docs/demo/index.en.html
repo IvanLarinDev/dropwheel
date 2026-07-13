@@ -75,7 +75,7 @@
           <li><span class="n">6</span><span><b>Add tile</b> — the dashed “+”; creates a new target at the current level.</span></li>
           <li><span class="n">7</span><span><b>Badge</b> — an action or status marker on a tile: copy ⧉, move ➜, run ▶, sorter ⇅. The app itself renders the badge as a plain word (Copy, Move, Sort, Run); the demo shows it as glyph shorthand (⧉ ➜ ▶ ⇅).</span></li>
           <li><span class="n">8</span><span><b>Group</b> — a tile that opens a nested level; shows the child count and its code.</span></li>
-          <li><span class="n">9</span><span><b>Sorter</b> — a folder with rules (amber border, ⇅) that files fan out into subfolders.</span></li>
+          <li><span class="n">9</span><span><b>Sorter</b> — a folder with rules (amber border, ⇅) that files and folders fan out into subfolders.</span></li>
         </ol>
       </div>
     </section>
@@ -170,10 +170,16 @@
           catch-all.
         </p>
         <p>
-          A destination can build the subfolder name from the file via
-          <code>${name}</code> tokens, so one rule both matches and routes into a
-          dated or named structure. The same engine powers “watch folder” — the
-          sorter files new arrivals in the background.
+          A destination can build the subfolder name from tokens. From the file name —
+          <code>${name}</code> groups of a regex; plus built-ins that need no setup:
+          the drop-time date <code>${date}</code>, the file's own date
+          <code>${cyear}\${cmonth}</code>, and <code>${week}</code>,
+          <code>${quarter}</code>, <code>${initial}</code>. So one rule both matches and
+          routes into a dated structure. Each rule has an “applies to” scope —
+          files, folders, or both — so the sorter can date whole folders too without
+          mistaking them for files. The same engine powers “watch folder” — the sorter
+          files new files and folders in the background and never re-files the dated
+          folders it created.
         </p>
         <p class="note">
           Routing is a risky action, so a “Sort with watched rules?” dialog appears
@@ -365,15 +371,17 @@
         </div>
         <div class="card">
           <h3>Watch a folder</h3>
-          <p>A sorter can watch its own folder: files that appear are routed by the
-             same rules in the background. Dropwheel waits for a file to finish
-             copying, sweeps the top level, and sends one notification per batch.</p>
+          <p>A sorter can watch its own folder: files and folders that appear are routed
+             by the same rules in the background. Dropwheel waits for a file to finish
+             copying, sweeps the top level, and sends one notification per batch. It never
+             re-files its own dated folders — no loop.</p>
         </div>
         <div class="card">
-          <h3>Rules: presets and preview</h3>
+          <h3>Rules: tokens, presets, scope</h3>
           <p>Rules are edited in a master–detail list; there are ready categories
-             (Images, Documents, Archives…) and a “test files” box that shows at once
-             which files land in the selected rule.</p>
+             (Images, Documents, Archives…), a “Dated folders” section of date-token
+             destinations, a files / folders / both scope, and a “test files” box that
+             shows at once which files land in the selected rule.</p>
         </div>
         <div class="card">
           <h3>Launch options</h3>
