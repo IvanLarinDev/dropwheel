@@ -1,6 +1,15 @@
 # Changelog
 
 - - -
+## [v0.17.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.4..v0.17.0) - 2026-07-13
+#### Features
+- (**sort**) токены даты и сортировка папок в правилах - ([3c76761](https://github.com/IvanLarinDev/dropwheel/commit/3c767610a3d3b2bf16d906844dfc2550debfd24f)) - Ivan Larin
+#### Documentation
+- токены назначения и сортировка папок в README и демо - ([f098453](https://github.com/IvanLarinDev/dropwheel/commit/f0984539331c837b676eb726f850ce3321aec05d)) - Ivan Larin
+#### Miscellaneous Chores
+- (**design**) waiver на UI-правки токенов и сортировки папок - ([0a933b1](https://github.com/IvanLarinDev/dropwheel/commit/0a933b1e9cb197b741fc5812bc6ce1736a30232b)) - Ivan Larin
+
+- - -
 ## [v0.16.4](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.3..v0.16.4) - 2026-07-13
 #### Features
 - (**brand**) иконка приложения в стиле орба (вариант A) - ([fa69d1f](https://github.com/IvanLarinDev/dropwheel/commit/fa69d1f5cf5e2884dfc551942b78b9eec0701066)) - Ivan Larin
