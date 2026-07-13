@@ -1,6 +1,28 @@
 # Changelog
 
 - - -
+## [v0.16.3](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.2..v0.16.3) - 2026-07-13
+#### Features
+- (**history**) record dragged target adds - ([2a1e042](https://github.com/IvanLarinDev/dropwheel/commit/2a1e042a1dc9cc566e339074a91a31c10e2b8618)) - Ivan Larin
+- (**history**) link added explorer targets - ([39c04e5](https://github.com/IvanLarinDev/dropwheel/commit/39c04e5d628d507501c1170fb96b1b94402934a6)) - Ivan Larin
+- (**history**) reveal created files from tray - ([222ca70](https://github.com/IvanLarinDev/dropwheel/commit/222ca70c0c6b552c2a81133ffe6b23ffa43b411e)) - Ivan Larin
+- (**history**) add tray item tooltips - ([bd6703f](https://github.com/IvanLarinDev/dropwheel/commit/bd6703fcac169e854c70202a9e1525d329315377)) - Ivan Larin
+- (**history**) clear recent drops from tray - ([98e3d3b](https://github.com/IvanLarinDev/dropwheel/commit/98e3d3bb167f5a59a2a8b74c6ba990adba810a62)) - Ivan Larin
+- (**history**) open drop destinations from tray - ([7d0777c](https://github.com/IvanLarinDev/dropwheel/commit/7d0777c1d8eb59aa86cd1b2bdc9e023dc016b3c4)) - Ivan Larin
+- (**history**) show recent drops in tray - ([a4de621](https://github.com/IvanLarinDev/dropwheel/commit/a4de621beacee3620a15799b66e4e94dc1f07c8e)) - Ivan Larin
+- (**explorer**) add sendto bridge - ([c817484](https://github.com/IvanLarinDev/dropwheel/commit/c817484f52caf3fa3ffde532df325a1802b7ae4f)) - Ivan Larin
+- (**drop**) record recent drop history - ([2a1a877](https://github.com/IvanLarinDev/dropwheel/commit/2a1a877b055379cdb4d0153b3696d005cd31c51a)) - Ivan Larin
+- (**drop**) add intent filter trust gate - ([07364d0](https://github.com/IvanLarinDev/dropwheel/commit/07364d0c66774d66da85162ba4d2c743618270cb)) - Ivan Larin
+#### Bug Fixes
+- (**explorer**) add target folders from sendto - ([929f051](https://github.com/IvanLarinDev/dropwheel/commit/929f051b7256a57e419db59deec1a9cd4051a721)) - Ivan Larin
+- (**explorer**) keep orb position on sendto - ([e9d480b](https://github.com/IvanLarinDev/dropwheel/commit/e9d480b930e3f7dbde363a52e3d0934e830345e2)) - Ivan Larin
+- (**explorer**) polish sendto handoff - ([6f8b7f9](https://github.com/IvanLarinDev/dropwheel/commit/6f8b7f99d230ff964163622d1f5b19d8c7ddf979)) - Ivan Larin
+#### Documentation
+- (**readme**) document sendto and recent drops - ([111c77b](https://github.com/IvanLarinDev/dropwheel/commit/111c77b5e232330e5367dbe160b0fab85bda3e8d)) - Ivan Larin
+#### Miscellaneous Chores
+- (**gitignore**) ignore local agent dirs - ([638ac23](https://github.com/IvanLarinDev/dropwheel/commit/638ac2343d4759edf832b7da0b98e74cf8fbaf4f)) - Ivan Larin
+
+- - -
 ## [v0.16.2](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.1..v0.16.2) - 2026-07-12
 #### Features
 - (**ui**) clarify target confidence states - ([489d0ef](https://github.com/IvanLarinDev/dropwheel/commit/489d0ef8a150095e5951c4a99a3dfe57309eeb48)) - Ivan Larin
