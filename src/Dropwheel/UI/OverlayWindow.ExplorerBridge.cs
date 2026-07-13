@@ -76,14 +76,15 @@ public partial class OverlayWindow
     private void AddExplorerBridgeTargets(IReadOnlyList<string> files, string detail)
     {
         var targets = files.Select(TargetFromPath).ToArray();
-        AddTargets(targets, _currentGroup);
+        var added = AddTargets(targets, _currentGroup, rememberHistory: false);
+        if (added.Length == 0) return;
         RememberDropHistory(
             DropHistoryAction.AddTargets,
             new TargetItem { Name = _currentGroup?.Name ?? "Wheel", Path = "" },
             DropPayloadKind.Files,
-            files.Count,
+            added.Length,
             DropHistoryStatus.Succeeded,
-            destination: targets.Length == 1 ? targets[0].Path : null,
+            destination: added.Length == 1 ? added[0].Path : null,
             detail: detail);
     }
 

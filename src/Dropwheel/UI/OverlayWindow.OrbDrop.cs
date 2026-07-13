@@ -42,20 +42,20 @@ public partial class OverlayWindow
     {
         if (data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0)
         {
-            AddTargets(paths.Select(TargetFromPath), group);
+            AddTargets(paths.Select(TargetFromPath), group, historyDetail: "Added from drag/drop.");
             return true;
         }
 
         if (LinkTargetService.CreateTarget(data) is { } linkTarget)
         {
-            AddTargets(new[] { linkTarget }, group);
+            AddTargets(new[] { linkTarget }, group, historyDetail: "Added from link drag/drop.");
             return true;
         }
 
         if (LinkTargetService.HasSavedMessagesLabel(data)
             && PromptSavedMessagesTarget() is { } savedMessagesTarget)
         {
-            AddTargets(new[] { savedMessagesTarget }, group);
+            AddTargets(new[] { savedMessagesTarget }, group, historyDetail: "Added Telegram Saved Messages target.");
             return true;
         }
 
@@ -90,10 +90,16 @@ public partial class OverlayWindow
     /// <summary>Adds targets to a level. When <paramref name="pinned"/> is set the items are pinned
     /// back-to-front, so a multi-item batch keeps its original order at the head of the level, and
     /// they fly in from <paramref name="origin"/> (the orb centre by default).</summary>
-    private void AddTargets(IEnumerable<TargetItem> targets, TargetItem? group, bool pinned = false, Point? origin = null)
+    private TargetItem[] AddTargets(
+        IEnumerable<TargetItem> targets,
+        TargetItem? group,
+        bool pinned = false,
+        Point? origin = null,
+        bool rememberHistory = true,
+        string? historyDetail = null)
     {
         var items = targets.ToArray();
-        if (items.Length == 0) return;
+        if (items.Length == 0) return [];
 
         var list = group?.Children ?? TargetStore.Config.Targets;
 
@@ -106,7 +112,7 @@ public partial class OverlayWindow
             {
                 ShowToast(ToastAllDuplicates(existing.Count, group));
                 PulseExistingTiles(existing, group);
-                return;
+                return [];
             }
             items = fresh.ToArray();
         }
@@ -129,6 +135,20 @@ public partial class OverlayWindow
         }
         if (duplicates.Count > 0) PulseExistingTiles(duplicates, group);
         RefreshLinkMetadata(items);
+        if (rememberHistory) RememberAddedTargetsHistory(items, group, historyDetail);
+        return items;
+    }
+
+    private void RememberAddedTargetsHistory(TargetItem[] items, TargetItem? group, string? detail)
+    {
+        RememberDropHistory(
+            DropHistoryAction.AddTargets,
+            new TargetItem { Name = group?.Name ?? "Wheel", Path = "" },
+            DropPayloadKind.Files,
+            items.Length,
+            DropHistoryStatus.Succeeded,
+            destination: items.Length == 1 ? items[0].Path : null,
+            detail: detail);
     }
 
     private static string ToastForAdd(int count, TargetItem? group, bool pinned, int skipped = 0)
