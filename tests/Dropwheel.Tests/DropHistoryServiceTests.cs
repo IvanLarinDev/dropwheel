@@ -1,0 +1,70 @@
+using System.IO;
+using Dropwheel.Services;
+
+namespace Dropwheel.Tests;
+
+public sealed class DropHistoryServiceTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "dw_history_" + Guid.NewGuid().ToString("N"));
+
+    public DropHistoryServiceTests() => Directory.CreateDirectory(_root);
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_root, recursive: true); }
+        catch (DirectoryNotFoundException) { }
+    }
+
+    [Fact]
+    public void Append_writes_newest_entries_first_and_respects_limit()
+    {
+        var path = Path.Combine(_root, "drop-history.json");
+
+        DropHistoryService.Append(Entry("Downloads", 1), path, limit: 2);
+        DropHistoryService.Append(Entry("Documents", 2), path, limit: 2);
+        DropHistoryService.Append(Entry("Pictures", 3), path, limit: 2);
+
+        var entries = DropHistoryService.Load(path);
+
+        Assert.Equal(2, entries.Count);
+        Assert.Equal("Pictures", entries[0].TargetName);
+        Assert.Equal("Documents", entries[1].TargetName);
+    }
+
+    [Fact]
+    public void Load_returns_empty_for_missing_or_corrupt_history()
+    {
+        var path = Path.Combine(_root, "drop-history.json");
+
+        Assert.Empty(DropHistoryService.Load(path));
+
+        File.WriteAllText(path, "{not json");
+
+        Assert.Empty(DropHistoryService.Load(path));
+    }
+
+    [Fact]
+    public void Append_recovers_from_corrupt_history()
+    {
+        var path = Path.Combine(_root, "drop-history.json");
+        File.WriteAllText(path, "{not json");
+
+        DropHistoryService.Append(Entry("Inbox", 4), path, limit: 5);
+
+        var entry = Assert.Single(DropHistoryService.Load(path));
+        Assert.Equal("Inbox", entry.TargetName);
+        Assert.Equal(DropHistoryAction.Copy, entry.Action);
+    }
+
+    private static DropHistoryEntry Entry(string targetName, int count) => new()
+    {
+        AtUtc = DateTimeOffset.UnixEpoch.AddMinutes(count),
+        Action = DropHistoryAction.Copy,
+        Payload = DropPayloadKind.Files,
+        Status = DropHistoryStatus.Succeeded,
+        TargetName = targetName,
+        TargetPath = @"C:\Target",
+        Destination = @"C:\Target",
+        ItemCount = count,
+    };
+}

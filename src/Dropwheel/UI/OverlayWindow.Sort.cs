@@ -43,6 +43,16 @@ public partial class OverlayWindow
             else ok = false;
         }
         if (ops.Count > 0) RememberOps(ops);
+        RememberDropHistory(
+            DropHistoryAction.Sort,
+            t,
+            DropPayloadKind.Files,
+            files.Length,
+            ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+            destination: t.Path,
+            detail: ok
+                ? ops.Count == 0 ? "No file moves were needed." : null
+                : "At least one sorter route failed.");
         ShowToast(ok
             ? $"Sorted: {files.Length} item(s) → {t.Name}"
             : "Sorting was not completed", ops.Count > 0,
@@ -66,6 +76,14 @@ public partial class OverlayWindow
                 ops.Add(BuildCreatedCopyOp(sources, folder));
         }
         if (ops.Count > 0) RememberOps(ops);
+        RememberDropHistory(
+            DropHistoryAction.Sort,
+            t,
+            DropPayloadKind.VirtualFiles,
+            saved.Length,
+            saved.Length > 0 ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+            destination: t.Path,
+            detail: saved.Length > 0 ? null : "No saved virtual files were routed.");
     }
 
     private void SortTargetFolderNow(TargetItem t)
@@ -101,6 +119,14 @@ public partial class OverlayWindow
             }
 
             if (ops.Count > 0) RememberOps(ops);
+            RememberDropHistory(
+                DropHistoryAction.Sort,
+                t,
+                DropPayloadKind.Files,
+                moved,
+                ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                destination: t.Path,
+                detail: ok ? "Manual sorter run." : "Manual sorter run failed.");
             ShowToast(ok
                 ? $"Sorted: {moved} item(s) → {t.Name}"
                 : "Sorting was not completed", ops.Count > 0,
