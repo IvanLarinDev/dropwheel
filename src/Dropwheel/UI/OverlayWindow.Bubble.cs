@@ -102,7 +102,8 @@ public partial class OverlayWindow
                 else { LaunchService.Launch(t); CloseCloud(); }
             },
             KeyboardStatus(t),
-            badge);
+            badge,
+            target: t);
         return tile;
     }
 
