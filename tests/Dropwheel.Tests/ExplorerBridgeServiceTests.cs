@@ -5,18 +5,24 @@ namespace Dropwheel.Tests;
 public sealed class ExplorerBridgeServiceTests
 {
     [Fact]
-    public void LauncherText_invokes_exe_with_sendto_and_original_arguments()
+    public void ShortcutSpec_invokes_exe_directly_with_sendto()
     {
-        var text = ExplorerBridgeService.LauncherText(@"C:\Program Files\Dropwheel\Dropwheel.exe");
+        var spec = ExplorerBridgeService.BuildShortcutSpec(@"C:\Program Files\Dropwheel\Dropwheel.exe");
 
-        Assert.Contains("\"C:\\Program Files\\Dropwheel\\Dropwheel.exe\" --sendto %*", text);
+        Assert.Equal(@"C:\Program Files\Dropwheel\Dropwheel.exe", spec.TargetPath);
+        Assert.Equal("--sendto", spec.Arguments);
+        Assert.Equal(@"C:\Program Files\Dropwheel", spec.WorkingDirectory);
+        Assert.Equal(@"C:\Program Files\Dropwheel\Dropwheel.exe", spec.IconLocation);
     }
 
     [Fact]
-    public void LauncherText_invokes_dll_through_dotnet()
+    public void ShortcutSpec_invokes_dll_through_dotnet()
     {
-        var text = ExplorerBridgeService.LauncherText(@"C:\Dropwheel\Dropwheel.dll");
+        var spec = ExplorerBridgeService.BuildShortcutSpec(@"C:\Dropwheel\Dropwheel.dll");
 
-        Assert.Contains("dotnet \"C:\\Dropwheel\\Dropwheel.dll\" --sendto %*", text);
+        Assert.Equal("dotnet", spec.TargetPath);
+        Assert.Equal("\"C:\\Dropwheel\\Dropwheel.dll\" --sendto", spec.Arguments);
+        Assert.Equal(@"C:\Dropwheel", spec.WorkingDirectory);
+        Assert.Equal(@"C:\Dropwheel\Dropwheel.dll", spec.IconLocation);
     }
 }

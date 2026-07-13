@@ -37,6 +37,15 @@ public partial class App
             }
         };
         menu.Items.Add(auto);
+        try
+        {
+            if (ExplorerBridgeService.NeedsSendToUpgrade())
+                ExplorerBridgeService.InstallSendTo(CurrentAppPath());
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Could not upgrade the Explorer SendTo shortcut", ex);
+        }
         var sendTo = new WF.ToolStripMenuItem("Explorer SendTo shortcut")
         { Checked = ExplorerBridgeService.IsSendToInstalled(), CheckOnClick = true };
         sendTo.Click += (_, _) =>

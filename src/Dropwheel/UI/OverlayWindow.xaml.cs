@@ -20,6 +20,7 @@ public partial class OverlayWindow : Window
     private readonly DispatcherTimer _hoverTimer;
     private readonly DispatcherTimer _closeTimer;
     private bool _open;
+    private DateTime _ignoreDeactivateUntilUtc = DateTime.MinValue;
 
     public OverlayWindow()
     {
@@ -69,7 +70,16 @@ public partial class OverlayWindow : Window
         DragEnter += (_, _) => _closeTimer.Stop();
         DragLeave += (_, _) => { if (_open) _closeTimer.Start(); };
         PreviewKeyDown += OnOverlayPreviewKeyDown;
-        Deactivated += (_, _) => CloseCloud();
+        Deactivated += (_, _) =>
+        {
+            if (DateTime.UtcNow <= _ignoreDeactivateUntilUtc)
+            {
+                _ignoreDeactivateUntilUtc = DateTime.MinValue;
+                return;
+            }
+            _ignoreDeactivateUntilUtc = DateTime.MinValue;
+            CloseCloud();
+        };
 
         Loaded += (_, _) =>
         { ApplyModeWindow(); PaintHub(); InitProximity(); InitHotkeyAndFullscreen(); InitGroupShortcuts(); InitIdleFade(); };
