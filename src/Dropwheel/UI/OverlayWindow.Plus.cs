@@ -47,6 +47,11 @@ public partial class OverlayWindow
         panel.MouseLeave += (_, _) => { rect.Fill = Brushes.Transparent; SetSpokeLit(panel, false); };
         panel.MouseLeftButtonUp += (_, e) =>
         {
+            if (TryAddExplorerBridgeTargets())
+            {
+                e.Handled = true;
+                return;
+            }
             OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup);
             e.Handled = true;
         };

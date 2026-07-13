@@ -37,6 +37,24 @@ public partial class App
             }
         };
         menu.Items.Add(auto);
+        var sendTo = new WF.ToolStripMenuItem("Explorer SendTo shortcut")
+        { Checked = ExplorerBridgeService.IsSendToInstalled(), CheckOnClick = true };
+        sendTo.Click += (_, _) =>
+        {
+            try
+            {
+                if (sendTo.Checked) ExplorerBridgeService.InstallSendTo(CurrentAppPath());
+                else ExplorerBridgeService.UninstallSendTo();
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write("Could not change the Explorer SendTo shortcut", ex);
+                sendTo.Checked = !sendTo.Checked;
+                _tray?.ShowBalloonTip(4000, "Dropwheel",
+                    "Couldn't change the Explorer SendTo shortcut.", WF.ToolTipIcon.Warning);
+            }
+        };
+        menu.Items.Add(sendTo);
         menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
         menu.Items.Add("Open config folder", null, (_, _) => LaunchService.OpenConfigFolder());
         menu.Items.Add(new WF.ToolStripSeparator());
@@ -45,6 +63,7 @@ public partial class App
         menu.Opening += (_, _) =>
         {
             fsStatus.Visible = Dropwheel.Services.FullscreenDetector.IsFullscreenActive();
+            sendTo.Checked = ExplorerBridgeService.IsSendToInstalled();
             StyleTrayMenu(menu);
         };
         _tray.ContextMenuStrip = menu;
@@ -150,6 +169,8 @@ public partial class App
         // and saving on exit let a stale instance overwrite edits made
         // on disk or by another instance.
         _watcher?.Stop();
+        _explorerBridgeCts?.Cancel();
+        _explorerBridgeCts?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
         _appIcon?.Dispose(); // NotifyIcon.Dispose does not free the icon handed to it
         Shutdown();

@@ -197,7 +197,16 @@ public partial class OverlayWindow
             ? DropTargetKind.Telegram
             : DropIntent.ClassifyTarget(t, LaunchService.IsFolderTarget(t), LaunchService.IsRunTarget(t));
 
-        var preflight = DropTrustGate.Evaluate(t, payload, targetKind, DropPayloadItemCount(e.Data, payload));
+        return ConfirmDropPreflight(t, payload, targetKind, DropPayloadItemCount(e.Data, payload));
+    }
+
+    private bool ConfirmDropPreflight(
+        TargetItem t,
+        DropPayloadKind payload,
+        DropTargetKind targetKind,
+        int itemCount)
+    {
+        var preflight = DropTrustGate.Evaluate(t, payload, targetKind, itemCount);
         return preflight == null
             || DwMessageBox.Show(
                 this,

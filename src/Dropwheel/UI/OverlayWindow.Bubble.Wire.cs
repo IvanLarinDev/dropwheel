@@ -53,6 +53,11 @@ public partial class OverlayWindow
                 e.Handled = true;
                 return;
             }
+            if (TryHandleExplorerBridgeTarget(t))
+            {
+                e.Handled = true;
+                return;
+            }
             if (t.IsGroup) EnterGroup(t);
             else if (!t.Exists) ShowMissingMenu(t);
             else { LaunchService.Launch(t); CloseCloud(); }

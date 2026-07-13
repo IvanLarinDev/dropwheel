@@ -12,11 +12,25 @@ public partial class App : Application
     private WF.NotifyIcon? _tray;
     private OverlayWindow? _overlay;
     private WatcherService? _watcher;
+    private CancellationTokenSource? _explorerBridgeCts;
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        var command = ExplorerBridgeCommand.Parse(e.Args);
+        if (HandleExplorerBridgeUtilityCommand(command))
+        {
+            Shutdown();
+            return;
+        }
+
         _mutex = new Mutex(true, "Dropwheel_SingleInstance", out bool isNew);
-        if (!isNew) { Shutdown(); return; }
+        if (!isNew)
+        {
+            if (command.Kind == ExplorerBridgeCommandKind.SendToFiles)
+                ExplorerBridgeIpc.TrySendFiles(command.Paths);
+            Shutdown();
+            return;
+        }
         base.OnStartup(e);
 
         // Safety net: the app lives in the tray, and a crash in a drop/click/timer handler must
@@ -39,6 +53,9 @@ public partial class App : Application
             _overlay = new OverlayWindow();
             _overlay.Show();
             InitTray();
+            StartExplorerBridgeServer();
+            if (command.Kind == ExplorerBridgeCommandKind.SendToFiles)
+                Dispatcher.BeginInvoke(() => _overlay.OpenFromExplorerFiles(command.Paths));
 
             _watcher = new WatcherService(Dispatcher, ShowSortedToast);
             _watcher.Start();
@@ -57,4 +74,55 @@ public partial class App : Application
     /// a burst of files into one notification (see WatcherService).</summary>
     private void ShowSortedToast(int count) =>
         _tray?.ShowBalloonTip(3000, "Dropwheel", $"Sorted {count} file(s)", WF.ToolTipIcon.Info);
+
+    private static bool HandleExplorerBridgeUtilityCommand(ExplorerBridgeCommand command)
+    {
+        try
+        {
+            switch (command.Kind)
+            {
+                case ExplorerBridgeCommandKind.InstallSendTo:
+                    ExplorerBridgeService.InstallSendTo(command.AppPath ?? CurrentAppPath());
+                    MessageBox.Show(
+                        "Explorer SendTo shortcut installed.",
+                        "Dropwheel",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return true;
+                case ExplorerBridgeCommandKind.UninstallSendTo:
+                    ExplorerBridgeService.UninstallSendTo();
+                    MessageBox.Show(
+                        "Explorer SendTo shortcut removed.",
+                        "Dropwheel",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Explorer bridge utility command failed", ex);
+            MessageBox.Show(
+                "Explorer bridge command failed.\n\n" + ex.Message,
+                "Dropwheel",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return true;
+        }
+    }
+
+    private static string CurrentAppPath() =>
+        Environment.ProcessPath
+        ?? System.Reflection.Assembly.GetExecutingAssembly().Location;
+
+    private void StartExplorerBridgeServer()
+    {
+        if (_overlay == null) return;
+        _explorerBridgeCts = new CancellationTokenSource();
+        _ = ExplorerBridgeIpc.RunServerAsync(
+            paths => Dispatcher.BeginInvoke(() => _overlay.OpenFromExplorerFiles(paths)),
+            _explorerBridgeCts.Token);
+    }
 }
