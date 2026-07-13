@@ -3,6 +3,11 @@ namespace Dropwheel.Models;
 /// <summary>Which file property a condition inspects.</summary>
 public enum ConditionField { Extension, NameRegex, NameContains, SizeMb, AgeDays }
 
+/// <summary>Which kinds of dropped item a rule is allowed to catch. Files is the default so old
+/// configs and freshly added rules keep the original files-only behaviour; a rule must opt in to
+/// touching folders.</summary>
+public enum RuleScope { Files, Folders, Both }
+
 /// <summary>How a condition compares the file property against its value.</summary>
 public enum CompareOp { In, Matches, Contains, Gt, Lt, Gte, Lte }
 
@@ -29,11 +34,13 @@ public sealed class RuleCondition
 public sealed class SortRule
 {
     public string Dest { get; set; } = "";
+    public RuleScope Scope { get; set; } = RuleScope.Files;
     public List<RuleCondition> All { get; set; } = new();
 
     public SortRule Clone() => new()
     {
         Dest = Dest,
+        Scope = Scope,
         All = All.Select(c => c.Clone()).ToList(),
     };
 }

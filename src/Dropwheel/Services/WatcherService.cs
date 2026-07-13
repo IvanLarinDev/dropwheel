@@ -5,10 +5,12 @@ using Dropwheel.Models;
 
 namespace Dropwheel.Services;
 
-/// <summary>Watches sorter folders whose Watch flag is on and routes files that appear in them by the
-/// same rules. Not recursive: a file moved into a subfolder raises no new event, so there is no loop.
-/// A file that resolves to its own folder (no rule match, or an unfilled token) is left untouched.
-/// Auto-sort moves files silently and is not tracked by Undo.</summary>
+/// <summary>Watches sorter folders whose Watch flag is on and routes files and folders that appear in
+/// them by the same rules. Not recursive: an item moved into a subfolder raises no new event, and a
+/// folder that already sits at a destination-shaped location is skipped, so the sorter never re-files
+/// the dated folders it creates. An item that resolves to its own folder (no rule match, an unfilled
+/// token, or a folder-scope guard) is left untouched. Auto-sort moves items silently and is not tracked
+/// by Undo.</summary>
 public sealed class WatcherService
 {
     private const int PollMs = 1000;
@@ -174,7 +176,8 @@ public sealed class WatcherService
     private static FileSystemWatcher CreateWatcher(string path) => new(path)
     {
         IncludeSubdirectories = false,
-        NotifyFilter = NotifyFilters.FileName,
+        // DirectoryName as well as FileName so a new subfolder raises Created and can be sorted too.
+        NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
         // Larger buffer - fewer lost events when many files are dropped at once (64 KB is the max).
         InternalBufferSize = 64 * 1024,
     };
@@ -188,14 +191,14 @@ public sealed class WatcherService
         Sweep(entry);
     }
 
-    /// <summary>Queues every top-level file in the folder. Used to recover after a buffer overflow:
-    /// files whose event was lost are picked up on the rescan.</summary>
+    /// <summary>Queues every top-level file and folder in the watched folder. Used to recover after a
+    /// buffer overflow: entries whose event was lost are picked up on the rescan.</summary>
     private void Sweep(Entry entry)
     {
-        string[] files;
-        try { files = Directory.GetFiles(entry.Watcher.Path); }
+        string[] entries;
+        try { entries = Directory.GetFileSystemEntries(entry.Watcher.Path); }
         catch (Exception ex) { ErrorLog.Write($"Failed to rescan folder '{entry.Watcher.Path}'", ex); return; }
-        foreach (var f in files) OnAppeared(entry, f);
+        foreach (var e in entries) OnAppeared(entry, e);
     }
 
     /// <summary>The event arrives on a thread-pool thread. A given path is processed once (Created and
@@ -246,7 +249,9 @@ public sealed class WatcherService
             for (int i = 0; i < maxWaitTicks; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (Directory.Exists(file)) return false;   // a folder appeared, not a file
+                // A folder has no exclusive-open readiness check; treat it as ready and let the move
+                // fail-and-log if it is genuinely locked (open in Explorer, mid-extraction, ...).
+                if (Directory.Exists(file)) return true;
                 if (!File.Exists(file)) return false;       // the file vanished while we waited
                 if (isReady(file)) return true;             // the writing process released it - fully written
                 if (i == maxWaitTicks - 1)
@@ -283,7 +288,7 @@ public sealed class WatcherService
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!File.Exists(file)) return;
+            if (!File.Exists(file) && !Directory.Exists(file)) return;
             var plan = SortService.MovePlan(entry.Target, new[] { file });
             foreach (var (folder, files) in plan)
             {

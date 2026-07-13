@@ -111,9 +111,19 @@ public partial class TargetEditorWindow
 
     private static string MasterSummary(SortRule rule)
     {
-        if (rule.All.Count == 0) return "catch-all";
-        return string.Join(", ", rule.All.Select(c => $"{FieldWord(c.Field)} {ShortValue(c)}"));
+        var body = rule.All.Count == 0
+            ? "catch-all"
+            : string.Join(", ", rule.All.Select(c => $"{FieldWord(c.Field)} {ShortValue(c)}"));
+        return rule.Scope == RuleScope.Files ? body : $"[{ScopeWord(rule.Scope).ToLowerInvariant()}] {body}";
     }
+
+    private static string ScopeWord(RuleScope scope) => scope switch
+    {
+        RuleScope.Files => "Files",
+        RuleScope.Folders => "Folders",
+        RuleScope.Both => "Files and folders",
+        _ => "Files",
+    };
 
     private static string ShortValue(RuleCondition c) => c.Value.Length > 18 ? c.Value[..18] + "…" : c.Value;
 
@@ -150,6 +160,25 @@ public partial class TargetEditorWindow
         header.Children.Add(new TextBlock { Text = $"Rule {_selected + 1}", FontWeight = FontWeights.SemiBold });
         DetailHost.Children.Add(header);
 
+        DetailHost.Children.Add(new TextBlock { Text = "Applies to", FontSize = 11 });
+        var scopeBox = new ComboBox
+        {
+            Margin = new Thickness(0, 2, 0, 10),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            MinWidth = 150,
+            ToolTip = "Which dropped items this rule may catch. Extension conditions never match a "
+                    + "folder, and size is 0 for folders.",
+        };
+        var scopes = new[] { RuleScope.Files, RuleScope.Folders, RuleScope.Both };
+        foreach (var s in scopes) scopeBox.Items.Add(new ComboBoxItem { Content = ScopeWord(s), Tag = s });
+        scopeBox.SelectedIndex = Array.IndexOf(scopes, rule.Scope);
+        scopeBox.SelectionChanged += (_, _) =>
+        {
+            if (scopeBox.SelectedItem is ComboBoxItem { Tag: RuleScope s })
+            { rule.Scope = s; RebuildMaster(); RefreshMatches(); }
+        };
+        DetailHost.Children.Add(scopeBox);
+
         DetailHost.Children.Add(new TextBlock { Text = "Destination (subfolder or absolute)", FontSize = 11 });
         var destRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
         var browse = new Button { Content = "…", Width = 26, Margin = new Thickness(6, 0, 0, 0) };
@@ -160,7 +189,11 @@ public partial class TargetEditorWindow
             Text = rule.Dest,
             ToolTip = "A subfolder (relative to the target Path) or an absolute path. "
                     + "Use ${name} to insert a (?<name>…) group captured by a Name regex condition, "
-                    + "e.g. episodes\\${ep}\\${sq}\\${sh}.",
+                    + "e.g. episodes\\${ep}\\${sq}\\${sh}. Built-in tokens — drop time: ${date} ${year} "
+                    + "${month} ${day} ${time} ${week} ${quarter}; file's modified date: an f- prefix "
+                    + "(${fyear} ${fmonth}…); file's created date: a c- prefix (${cyear} ${cmonth}…); "
+                    + "file name: ${ext} ${stem} ${initial}. Add a .NET format after a colon on a date "
+                    + "token, e.g. ${date:dd-MM-yy} or ${month:MMMM}.",
         };
         destBox.TextChanged += (_, _) => { rule.Dest = destBox.Text; RebuildMaster(); RebuildTokenHint(rule); RefreshMatches(); };
         destRow.Children.Add(browse);
@@ -176,6 +209,16 @@ public partial class TargetEditorWindow
         };
         DetailHost.Children.Add(_tokenHint);
         RebuildTokenHint(rule);
+
+        DetailHost.Children.Add(new TextBlock
+        {
+            Text = "Built-in: ${date} ${year} ${month} ${week} ${quarter} · file modified ${fdate}… · "
+                 + "file created ${cdate}… · ${ext} ${stem} ${initial}. Format after a colon: ${date:dd-MM-yy}.",
+            FontSize = 11,
+            Foreground = Palettes.TextMuted,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
 
         DetailHost.Children.Add(new TextBlock { Text = "Conditions (all must match)", FontSize = 11 });
         foreach (var c in rule.All)
@@ -300,12 +343,23 @@ public partial class TargetEditorWindow
             return;
         }
         _tokenHint.Visibility = Visibility.Visible;
-        var missing = used.Where(t => !available.Contains(t)).ToArray();
+        var missing = used.Where(t => !available.Contains(t) && !SortService.BuiltinTokens.Contains(t)).ToArray();
+        var badFormats = SortService.ParseTokens(rule.Dest)
+            .Where(p => SortService.TokenAcceptsFormat(p.Name) && !SortService.IsValidDateFormat(p.Format))
+            .Select(p => "${" + p.Name + ":" + p.Format + "}")
+            .Distinct()
+            .ToArray();
         if (missing.Length > 0)
         {
             _tokenHint.Foreground = Palettes.Danger;
             _tokenHint.Text = "No such group: " + string.Join(", ", missing.Select(t => "${" + t + "}"))
                 + " — add a (?<name>…) group in a Name regex condition, or the file goes to the root.";
+        }
+        else if (badFormats.Length > 0)
+        {
+            _tokenHint.Foreground = Palettes.Danger;
+            _tokenHint.Text = "Bad date format: " + string.Join(", ", badFormats)
+                + " — use a .NET format like dd-MM-yy or yyyy-MM.";
         }
         else
         {
@@ -364,12 +418,14 @@ public partial class TargetEditorWindow
             return;
         }
         if (_selected < 0 || _selected >= _rules.Count) return;
-        // A rule with no conditions (catch-all) matches every file, so anything after the first such
-        // rule is unreachable. Show an explicit warning — otherwise "Routes here: 0 of N" on a lower
+        // A file-scope rule with no conditions (catch-all) matches every file, so anything after the
+        // first such rule is unreachable. A folders-only catch-all does not take the test files, so it
+        // does not count here. Show an explicit warning — otherwise "Routes here: 0 of N" on a lower
         // rule looks inexplicable.
         int firstCatchAll = -1;
         for (int i = 0; i < _rules.Count; i++)
-            if (_rules[i].All.Count == 0) { firstCatchAll = i; break; }
+            if (_rules[i].All.Count == 0 && SortService.ScopeIncludes(_rules[i].Scope, isDirectory: false))
+            { firstCatchAll = i; break; }
         if (firstCatchAll >= 0 && _selected > firstCatchAll)
             _matchesHost.Children.Add(Hint(
                 $"Unreachable: rule {firstCatchAll + 1} ({FriendlyDest(_rules[firstCatchAll].Dest)}) " +
@@ -389,7 +445,7 @@ public partial class TargetEditorWindow
             _matchesHost.Children.Add(new TextBlock
             {
                 Text = showDest
-                    ? $"{Path.GetFileName(f)}  →  {ResolvedDestLabel(_rules[_selected], Path.GetFileName(f))}"
+                    ? $"{Path.GetFileName(f)}  →  {ResolvedDestLabel(_rules[_selected], f)}"
                     : Path.GetFileName(f),
                 FontSize = 11,
                 TextTrimming = TextTrimming.CharacterEllipsis,
@@ -400,34 +456,56 @@ public partial class TargetEditorWindow
         if (_rules.Any(r => r.All.Any(c => c.Field is ConditionField.SizeMb or ConditionField.AgeDays)))
             _matchesHost.Children.Add(Hint(
                 "Size/age here are treated as 0 — test names are not real files, so these preview only by extension/name."));
+        // File-date tokens need the real file on disk; a pasted test name that is not an existing path
+        // has no modified/created time, so it previews as a fall-back to the root rather than a dated folder.
+        if (SortService.ParseTokens(_rules[_selected].Dest)
+                .Any(p => (p.Name.StartsWith('f') || p.Name.StartsWith('c')) && SortService.BuiltinTokens.Contains(p.Name)))
+            _matchesHost.Children.Add(Hint(
+                "File-date tokens (${fdate}… / ${cdate}…) resolve from the real file at drop time; a test name with no real file routes to the root here."));
     }
 
     /// <summary>The subfolder a matched file resolves to once its tokens are expanded, for the
     /// preview. Unfilled tokens mean the file lands at the target root.</summary>
-    private static string ResolvedDestLabel(SortRule rule, string fileName)
+    private static string ResolvedDestLabel(SortRule rule, string filePath)
     {
-        var expanded = SortService.ExpandTemplate(rule, fileName, out bool ok);
+        var expanded = SortService.ExpandTemplate(rule, filePath, out bool ok);
         return ok ? expanded : "(root — unfilled tokens)";
     }
 
     // ── Presets ────────────────────────────────────────────────────────────
 
-    /// <summary>Opens a menu of file-type presets from config. Each item appends a ready rule;
-    /// "Add all categories" seeds one rule per preset.</summary>
+    /// <summary>Ready catch-all rules that route every file into a dated folder. These live in code,
+    /// not config, so they are always offered regardless of the user's saved presets. Each is just a
+    /// destination built from built-in date tokens; the user can edit or add conditions afterwards.</summary>
+    private static readonly (string Label, string Dest)[] DatedPresets =
+    {
+        ("Today's date  —  ${date}", "${date}"),
+        ("Year \\ month  —  ${year}\\${month}", "${year}\\${month}"),
+        ("Year \\ week  —  ${year}\\W${week}", "${year}\\W${week}"),
+        ("Year \\ quarter  —  ${year}\\${quarter}", "${year}\\${quarter}"),
+        ("By file's created month  —  ${cyear}\\${cmonth}", "${cyear}\\${cmonth}"),
+        ("By file's modified month  —  ${fyear}\\${fmonth}", "${fyear}\\${fmonth}"),
+    };
+
+    /// <summary>Opens the presets menu with two groups: "By extension" holds the file-type categories
+    /// from config (plus "Add all categories"), and "Dated folders" offers destinations built from the
+    /// built-in date tokens.</summary>
     private void OnPresetsClick(object sender, RoutedEventArgs e)
     {
         var presets = TargetStore.Config.Presets ?? PresetService.Defaults();
         var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
+
+        var byExt = new MenuItem { Header = "By extension" };
         foreach (var p in presets)
         {
             var item = new MenuItem { Header = $"{p.Name}  ({p.Extensions})" };
             var captured = p;
             item.Click += (_, _) => AddPresetRule(captured);
-            menu.Items.Add(item);
+            byExt.Items.Add(item);
         }
         if (presets.Count > 0)
         {
-            menu.Items.Add(new Separator());
+            byExt.Items.Add(new Separator());
             var all = new MenuItem { Header = "Add all categories" };
             all.Click += (_, _) =>
             {
@@ -436,9 +514,30 @@ public partial class TargetEditorWindow
                 RebuildMaster();
                 RebuildDetail();
             };
-            menu.Items.Add(all);
+            byExt.Items.Add(all);
         }
+        menu.Items.Add(byExt);
+
+        var dated = new MenuItem { Header = "Dated folders" };
+        foreach (var (label, dest) in DatedPresets)
+        {
+            var item = new MenuItem { Header = label };
+            var captured = dest;
+            item.Click += (_, _) => AddDatedRule(captured);
+            dated.Items.Add(item);
+        }
+        menu.Items.Add(dated);
         menu.IsOpen = true;
+    }
+
+    /// <summary>Appends a catch-all rule that routes every file and folder into a dated destination.
+    /// Scope is Both so the dated presets sort folders too — the point of dating.</summary>
+    private void AddDatedRule(string dest)
+    {
+        _rules.Add(new SortRule { Dest = dest, Scope = RuleScope.Both });
+        _selected = _rules.Count - 1;
+        RebuildMaster();
+        RebuildDetail();
     }
 
     private void AddPresetRule(FilePreset p)
@@ -561,9 +660,13 @@ public partial class TargetEditorWindow
                 { error = $"Rule {i + 1}: '{c.Value}' is not a number."; return false; }
             }
             var available = SortService.AvailableTokens(_rules[i]);
-            foreach (var tok in SortService.TokensIn(_rules[i].Dest))
-                if (!available.Contains(tok))
-                { error = $"Rule {i + 1}: destination uses ${{{tok}}} but no Name regex has a (?<{tok}>…) group."; return false; }
+            foreach (var (name, format) in SortService.ParseTokens(_rules[i].Dest))
+            {
+                if (!available.Contains(name) && !SortService.BuiltinTokens.Contains(name))
+                { error = $"Rule {i + 1}: destination uses ${{{name}}} but no Name regex has a (?<{name}>…) group."; return false; }
+                if (SortService.TokenAcceptsFormat(name) && !SortService.IsValidDateFormat(format))
+                { error = $"Rule {i + 1}: '{format}' is not a valid date format for ${{{name}}}."; return false; }
+            }
         }
         error = "";
         return true;

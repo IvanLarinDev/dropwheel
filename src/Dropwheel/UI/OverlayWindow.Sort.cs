@@ -96,7 +96,7 @@ public partial class OverlayWindow
                 return;
             }
 
-            var plan = SortService.MovePlan(t, Directory.GetFiles(t.Path));
+            var plan = SortService.MovePlan(t, Directory.GetFileSystemEntries(t.Path));
             if (plan.Count == 0)
             {
                 ShowToast("Nothing to sort", kind: ToastKind.Info);

@@ -22,6 +22,14 @@ public sealed class SortServiceTests : IDisposable
         return path;
     }
 
+    private string MakeDir(string name, DateTime? created = null)
+    {
+        var path = Path.Combine(_root, name);
+        Directory.CreateDirectory(path);
+        if (created is { } c) Directory.SetCreationTime(path, c);
+        return path;
+    }
+
     private static TargetItem Sorter(string root, params SortRule[] rules) =>
         new() { Path = root, Rules = rules.ToList() };
 
@@ -286,5 +294,264 @@ public sealed class SortServiceTests : IDisposable
             @"(?<ep>ep\d+)_(?<sq>sq\d+)");
         Assert.Equal(new[] { "ep", "sq" }, SortService.AvailableTokens(rule).OrderBy(s => s));
         Assert.Equal(new[] { "ep", "sq" }, SortService.TokensIn(rule.Dest).OrderBy(s => s));
+    }
+
+    [Fact]
+    public void ExpandTemplate_fills_builtin_date_with_iso_default()
+    {
+        var rule = new SortRule { Dest = "${date}" };
+        var result = SortService.ExpandTemplate(rule, "x.txt", new DateTime(2026, 7, 13, 9, 30, 0), out bool ok);
+        Assert.True(ok);
+        Assert.Equal("2026-07-13", result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_applies_a_custom_date_format()
+    {
+        var rule = new SortRule { Dest = "${date:dd-MM-yy}" };
+        var result = SortService.ExpandTemplate(rule, "x.txt", new DateTime(2026, 7, 13), out bool ok);
+        Assert.True(ok);
+        Assert.Equal("13-07-26", result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_fills_year_and_month_components()
+    {
+        var rule = new SortRule { Dest = "${year}\\${month}" };
+        var result = SortService.ExpandTemplate(rule, "x.txt", new DateTime(2026, 7, 13), out bool ok);
+        Assert.True(ok);
+        Assert.Equal(Path.Combine("2026", "07"), result);
+    }
+
+    [Fact]
+    public void Builtin_token_shadows_a_same_named_regex_group()
+    {
+        // A group literally named "date" must not override the built-in date token.
+        var rule = new SortRule
+        {
+            Dest = "${date}",
+            All = { new RuleCondition { Field = ConditionField.NameRegex, Op = CompareOp.Matches, Value = @"(?<date>\d+)" } },
+        };
+        var result = SortService.ExpandTemplate(rule, "12345.txt", new DateTime(2026, 7, 13), out bool ok);
+        Assert.True(ok);
+        Assert.Equal("2026-07-13", result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_flags_an_invalid_date_format()
+    {
+        var rule = new SortRule { Dest = "${date:%}" };
+        _ = SortService.ExpandTemplate(rule, "x.txt", new DateTime(2026, 7, 13), out bool ok);
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public void Ext_token_uses_the_lowercased_file_extension()
+    {
+        var rule = new SortRule { Dest = "by-type\\${ext}" };
+        var result = SortService.ExpandTemplate(rule, "photo.JPG", new DateTime(2026, 7, 13), out bool ok);
+        Assert.True(ok);
+        Assert.Equal(Path.Combine("by-type", "jpg"), result);
+    }
+
+    [Fact]
+    public void File_date_tokens_route_by_the_files_own_last_write_date()
+    {
+        var f = MakeFile("clip.mov", written: new DateTime(2020, 3, 15, 10, 0, 0));
+        var t = Sorter(_root, new SortRule { Dest = "${fyear}\\${fmonth}" }); // catch-all
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[Path.Combine(_root, "2020", "03")]);
+    }
+
+    [Fact]
+    public void File_date_token_on_a_missing_file_falls_back_to_root()
+    {
+        var rule = new SortRule { Dest = "${fyear}" };
+        _ = SortService.ExpandTemplate(rule, "no-such-file.txt", new DateTime(2026, 7, 13), out bool ok);
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public void IsValidDateFormat_accepts_good_and_rejects_bad()
+    {
+        Assert.True(SortService.IsValidDateFormat("dd-MM-yy"));
+        Assert.True(SortService.IsValidDateFormat(null));
+        Assert.True(SortService.IsValidDateFormat(""));
+        Assert.False(SortService.IsValidDateFormat("%"));
+    }
+
+    [Fact]
+    public void ParseTokens_returns_name_and_optional_format()
+    {
+        var tokens = SortService.ParseTokens(@"${year}\${date:dd-MM-yy}");
+        Assert.Equal(("year", (string?)null), tokens[0]);
+        Assert.Equal(("date", "dd-MM-yy"), tokens[1]);
+    }
+
+    [Fact]
+    public void Week_token_uses_two_digit_iso_week()
+    {
+        // 2021-01-04 is the Monday of ISO week 1 of 2021; 2021-12-31 falls in ISO week 52.
+        var rule = new SortRule { Dest = "${year}\\W${week}" };
+        Assert.Equal(Path.Combine("2021", "W01"),
+            SortService.ExpandTemplate(rule, "x.txt", new DateTime(2021, 1, 4), out _));
+        Assert.Equal(Path.Combine("2021", "W52"),
+            SortService.ExpandTemplate(rule, "x.txt", new DateTime(2021, 12, 31), out _));
+    }
+
+    [Fact]
+    public void Quarter_token_maps_month_to_Q1_through_Q4()
+    {
+        var rule = new SortRule { Dest = "${quarter}" };
+        Assert.Equal("Q1", SortService.ExpandTemplate(rule, "x.txt", new DateTime(2026, 2, 1), out _));
+        Assert.Equal("Q3", SortService.ExpandTemplate(rule, "x.txt", new DateTime(2026, 7, 13), out _));
+        Assert.Equal("Q4", SortService.ExpandTemplate(rule, "x.txt", new DateTime(2026, 12, 31), out _));
+    }
+
+    [Fact]
+    public void Initial_token_uppercases_the_first_letter_and_buckets_non_letters_under_hash()
+    {
+        var rule = new SortRule { Dest = "${initial}" };
+        var now = new DateTime(2026, 7, 13);
+        Assert.Equal("P", SortService.ExpandTemplate(rule, "photo.jpg", now, out _));
+        Assert.Equal("X", SortService.ExpandTemplate(rule, "_xray.dat", now, out _));
+        Assert.Equal("#", SortService.ExpandTemplate(rule, "123.txt", now, out _));
+    }
+
+    [Fact]
+    public void Stem_token_uses_the_file_name_without_extension()
+    {
+        var rule = new SortRule { Dest = "versions\\${stem}" };
+        var result = SortService.ExpandTemplate(rule, "report.final.pdf", new DateTime(2026, 7, 13), out bool ok);
+        Assert.True(ok);
+        Assert.Equal(Path.Combine("versions", "report.final"), result);
+    }
+
+    [Fact]
+    public void File_quarter_token_routes_by_the_files_own_date()
+    {
+        var f = MakeFile("statement.pdf", written: new DateTime(2020, 11, 5));
+        var t = Sorter(_root, new SortRule { Dest = "${fyear}\\${fquarter}" }); // catch-all
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[Path.Combine(_root, "2020", "Q4")]);
+    }
+
+    [Fact]
+    public void TokenAcceptsFormat_only_for_plain_date_tokens()
+    {
+        Assert.True(SortService.TokenAcceptsFormat("date"));
+        Assert.True(SortService.TokenAcceptsFormat("fmonth"));
+        Assert.True(SortService.TokenAcceptsFormat("cmonth"));
+        Assert.False(SortService.TokenAcceptsFormat("week"));
+        Assert.False(SortService.TokenAcceptsFormat("quarter"));
+        Assert.False(SortService.TokenAcceptsFormat("initial"));
+        Assert.False(SortService.TokenAcceptsFormat("ext"));
+    }
+
+    [Fact]
+    public void Creation_date_tokens_route_by_the_files_creation_date()
+    {
+        var f = MakeFile("photo.jpg");
+        File.SetCreationTime(f, new DateTime(2019, 4, 20, 8, 0, 0));
+        var t = Sorter(_root, new SortRule { Dest = "${cyear}\\${cmonth}" }); // catch-all
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[Path.Combine(_root, "2019", "04")]);
+    }
+
+    [Fact]
+    public void Creation_and_modified_date_tokens_are_independent()
+    {
+        // A file created in one month but last modified in another must split by the token used.
+        var f = MakeFile("clip.mov", written: new DateTime(2022, 8, 9));
+        File.SetCreationTime(f, new DateTime(2020, 1, 2));
+        Assert.Equal("2020",
+            SortService.ExpandTemplate(new SortRule { Dest = "${cyear}" }, f, out _));
+        Assert.Equal("2022",
+            SortService.ExpandTemplate(new SortRule { Dest = "${fyear}" }, f, out _));
+    }
+
+    [Fact]
+    public void Creation_date_token_on_a_missing_file_falls_back_to_root()
+    {
+        _ = SortService.ExpandTemplate(new SortRule { Dest = "${cyear}" }, "no-such-file.txt",
+            new DateTime(2026, 7, 13), out bool ok);
+        Assert.False(ok);
+    }
+
+    // ── Folder sorting ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void Folder_date_tokens_route_by_the_folders_own_creation_date()
+    {
+        var dir = MakeDir("Vacation", created: new DateTime(2019, 4, 20));
+        var t = Sorter(_root, new SortRule { Dest = "${cyear}\\${cmonth}", Scope = RuleScope.Both });
+        var plan = SortService.Plan(t, new[] { dir });
+        Assert.Contains(dir, plan[Path.Combine(_root, "2019", "04")]);
+    }
+
+    [Fact]
+    public void Scope_files_leaves_folders_alone_and_scope_folders_leaves_files_alone()
+    {
+        var file = MakeFile("a.jpg");
+        var dir = MakeDir("sub");
+
+        var foldersOnly = Sorter(_root, new SortRule { Dest = "Archived", Scope = RuleScope.Folders });
+        var p1 = SortService.Plan(foldersOnly, new[] { file, dir });
+        Assert.Contains(dir, p1[Path.Combine(_root, "Archived")]);
+        Assert.Contains(file, p1[_root]); // the file is not caught, stays at root
+
+        var filesOnly = Sorter(_root, new SortRule { Dest = "Archived", Scope = RuleScope.Files });
+        var p2 = SortService.Plan(filesOnly, new[] { file, dir });
+        Assert.Contains(file, p2[Path.Combine(_root, "Archived")]);
+        Assert.Contains(dir, p2[_root]); // the folder is not caught, stays at root
+    }
+
+    [Fact]
+    public void Default_rule_scope_does_not_catch_folders()
+    {
+        var dir = MakeDir("stuff");
+        var t = Sorter(_root, new SortRule { Dest = "X" }); // default Scope = Files, catch-all
+        var plan = SortService.Plan(t, new[] { dir });
+        Assert.Contains(dir, plan[_root]);
+    }
+
+    [Fact]
+    public void A_folder_is_never_moved_into_its_own_subtree()
+    {
+        var dir = MakeDir("Photos");
+        var t = Sorter(_root, new SortRule { Dest = "Photos", Scope = RuleScope.Both }); // dest == the folder itself
+        var plan = SortService.MovePlan(t, new[] { dir });
+        Assert.Empty(plan);
+    }
+
+    [Fact]
+    public void A_folder_already_named_like_the_destination_shape_is_left_in_place()
+    {
+        // Regression against the watch loop: the sorter's own dated output folder must not be re-filed,
+        // even though its creation date is "now" and would otherwise resolve elsewhere.
+        var dated = MakeDir("2019_04_20");
+        var t = Sorter(_root, new SortRule { Dest = "${cyear}_${cmonth}_${cday}", Scope = RuleScope.Both });
+        var plan = SortService.MovePlan(t, new[] { dated });
+        Assert.Empty(plan);
+    }
+
+    [Fact]
+    public void A_normally_named_folder_is_not_mistaken_for_a_dated_folder()
+    {
+        var dir = MakeDir("Report", created: new DateTime(2021, 9, 9));
+        var t = Sorter(_root, new SortRule { Dest = "${cyear}_${cmonth}_${cday}", Scope = RuleScope.Both });
+        var plan = SortService.MovePlan(t, new[] { dir });
+        Assert.Contains(Path.Combine(_root, "2021_09_09"), plan.Keys);
+    }
+
+    [Fact]
+    public void ScopeIncludes_maps_scope_to_item_kind()
+    {
+        Assert.True(SortService.ScopeIncludes(RuleScope.Files, isDirectory: false));
+        Assert.False(SortService.ScopeIncludes(RuleScope.Files, isDirectory: true));
+        Assert.True(SortService.ScopeIncludes(RuleScope.Folders, isDirectory: true));
+        Assert.False(SortService.ScopeIncludes(RuleScope.Folders, isDirectory: false));
+        Assert.True(SortService.ScopeIncludes(RuleScope.Both, isDirectory: true));
+        Assert.True(SortService.ScopeIncludes(RuleScope.Both, isDirectory: false));
     }
 }
