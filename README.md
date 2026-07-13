@@ -89,10 +89,15 @@ Every action reports back in the same place: a short toast on the wheel names wh
 happened in plain words — *Copied*, *Moved*, *Sorted*, *Undone* — with an **Undo**
 link where it applies. All the windows (new group, target editor, settings, and a
 themed message box) share one frame and one button layout, follow the active theme,
-and validate **inline** instead of popping up error dialogs; the hotkey field checks
-itself as you type, and settings are grouped into sections. If a target's folder or
-file goes missing, its tile shows a small warning mark — not a silent fade — and a
-click offers **Locate…** or **Remove**.
+and validate **inline** instead of popping up error dialogs, and settings are grouped
+into sections. The hotkey field in Settings is a small editor of its own: a **Record**
+button that flips to **Stop** while it captures the next pressed combination, a preset
+dropdown (Default `Ctrl+Alt+Space`, `Ctrl+Shift+Space`, `Ctrl+Alt+D`, `Ctrl+Shift+D`,
+`Ctrl+Alt+F12`), and a **Reset** button that restores `Ctrl+Alt+Space`. It accepts the
+**Win** modifier and shows a live status that reads *Available* or *Already taken by
+another app*, blocking **Save** while the combo is invalid or already taken. If a
+target's folder or file goes missing, its tile shows a small warning mark — not a silent
+fade — and a click offers **Locate…** or **Remove**.
 
 The tray menu also keeps a short **Recent drops** journal backed by
 `%AppData%\Dropwheel\drop-history.json`. Entries open the destination folder, reveal
@@ -116,6 +121,25 @@ the desktop, and a radar aura pings outward while it holds the lock. On release
 the ghost furls back into the orb with a confirming ring, and the wheel opens with
 the freshly pinned tile first. Every one of these moments plays live in the
 [interactive demo](https://ivanlarindev.github.io/dropwheel/demo/).
+
+While a drag hovers the open wheel, each tile grows a small confidence layer: a
+coloured ring, a short chip, and an action badge. The colour reads the intent at a
+glance — blue for an informational action, green for a plain copy, amber for a
+move, sort or run, and red for a target that can't take the drop. The tile you're
+over is emphasised, its label lifted with a one-line status such as *Drop to copy to
+Downloads.*, while tiles that can't receive the payload dim back so the valid
+choices stand out.
+
+The open wheel is fully keyboard-operable and screen-reader aware. With the wheel
+open, **Tab** and the arrow keys move focus between tiles — focus wraps around the
+rim and the focused tile shows a *Focus* chip — **Enter** or **Space** activates the
+focused tile, and **Escape** closes the wheel. The focused or hovered target is
+announced through a live region, so a screen reader reads out where the drop would
+land.
+
+The opening animation is configurable in Settings. A style chooser offers **Pop**
+(the default), **Radial burst**, **Clock sweep**, and **Magnetic settle**, and a
+speed slider scales the reveal from 0.5x to 2.0x.
 
 ## Crowded levels (overflow)
 
@@ -193,7 +217,11 @@ existing top-level files once, then keeps watching for new arrivals. It waits fo
 to finish copying before moving it, watches only the top level (files routed into
 subfolders don't re-trigger it), and leaves a file in place when no rule matches. A tray
 notification reports how many files were sorted. Auto-sort **moves** files and is **not**
-tracked by Undo — revert from Explorer if needed.
+tracked by Undo — revert from Explorer if needed. While Watch is on, dropping files onto
+the sorter by hand is confirmed first: a **Sort with watched rules?** dialog — warning
+that the target also moves future files automatically while Watch is enabled — with a
+**Sort** button and **Cancel** appears before the drop is routed. Plain copy or move
+drops onto ordinary folders are never gated this way.
 
 The legacy extension map still loads and is migrated to rules on first edit:
 
@@ -214,7 +242,10 @@ file is routed by the rules; Undo removes it.
 If a target is an executable or script (`.exe`, `.com`, `.bat`, `.cmd`, `.ps1`,
 `.py`, `.pyw`, `.vbs`, `.wsf`, `.js`, `.jar`, or a `.lnk` to one), dropping files
 on its tile runs it with the dropped files as arguments — the Windows "open with"
-behaviour, shown with a `Run` badge. Scripts the shell would only open in an editor
+behaviour, shown with a `Run` badge. The launch is confirmed first: dropping files on
+a run target opens a themed **Run dropped files?** dialog (*Dropwheel will run &lt;name&gt;
+with N item(s) as input.*) with a **Run** button and **Cancel**, and the program only
+starts once you confirm. Scripts the shell would only open in an editor
 (`.ps1`, `.py`, `.jar`) are launched through their interpreter. PowerShell scripts
 run with `-ExecutionPolicy Bypass` (otherwise the drop would open an editor instead
 of running), so only add scripts you trust as run targets. This is a launch,
@@ -230,8 +261,11 @@ exposes a PNG/JPG/ICO/WEBP icon.
 
 Telegram web links are converted to desktop deep links where possible, so
 clicking a `t.me` tile opens Telegram Desktop when the `tg://` protocol is
-registered. Dropping files or selected text onto a Telegram tile copies the
-payload to the clipboard, opens the chat or topic, and pastes it once Telegram is
+registered. Dropping files or selected text onto a Telegram tile is confirmed first:
+a **Send through Telegram?** dialog (*Dropwheel will copy this payload to the
+clipboard, open Telegram, and paste it when Telegram is active.*) with a **Send**
+button and **Cancel** appears before anything happens. On confirm, Dropwheel copies
+the payload to the clipboard, opens the chat or topic, and pastes it once Telegram is
 foreground; review and press Send in Telegram.
 
 ## Themes

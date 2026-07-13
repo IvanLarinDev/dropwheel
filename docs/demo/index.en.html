@@ -73,7 +73,7 @@
           <li><span class="n">4</span><span><b>Target tile</b> — a square drop destination: a folder, an app (run target), a group or a sorter.</span></li>
           <li><span class="n">5</span><span><b>Tile label</b> — the target's name under the tile.</span></li>
           <li><span class="n">6</span><span><b>Add tile</b> — the dashed “+”; creates a new target at the current level.</span></li>
-          <li><span class="n">7</span><span><b>Badge</b> — an action or status marker on a tile: copy ⧉, move ➜, run ▶, sorter ⇅.</span></li>
+          <li><span class="n">7</span><span><b>Badge</b> — an action or status marker on a tile: copy ⧉, move ➜, run ▶, sorter ⇅. The app itself renders the badge as a plain word (Copy, Move, Sort, Run); the demo shows it as glyph shorthand (⧉ ➜ ▶ ⇅).</span></li>
           <li><span class="n">8</span><span><b>Group</b> — a tile that opens a nested level; shows the child count and its code.</span></li>
           <li><span class="n">9</span><span><b>Sorter</b> — a folder with rules (amber border, ⇅) that files fan out into subfolders.</span></li>
         </ol>
@@ -144,10 +144,16 @@
           If a target is a program or script (<code>.exe</code>, <code>.bat</code>,
           <code>.ps1</code>, <code>.py</code>, <code>.jar</code> and the like), files
           dropped on its tile aren't copied — they're passed to the program as
-          arguments, the Windows “open with” behavior. The badge is blue with a ▶
-          triangle. Scripts the shell would only open in an editor are launched
+          arguments, the Windows “open with” behavior. The badge is amber (orange)
+          with a ▶ triangle — the run action uses the Warning tone. Scripts the shell
+          would only open in an editor are launched
           through their interpreter (e.g. <code>.py</code> via <code>py</code>). This
           is a launch, not a file operation, so it isn't undoable.
+        </p>
+        <p class="note">
+          Risky drops are confirmed first: a “Run dropped files?” dialog before a run,
+          “Send through Telegram?” before sending, and “Sort with watched rules?” before
+          routing by watched rules — the action only runs after you agree.
         </p>
       </div>
     </section>
@@ -168,6 +174,10 @@
           <code>${name}</code> tokens, so one rule both matches and routes into a
           dated or named structure. The same engine powers “watch folder” — the
           sorter files new arrivals in the background.
+        </p>
+        <p class="note">
+          Routing is a risky action, so a “Sort with watched rules?” dialog appears
+          first; files fan out into subfolders only after you agree.
         </p>
       </div>
     </section>
@@ -271,6 +281,10 @@
           mouse movement nearby brings it right back. The orb also hides itself in
           full-screen apps — games and presentations — and reappears when they exit.
         </p>
+        <p class="note">
+          The wheel can also be summoned right at the cursor with the global hotkey
+          Ctrl+Alt+Space (the shortcut is configurable).
+        </p>
       </div>
     </section>
 
@@ -311,6 +325,30 @@
           <h3>Startup and placement</h3>
           <p>The orb can start with Windows, remembers its spot on any monitor, and
              settings live in <code>%AppData%\Dropwheel\config.json</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Recent drops</h3>
+          <p>Dropwheel keeps a journal of drops at
+             <code>%AppData%\Dropwheel\drop-history.json</code> (most recent first,
+             capped at 50). A tray “Recent drops” submenu lists the newest entries:
+             clicking one opens its destination folder or reveals the created file, each
+             with a full-path tooltip. The same menu can clear the journal or open the
+             JSON file itself.</p>
+        </div>
+        <div class="card">
+          <h3>Explorer SendTo bridge</h3>
+          <p>Enabling “Explorer SendTo shortcut” in the tray menu installs a Windows
+             SendTo shortcut, so “Send to → Dropwheel” opens the wheel at the orb.
+             Folders and app/link items are added as targets, while ordinary files are
+             routed onto a target (subject to the confirmation gate) without a second
+             drag.</p>
+        </div>
+        <div class="card">
+          <h3>Skip duplicate targets</h3>
+          <p>The “Skip duplicate targets” setting is off by default. With it on, dropping
+             a folder, app or link already on the current wheel level doesn't add a second
+             tile: a toast says it's already there and the existing tile gives a quick
+             pulse.</p>
         </div>
       </div>
     </section>

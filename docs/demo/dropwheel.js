@@ -33,11 +33,11 @@ const DW = (() => {
     },
     Dark: {
       accent: "rgb(157,178,204)",
-      tileBg: "rgba(32,38,48,.94)", tileHot: "rgba(46,56,72,.96)",
+      tileBg: "rgba(32,38,48,.94)", tileHot: "rgba(46,56,72,.94)",
       tileBorder: "rgba(255,255,255,.22)", label: "rgb(201,210,222)",
       rim: "rgba(138,150,168,.10)", spoke: "rgba(192,200,212,.15)",
-      hubBg: "rgba(26,32,42,.96)", hubBorder: "rgba(192,200,212,.30)",
-      groupBorder: "rgba(138,176,255,.55)", sorterBorder: "rgba(232,166,72,.60)",
+      hubBg: "rgba(26,32,42,.94)", hubBorder: "rgba(192,200,212,.30)",
+      groupBorder: "rgba(138,176,255,.55)", sorterBorder: "rgba(232,166,72,.55)",
       stage: "#0d1017",
     },
     Light: {
@@ -75,7 +75,7 @@ const DW = (() => {
     move:   { glyph: "➜", color: "rgb(224,134,0)" },   // Warning
     run:    { glyph: "▶", color: "rgb(224,134,0)" },   // Warning
     sorter: { glyph: "⇅", color: "rgb(232,166,72)" },  // amber (sorter)
-    text:   { glyph: "≡", color: "rgb(31,157,87)" },   // text → save (Success)
+    text:   { glyph: "≡", color: "rgb(44,123,229)" },  // text → save (Info)
     add:    { glyph: "+", color: "rgb(44,123,229)" },  // Info
     no:     { glyph: "!", color: "rgb(209,52,56)" },   // Danger
     reorder:{ glyph: "↕", color: "rgb(44,123,229)" },  // Info
@@ -542,9 +542,9 @@ const DW = (() => {
       ctx.fillText(g.label || "выделенный текст", 0, 28);
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
       if (g.mode) {
-        ctx.fillStyle = "rgb(31,157,87)";
+        ctx.fillStyle = "rgb(44,123,229)";
         roundRect(ctx, 18, -26, 22, 18, 9); ctx.fill();
-        ctx.fillStyle = "#06210f"; ctx.font = "bold 10px system-ui";
+        ctx.fillStyle = "#0c1420"; ctx.font = "bold 10px system-ui";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText("txt", 29, -17);
       }
