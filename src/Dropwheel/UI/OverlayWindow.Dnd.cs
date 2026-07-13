@@ -324,7 +324,7 @@ public partial class OverlayWindow
                     DropPayloadKind.VirtualFiles,
                     saved.Length,
                     saved.Length > 0 ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                    destination: dest,
+                    destination: saved.Length == 1 ? saved[0] : dest,
                     detail: saved.Length > 0 ? null : "No virtual files were extracted.");
             }
             ShowToast(saved.Length > 0
@@ -355,7 +355,7 @@ public partial class OverlayWindow
                     DropPayloadKind.Text,
                     saved != null ? 1 : 0,
                     saved != null ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                    destination: dest,
+                    destination: saved ?? dest,
                     detail: saved != null ? null : "No text was saved.");
             }
             ShowToast(saved != null

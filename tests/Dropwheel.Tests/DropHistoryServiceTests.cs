@@ -134,6 +134,29 @@ public sealed class DropHistoryServiceTests : IDisposable
     }
 
     [Fact]
+    public void MenuToolTip_says_reveal_for_file_destination()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_root, "saved"));
+        var file = Path.Combine(folder.FullName, "text.txt");
+        File.WriteAllText(file, "saved text");
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch,
+            Action = DropHistoryAction.SaveText,
+            Payload = DropPayloadKind.Text,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Documents",
+            TargetPath = folder.FullName,
+            Destination = file,
+            ItemCount = 1,
+        };
+
+        var tooltip = DropHistoryService.MenuToolTip(entry);
+
+        Assert.Contains($"Reveal: {file}", tooltip);
+    }
+
+    [Fact]
     public void MenuToolTip_keeps_non_file_uri_target_visible()
     {
         var entry = new DropHistoryEntry
@@ -187,6 +210,31 @@ public sealed class DropHistoryServiceTests : IDisposable
             ItemCount = 1,
         };
 
+        Assert.Equal(folder.FullName, DropHistoryService.DestinationFolder(entry));
+    }
+
+    [Fact]
+    public void DestinationLocation_selects_existing_file_destination()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_root, "saved"));
+        var file = Path.Combine(folder.FullName, "note.txt");
+        File.WriteAllText(file, "hello");
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch,
+            Action = DropHistoryAction.SaveText,
+            Payload = DropPayloadKind.Text,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Documents",
+            TargetPath = folder.FullName,
+            Destination = file,
+            ItemCount = 1,
+        };
+
+        var location = DropHistoryService.DestinationLocation(entry);
+
+        Assert.Equal(file, location?.Path);
+        Assert.True(location?.SelectFile);
         Assert.Equal(folder.FullName, DropHistoryService.DestinationFolder(entry));
     }
 

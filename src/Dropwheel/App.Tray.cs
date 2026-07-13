@@ -97,14 +97,14 @@ public partial class App
         {
             foreach (var entry in entries)
             {
-                var folder = DropHistoryService.DestinationFolder(entry);
+                var location = DropHistoryService.DestinationLocation(entry);
                 var item = new WF.ToolStripMenuItem(DropHistoryService.MenuSummary(entry))
                 {
-                    Enabled = folder != null,
+                    Enabled = location != null,
                     ToolTipText = DropHistoryService.MenuToolTip(entry),
                 };
-                if (folder != null)
-                    item.Click += (_, _) => OpenDropHistoryFolder(folder);
+                if (location != null)
+                    item.Click += (_, _) => OpenDropHistoryLocation(location.Value);
                 recentDrops.DropDownItems.Add(item);
             }
             recentDrops.DropDownItems.Add(new WF.ToolStripSeparator());
@@ -135,15 +135,19 @@ public partial class App
         }
     }
 
-    private void OpenDropHistoryFolder(string folder)
+    private void OpenDropHistoryLocation(DropHistoryLocation location)
     {
         try
         {
-            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+            var startInfo = location.SelectFile
+                ? new ProcessStartInfo("explorer.exe", $"/select,\"{location.Path}\"")
+                : new ProcessStartInfo(location.Path);
+            startInfo.UseShellExecute = true;
+            Process.Start(startInfo);
         }
         catch (Exception ex)
         {
-            ErrorLog.Write($"Could not open drop destination '{folder}'", ex);
+            ErrorLog.Write($"Could not open drop destination '{location.Path}'", ex);
             _tray?.ShowBalloonTip(4000, "Dropwheel",
                 "Couldn't open the drop destination.", WF.ToolTipIcon.Warning);
         }

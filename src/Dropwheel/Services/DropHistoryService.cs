@@ -21,6 +21,8 @@ public sealed class DropHistoryEntry
     public string? Detail { get; init; }
 }
 
+public readonly record struct DropHistoryLocation(string Path, bool SelectFile);
+
 public static class DropHistoryService
 {
     private const int DefaultLimit = 50;
@@ -49,13 +51,20 @@ public static class DropHistoryService
         return $"{time}  {action} {items} -> {target}{status}";
     }
 
-    public static string? DestinationFolder(DropHistoryEntry entry) =>
-        ExistingFolderFor(entry.Destination) ?? ExistingFolderFor(entry.TargetPath);
+    public static DropHistoryLocation? DestinationLocation(DropHistoryEntry entry) =>
+        ExistingLocationFor(entry.Destination) ?? ExistingLocationFor(entry.TargetPath);
+
+    public static string? DestinationFolder(DropHistoryEntry entry)
+    {
+        if (DestinationLocation(entry) is not { } location) return null;
+        return location.SelectFile ? Path.GetDirectoryName(location.Path) : location.Path;
+    }
 
     public static string MenuToolTip(DropHistoryEntry entry)
     {
         var lines = new List<string>();
-        if (DestinationFolder(entry) is { } folder) lines.Add($"Open: {folder}");
+        if (DestinationLocation(entry) is { } location)
+            lines.Add($"{(location.SelectFile ? "Reveal" : "Open")}: {location.Path}");
         AddLine(lines, "Destination", entry.Destination);
         AddLine(lines, "Target", entry.TargetPath);
         AddLine(lines, "Detail", entry.Detail);
@@ -162,7 +171,7 @@ public static class DropHistoryService
         return safeCount == 1 ? $"1 {noun}" : $"{safeCount} {noun}s";
     }
 
-    private static string? ExistingFolderFor(string? path)
+    private static DropHistoryLocation? ExistingLocationFor(string? path)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
         if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && !uri.IsFile)
@@ -175,8 +184,8 @@ public static class DropHistoryService
             return null;
         }
 
-        if (Directory.Exists(fullPath)) return fullPath;
-        if (File.Exists(fullPath)) return Path.GetDirectoryName(fullPath);
+        if (Directory.Exists(fullPath)) return new DropHistoryLocation(fullPath, SelectFile: false);
+        if (File.Exists(fullPath)) return new DropHistoryLocation(fullPath, SelectFile: true);
         return null;
     }
 
