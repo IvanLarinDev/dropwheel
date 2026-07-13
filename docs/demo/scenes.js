@@ -583,6 +583,85 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
     // перерисовать метки после проигрывания открытия (тайлы встают на места)
     setTimeout(drawAnno, 900);
 
+    // ---- Сцена: слой уверенности (оценка целей при наведении) ----
+    // Файл висит над колесом и по очереди «примеряется» к целям разного типа;
+    // у наведённой — кольцо, чип и статус нужного тона, остальные приглушены по
+    // совместимости (intentDims). Переиспользует dropConfidence из сцены дропа.
+    if (document.getElementById("scene-confidence")) {
+      const conf = new DW.Wheel(document.getElementById("scene-confidence"), ROOT_TILES,
+        { startOpen: true, hover: false });
+      const CONF_PASSES = [
+        { i: 0, mode: "copy", label: "Copy", active: "Copy to Downloads" },
+        { i: 4, mode: "sorter", label: "Rules", active: "Rules to Inbox" },
+        { i: 6, mode: "run", label: "Run", active: "Run with Scripts" },
+        { i: 5, mode: "no", label: "Can't", active: "Open the group first" },
+      ];
+      const CONF_MS = 2600;
+      const lockOf = (i) => { const t = conf.tileCenter(i); return { x: t.x - 30, y: t.y - 44 }; };
+      function confScene(now) {
+        const span = CONF_MS * CONF_PASSES.length;
+        const total = now % span;
+        const idx = Math.floor(total / CONF_MS);
+        const t = total % CONF_MS;
+        const pass = CONF_PASSES[idx];
+        const prev = CONF_PASSES[(idx - 1 + CONF_PASSES.length) % CONF_PASSES.length];
+        conf.forceHot = -1; conf.confidence = null; conf.ghost = null;
+        const lock = lockOf(pass.i), prevLock = lockOf(prev.i);
+        const setConf = () => {
+          conf.forceHot = pass.i;
+          conf.confidence = dropConfidence(pass.i, pass.mode, pass.label, pass.active);
+        };
+        if (t < 600) {
+          const p = easeOut(clamp01(t / 600));
+          conf.ghost = { x: lerp(prevLock.x, lock.x, p), y: lerp(prevLock.y, lock.y, p), mode: pass.mode, label: "report.pdf", alpha: 1 };
+          if (t > 300) setConf();
+        } else {
+          conf.ghost = { x: lock.x, y: lock.y, mode: pass.mode, label: "report.pdf", alpha: 1 };
+          setConf();
+        }
+        requestAnimationFrame(confScene);
+      }
+      requestAnimationFrame(confScene);
+    }
+
+    // ---- Сцена: клавиатура и доступность ----
+    // Открытое колесо управляется с клавиатуры: Tab и стрелки водят фокус по
+    // тайлам (кольцо и чип «Focus»), Enter активирует, Escape закрывает. Клавиша
+    // показана пилюлей на хабе, равномерное приглушение отделяет фокус от оценки
+    // совместимости (у неё свои цвета в соседней сцене).
+    if (document.getElementById("scene-keys")) {
+      const keys = new DW.Wheel(document.getElementById("scene-keys"), ROOT_TILES,
+        { startOpen: true, hover: false });
+      const FOCUS = [0, 1, 4, 6];
+      const dimEven = () => ROOT_TILES.reduce((m, _, j) => { m[j] = 0.5; return m; }, {});
+      const focusConf = (i) => ({ index: i, mode: "add", label: "Focus", activeLabel: "Focus", dim: dimEven() });
+      let ks = { stage: 0, start: performance.now(), step: 0 };
+      function keysScene(now) {
+        const el = now - ks.start;
+        keys.forceHot = -1; keys.confidence = null; keys.orbBadge = null; keys.flash = null;
+        if (ks.stage === 0) {
+          const i = FOCUS[ks.step];
+          keys.forceHot = i; keys.confidence = focusConf(i);
+          keys.orbBadge = ks.step === 0 ? "Tab" : "→";
+          if (el >= 850) {
+            ks.step++; ks.start = now;
+            if (ks.step >= FOCUS.length) { ks.stage = 1; ks.step = FOCUS.length - 1; }
+          }
+        } else if (ks.stage === 1) {
+          const i = FOCUS[FOCUS.length - 1];
+          keys.forceHot = i; keys.confidence = focusConf(i); keys.orbBadge = "Enter";
+          if (el < 500) keys.flash = { index: i, p: el / 500 };
+          if (el >= 1100) { ks.stage = 2; ks.start = now; }
+        } else {
+          keys.orbBadge = "Esc";
+          if (el > 60) keys.close();
+          if (el >= 1200) { keys.open(); ks = { stage: 0, start: now, step: 0 }; }
+        }
+        requestAnimationFrame(keysScene);
+      }
+      requestAnimationFrame(keysScene);
+    }
+
     // ---- Сцена: переполненные уровни (второе кольцо) ----
     // Раскладки повторяют WheelLayout.cs: одно кольцо до порога, иначе излишек
     // уходит на внешнее кольцо по выбранной схеме. viewScale вписывает широкое
