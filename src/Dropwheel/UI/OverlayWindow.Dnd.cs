@@ -27,10 +27,11 @@ public partial class OverlayWindow
 
     private DropConfidencePreview PreviewBubbleDrop(TargetItem t, DragEventArgs e)
     {
-        bool real = e.Data.GetDataPresent(DataFormats.FileDrop);
-        bool virt = !real && VirtualFileService.HasVirtualFiles(e.Data);
-        bool link = !real && !virt && LinkTargetService.HasLaunchUri(e.Data);
-        bool text = !real && !virt && !link && TextDropService.HasText(e.Data);
+        var payload = DetectDropPayloadKind(e.Data);
+        bool real = payload == DropPayloadKind.Files;
+        bool virt = payload == DropPayloadKind.VirtualFiles;
+        bool link = payload == DropPayloadKind.Link;
+        bool text = payload == DropPayloadKind.Text;
 
         if (TelegramDropService.CanAccept(t, e.Data))
         {
@@ -41,41 +42,50 @@ public partial class OverlayWindow
                     DragDropEffects.None, "No", "Can't",
                     "Cannot send this payload to Telegram.",
                     ConfidenceTone.Danger, CanDrop: false,
-                    ActiveLabelText: "Cannot send");
+                    ActiveLabelText: "Cannot send",
+                    PayloadKind: payload);
             }
 
             var telegramText = !real && !virt && TextDropService.HasText(e.Data);
             var telegramAction = telegramText ? "Copy text" : "Copy files";
             return new DropConfidencePreview(
                 effect,
-                telegramText ? "Text" : "Copy",
-                telegramText ? "Text" : "Copy",
+                "Clip",
+                telegramText ? "Text" : "Files",
                 telegramText
-                    ? $"Drop to copy text for {t.Name}."
-                    : $"Drop to copy files for {t.Name}.",
-                ConfidenceTone.Info,
+                    ? $"Drop to copy text for Telegram handoff to {t.Name}."
+                    : $"Drop to copy files for Telegram handoff to {t.Name}.",
+                ConfidenceTone.Warning,
                 CanDrop: true,
-                ActiveLabelText: $"{telegramAction} to {t.Name}");
+                ActiveLabelText: $"{telegramAction} via clipboard",
+                PayloadKind: payload);
         }
 
-        if (real && LaunchService.IsRunTarget(t)) // drop files on an exe/script → run it (open with)
+        var isFolderTarget = LaunchService.IsFolderTarget(t);
+        var isRunTarget = LaunchService.IsRunTarget(t);
+        var targetKind = DropIntent.ClassifyTarget(t, isFolderTarget, isRunTarget);
+        var compatibility = targetKind == DropTargetKind.Telegram
+            ? DropCompatibility.Deny("Cannot send this payload to Telegram.")
+            : DropIntent.Compatibility(payload, targetKind);
+
+        if (payload == DropPayloadKind.Files && targetKind == DropTargetKind.Run)
         {
             return new DropConfidencePreview(
                 DragDropEffects.Link,
                 "Run",
                 "Run",
-                $"Drop to open {RealFileCount(e)} item(s) with {t.Name}.",
-                ConfidenceTone.Info,
+                $"Drop to run {t.Name} with {RealFileCount(e)} item(s).",
+                ConfidenceTone.Warning,
                 CanDrop: true,
-                ActiveLabelText: $"Run with {t.Name}");
+                ActiveLabelText: $"Run with {t.Name}",
+                PayloadKind: payload);
         }
-        if ((!real && !virt && !link && !text) || !LaunchService.IsFolderTarget(t))
+
+        if (!compatibility.CanReceive)
         {
-            var reason = !t.Exists
+            var reason = targetKind == DropTargetKind.Missing
                 ? $"{t.Name} is missing. Locate or remove this target."
-                : !real && !virt && !link && !text
-                    ? "This payload is not supported."
-                    : $"{t.Name} cannot receive this drop.";
+                : compatibility.Reason;
             return new DropConfidencePreview(
                 DragDropEffects.None,
                 "No",
@@ -83,7 +93,8 @@ public partial class OverlayWindow
                 reason,
                 ConfidenceTone.Danger,
                 CanDrop: false,
-                ActiveLabelText: !t.Exists ? "Target missing" : "Cannot receive");
+                ActiveLabelText: targetKind == DropTargetKind.Missing ? "Target missing" : "Cannot receive",
+                PayloadKind: payload);
         }
 
         var act = DropDispatch.EffectiveAction(
@@ -104,19 +115,25 @@ public partial class OverlayWindow
                     : $"Drop to add this link to the current wheel level.",
                 effect == DragDropEffects.None ? ConfidenceTone.Danger : ConfidenceTone.Info,
                 CanDrop: effect != DragDropEffects.None,
-                ActiveLabelText: effect == DragDropEffects.None ? "Cannot add" : "Add link");
+                ActiveLabelText: effect == DragDropEffects.None ? "Cannot add" : "Add link",
+                PayloadKind: payload);
         }
 
-        if (t.IsSorter)
+        if (targetKind == DropTargetKind.Sorter)
         {
+            var badgeText = t.Watch ? "Watch" : "Sort";
+            var chipText = t.Watch ? "Watch" : "Rules";
             return new DropConfidencePreview(
                 act == DropAction.Move ? DragDropEffects.Move : DragDropEffects.Copy,
-                "Sort",
-                "Sort",
-                $"Drop to sort into {t.Name}.",
-                ConfidenceTone.Info,
+                badgeText,
+                chipText,
+                t.Watch
+                    ? $"Drop to route through watched sorter rules in {t.Name}."
+                    : $"Drop to route by rules into {t.Name}.",
+                ConfidenceTone.Warning,
                 CanDrop: true,
-                ActiveLabelText: $"Sort into {t.Name}");
+                ActiveLabelText: t.Watch ? $"Watch rules in {t.Name}" : $"Rules to {t.Name}",
+                PayloadKind: payload);
         }
 
         if (text)
@@ -128,7 +145,8 @@ public partial class OverlayWindow
                 $"Drop to save text in {t.Name}.",
                 ConfidenceTone.Info,
                 CanDrop: true,
-                ActiveLabelText: $"Save text in {t.Name}");
+                ActiveLabelText: $"Save text in {t.Name}",
+                PayloadKind: payload);
         }
 
         return new DropConfidencePreview(
@@ -140,7 +158,16 @@ public partial class OverlayWindow
                 : $"Drop to copy to {t.Name}.",
             act == DropAction.Move ? ConfidenceTone.Warning : ConfidenceTone.Success,
             CanDrop: true,
-            ActiveLabelText: act == DropAction.Move ? $"Move to {t.Name}" : $"Copy to {t.Name}");
+            ActiveLabelText: act == DropAction.Move ? $"Move to {t.Name}" : $"Copy to {t.Name}",
+            PayloadKind: payload);
+    }
+
+    private static DropPayloadKind DetectDropPayloadKind(IDataObject data)
+    {
+        if (data.GetDataPresent(DataFormats.FileDrop)) return DropPayloadKind.Files;
+        if (VirtualFileService.HasVirtualFiles(data)) return DropPayloadKind.VirtualFiles;
+        if (LinkTargetService.HasLaunchUri(data)) return DropPayloadKind.Link;
+        return TextDropService.HasText(data) ? DropPayloadKind.Text : DropPayloadKind.Unsupported;
     }
 
     private static int RealFileCount(DragEventArgs e) =>
@@ -149,7 +176,11 @@ public partial class OverlayWindow
     private void OnBubbleDrop(TargetItem t, Border badge, DragEventArgs e)
     {
         badge.Visibility = Visibility.Collapsed;
-        try { OnBubbleDropCore(t, e); }
+        try
+        {
+            if (ConfirmDropPreflight(t, e)) OnBubbleDropCore(t, e);
+            else e.Effects = DragDropEffects.None;
+        }
         catch (Exception ex)
         {
             ErrorLog.Write($"Error dropping onto '{t.Name}'", ex);
@@ -158,6 +189,31 @@ public partial class OverlayWindow
         CloseCloud();
         e.Handled = true;
     }
+
+    private bool ConfirmDropPreflight(TargetItem t, DragEventArgs e)
+    {
+        var payload = DetectDropPayloadKind(e.Data);
+        var targetKind = TelegramDropService.CanAccept(t, e.Data)
+            ? DropTargetKind.Telegram
+            : DropIntent.ClassifyTarget(t, LaunchService.IsFolderTarget(t), LaunchService.IsRunTarget(t));
+
+        var preflight = DropTrustGate.Evaluate(t, payload, targetKind, DropPayloadItemCount(e.Data, payload));
+        return preflight == null
+            || DwMessageBox.Show(
+                this,
+                preflight.Value.Caption,
+                preflight.Value.Message,
+                preflight.Value.PrimaryText,
+                showCancel: true);
+    }
+
+    private static int DropPayloadItemCount(IDataObject data, DropPayloadKind payload) =>
+        payload switch
+        {
+            DropPayloadKind.Files when data.GetData(DataFormats.FileDrop) is string[] files => files.Length,
+            DropPayloadKind.Link or DropPayloadKind.Text => 1,
+            _ => 0,
+        };
 
     private void OnBubbleDropCore(TargetItem t, DragEventArgs e)
     {
@@ -176,13 +232,19 @@ public partial class OverlayWindow
             }
 
             LaunchService.Launch(new TargetItem { Name = t.Name, Path = TelegramDropService.LaunchPathFor(t) });
-            TelegramDropService.PasteIntoTelegramWhenReady();
+            TelegramDropService.PasteIntoTelegramWhenReady(pasted =>
+            {
+                if (pasted) return;
+                _ = Dispatcher.InvokeAsync(() => ShowToast(
+                    "Telegram did not become ready. The payload is still on the clipboard.",
+                    kind: ToastKind.Warning));
+            });
             e.Effects = e.AllowedEffects.HasFlag(DragDropEffects.Copy)
                 ? DragDropEffects.Copy
                 : DragDropEffects.None;
             ShowToast(result.Kind == TelegramDropKind.Files
-                ? $"Copied {result.Count} file(s); pasting in Telegram"
-                : "Copied text; pasting in Telegram", kind: ToastKind.Success);
+                ? $"Copied {result.Count} file(s); waiting for Telegram"
+                : "Copied text; waiting for Telegram", kind: ToastKind.Info);
             return;
         }
 

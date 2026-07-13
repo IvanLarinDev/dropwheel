@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Dropwheel.Models;
+using Dropwheel.Services;
 
 namespace Dropwheel.UI;
 
@@ -19,7 +20,8 @@ public partial class OverlayWindow
         string StatusText,
         ConfidenceTone Tone,
         bool CanDrop,
-        string? ActiveLabelText = null);
+        string? ActiveLabelText = null,
+        DropPayloadKind PayloadKind = DropPayloadKind.Unsupported);
 
     private sealed class ConfidenceVisuals
     {
@@ -30,6 +32,7 @@ public partial class OverlayWindow
         public Border? Badge { get; init; }
         public required string BaseAutomationName { get; init; }
         public Action? KeyboardActivate { get; init; }
+        public TargetItem? Target { get; init; }
         public string KeyboardStatus { get; init; } = "";
         public double BaseLabelMaxWidth { get; init; }
         public double BaseLabelFontSize { get; init; }
@@ -92,7 +95,8 @@ public partial class OverlayWindow
         string baseAutomationName,
         Action? keyboardActivate,
         string keyboardStatus,
-        Border? badge = null)
+        Border? badge = null,
+        TargetItem? target = null)
     {
         element.Focusable = true;
         _confidenceVisuals[element] = new ConfidenceVisuals
@@ -104,6 +108,7 @@ public partial class OverlayWindow
             Badge = badge,
             BaseAutomationName = baseAutomationName,
             KeyboardActivate = keyboardActivate,
+            Target = target,
             KeyboardStatus = keyboardStatus,
             BaseLabelMaxWidth = label?.MaxWidth ?? 0,
             BaseLabelFontSize = label?.FontSize ?? 0,
@@ -130,7 +135,14 @@ public partial class OverlayWindow
 
         var name = AccessibleName(target);
         var status = $"{name}. {preview.StatusText}";
-        ShowConfidence(element, preview.ChipText, status, preview.Tone, preview.CanDrop, preview.ActiveLabelText);
+        ShowConfidence(
+            element,
+            preview.ChipText,
+            status,
+            preview.Tone,
+            preview.CanDrop,
+            preview.ActiveLabelText,
+            preview.PayloadKind);
     }
 
     private void ShowGeneralConfidence(
@@ -150,7 +162,8 @@ public partial class OverlayWindow
         string statusText,
         ConfidenceTone tone,
         bool canDrop,
-        string? activeLabelText = null)
+        string? activeLabelText = null,
+        DropPayloadKind? payloadKind = null)
     {
         if (!_confidenceVisuals.TryGetValue(element, out var visuals)) return;
 
@@ -159,7 +172,7 @@ public partial class OverlayWindow
         foreach (var (candidate, candidateVisuals) in _confidenceVisuals)
         {
             bool active = ReferenceEquals(candidate, element);
-            candidate.Opacity = active ? 1.0 : canDrop ? 0.42 : 0.58;
+            candidate.Opacity = active ? 1.0 : CandidateOpacity(candidateVisuals, canDrop, payloadKind);
             candidateVisuals.Ring.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
             candidateVisuals.Ring.Opacity = active ? 1 : 0;
             candidateVisuals.Chip.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
@@ -177,6 +190,25 @@ public partial class OverlayWindow
         AutomationProperties.SetName(element, statusText);
         AutomationProperties.SetHelpText(element, chipText);
         AnnounceConfidence(statusText, tone == ConfidenceTone.Danger || !canDrop);
+    }
+
+    private static double CandidateOpacity(
+        ConfidenceVisuals visuals,
+        bool activeCanDrop,
+        DropPayloadKind? payloadKind)
+    {
+        if (visuals.Target == null
+            || payloadKind is not { } payload
+            || payload == DropPayloadKind.Unsupported)
+            return activeCanDrop ? 0.42 : 0.58;
+
+        var targetKind = DropIntent.ClassifyTarget(
+            visuals.Target,
+            LaunchService.IsFolderTarget(visuals.Target),
+            LaunchService.IsRunTarget(visuals.Target));
+        var compatibility = DropIntent.Compatibility(payload, targetKind);
+        if (!compatibility.CanReceive) return 0.18;
+        return compatibility.Level == DropCompatibilityLevel.Caution ? 0.52 : 0.42;
     }
 
     private void ClearConfidenceTarget()

@@ -55,11 +55,13 @@ internal sealed class TelegramClipboardPayload
 
 public static class TelegramDropService
 {
-    private static readonly TimeSpan PasteTimeout = TimeSpan.FromSeconds(4);
+    private static readonly TimeSpan PasteTimeout = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan PastePoll = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan PasteReadyDelay = TimeSpan.FromMilliseconds(650);
 
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int processId);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     public static bool IsTelegramTarget(TargetItem target)
     {
@@ -87,12 +89,24 @@ public static class TelegramDropService
             ? linkTarget.Path
             : target.Path;
 
-    public static void PasteIntoTelegramWhenReady()
+    public static void PasteIntoTelegramWhenReady(Action<bool>? completed = null)
     {
         _ = Task.Run(async () =>
         {
-            try { await PasteIntoTelegramWhenReady(PasteTimeout, PastePoll); }
-            catch (Exception ex) { ErrorLog.Write("Could not paste Telegram drop payload", ex); }
+            bool pasted = false;
+            try
+            {
+                pasted = await PasteIntoTelegramWhenReady(
+                    PasteTimeout,
+                    PastePoll,
+                    activateTelegramWindow: TryActivateTelegramWindow);
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write("Could not paste Telegram drop payload", ex);
+            }
+
+            completed?.Invoke(pasted);
         });
     }
 
@@ -134,7 +148,9 @@ public static class TelegramDropService
         TimeSpan timeout,
         TimeSpan poll,
         Action? paste = null,
-        Func<string?>? foregroundProcessName = null)
+        Func<string?>? foregroundProcessName = null,
+        Func<bool>? activateTelegramWindow = null,
+        TimeSpan? readyDelay = null)
     {
         var deadline = DateTime.UtcNow + timeout;
         do
@@ -142,9 +158,13 @@ public static class TelegramDropService
             var processName = foregroundProcessName?.Invoke() ?? ForegroundProcessName();
             if (IsTelegramProcessName(processName))
             {
-                await Task.Delay(250);
-                if (paste != null) paste();
-                else await Application.Current.Dispatcher.InvokeAsync(() => System.Windows.Forms.SendKeys.SendWait("^v"));
+                await PasteAfterReadyDelay(paste, readyDelay);
+                return true;
+            }
+
+            if (activateTelegramWindow?.Invoke() == true)
+            {
+                await PasteAfterReadyDelay(paste, readyDelay);
                 return true;
             }
 
@@ -153,6 +173,13 @@ public static class TelegramDropService
         while (DateTime.UtcNow <= deadline);
 
         return false;
+    }
+
+    private static async Task PasteAfterReadyDelay(Action? paste, TimeSpan? readyDelay)
+    {
+        await Task.Delay(readyDelay ?? PasteReadyDelay);
+        if (paste != null) paste();
+        else await Application.Current.Dispatcher.InvokeAsync(() => System.Windows.Forms.SendKeys.SendWait("^v"));
     }
 
     internal static bool IsTelegramProcessName(string? processName) =>
@@ -165,11 +192,36 @@ public static class TelegramDropService
         var hWnd = GetForegroundWindow();
         if (hWnd == IntPtr.Zero) return null;
 
-        GetWindowThreadProcessId(hWnd, out var processId);
-        if (processId == 0) return null;
+        var threadId = GetWindowThreadProcessId(hWnd, out var processId);
+        if (threadId == 0 || processId == 0) return null;
 
         try { return Process.GetProcessById(processId).ProcessName; }
         catch { return null; }
+    }
+
+    private static bool TryActivateTelegramWindow()
+    {
+        var activated = false;
+        foreach (var process in Process.GetProcesses())
+        {
+            try
+            {
+                if (activated) continue;
+                if (!IsTelegramProcessName(process.ProcessName)) continue;
+                if (process.MainWindowHandle == IntPtr.Zero) continue;
+                activated = SetForegroundWindow(process.MainWindowHandle);
+            }
+            catch
+            {
+                // Processes can exit while being inspected; try the next one.
+            }
+            finally
+            {
+                process.Dispose();
+            }
+        }
+
+        return activated;
     }
 
     private static string[] RealFiles(IDataObject data) =>

@@ -42,6 +42,21 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
     const lerp = (a, b, t) => a + (b - a) * t;
     const easeOut = (t) => 1 - (1 - t) * (1 - t) * (1 - t);
     const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
+    const intentDims = (payload) => {
+      const dims = {};
+      ROOT_TILES.forEach((tile, i) => {
+        if (tile.group) dims[i] = 0.18;
+        else if (tile.add) dims[i] = 0.42;
+        else if (tile.sorter) dims[i] = 0.52;
+        else if (tile.icon === "gear") dims[i] = payload === "files" ? 0.52 : 0.18;
+        else if (tile.icon === "search") dims[i] = 0.18;
+        else dims[i] = 0.42;
+      });
+      return dims;
+    };
+    const dropConfidence = (index, mode, label, activeLabel, payload = "files") => ({
+      index, mode, label, activeLabel, dim: intentDims(payload),
+    });
 
     // Два прохода: копирование на Downloads(0) и перемещение на Documents(1).
     const PASSES = [
@@ -76,12 +91,11 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
         };
         if (t > 780) {
           drop.forceHot = pass.index;
-          drop.confidence = {
-            index: pass.index,
-            mode: pass.mode,
-            label: pass.mode === "move" ? "Move" : "Copy",
-            activeLabel: pass.activeLabel,
-          };
+          drop.confidence = dropConfidence(
+            pass.index,
+            pass.mode,
+            pass.mode === "move" ? "Move" : "Copy",
+            pass.activeLabel);
         }
       } else if (t < 1500) {
         // сброс: файл гаснет, тайл ещё горит
@@ -92,12 +106,11 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
           alpha: 1 - (t - 1300) / 200,
         };
         drop.forceHot = pass.index;
-        drop.confidence = {
-          index: pass.index,
-          mode: pass.mode,
-          label: pass.mode === "move" ? "Move" : "Copy",
-          activeLabel: pass.activeLabel,
-        };
+        drop.confidence = dropConfidence(
+          pass.index,
+          pass.mode,
+          pass.mode === "move" ? "Move" : "Copy",
+          pass.activeLabel);
       }
       // кольцо-вспышка расходится от тайла после сброса
       if (t >= 1300 && t < 1800) {
@@ -201,12 +214,22 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
         text.ghost = { kind: "text", x: lerp(TEXT_START.x, tgt.x, p), y: lerp(TEXT_START.y, tgt.y, p), mode: "txt", label: SEL_TEXT, alpha: 1 };
         if (t > 780) {
           text.forceHot = TEXT_TARGET;
-          text.confidence = { index: TEXT_TARGET, mode: "text", label: "Text", activeLabel: "Save text in Documents" };
+          text.confidence = dropConfidence(
+            TEXT_TARGET,
+            "text",
+            "Text",
+            "Save text in Documents",
+            "text");
         }
       } else if (t < 1500) {
         text.ghost = { kind: "text", x: tgt.x, y: tgt.y, mode: "txt", label: SEL_TEXT, alpha: 1 - (t - 1300) / 200 };
         text.forceHot = TEXT_TARGET;
-        text.confidence = { index: TEXT_TARGET, mode: "text", label: "Text", activeLabel: "Save text in Documents" };
+        text.confidence = dropConfidence(
+          TEXT_TARGET,
+          "text",
+          "Text",
+          "Save text in Documents",
+          "text");
       }
       if (t >= 1300 && t < 1800) text.flash = { index: TEXT_TARGET, p: (t - 1300) / 500 };
       if (t >= 1400 && t < 4600) {
@@ -229,12 +252,12 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
         run.ghost = { x: lerp(START.x, tgt.x, p), y: lerp(START.y, tgt.y, p), mode: "run", label: "data.csv", alpha: 1 };
         if (t > 780) {
           run.forceHot = RUN_TARGET;
-          run.confidence = { index: RUN_TARGET, mode: "run", label: "Run", activeLabel: "Run with Scripts" };
+          run.confidence = dropConfidence(RUN_TARGET, "run", "Run", "Run with Scripts");
         }
       } else if (t < 1500) {
         run.ghost = { x: tgt.x, y: tgt.y, mode: "run", label: "data.csv", alpha: 1 - (t - 1300) / 200 };
         run.forceHot = RUN_TARGET;
-        run.confidence = { index: RUN_TARGET, mode: "run", label: "Run", activeLabel: "Run with Scripts" };
+        run.confidence = dropConfidence(RUN_TARGET, "run", "Run", "Run with Scripts");
       }
       if (t >= 1300 && t < 1800) run.flash = { index: RUN_TARGET, p: (t - 1300) / 500 };
       if (t >= 1400 && t < 3800) {
@@ -266,11 +289,11 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
         sortW.ghost = { x: lerp(START.x, tgt.x, p), y: lerp(START.y, tgt.y, p), mode: "sorter", label: "6 files", alpha: 1 };
         if (t > 780) {
           sortW.forceHot = SORT_TARGET;
-          sortW.confidence = { index: SORT_TARGET, mode: "sorter", label: "Sort", activeLabel: "Sort into Inbox" };
+          sortW.confidence = dropConfidence(SORT_TARGET, "sorter", "Rules", "Rules to Inbox");
         }
       } else if (t < 4200) {
         sortW.forceHot = SORT_TARGET;
-        sortW.confidence = { index: SORT_TARGET, mode: "sorter", label: "Sort", activeLabel: "Sort into Inbox" };
+        sortW.confidence = dropConfidence(SORT_TARGET, "sorter", "Rules", "Rules to Inbox");
         const ft = t - 1200;
         const chips = SUBF.map((s) => ({ x: s.x, y: s.y, label: s.label, color: s.color }));
         for (let i = 0; i < SORT_FILES.length; i++) {

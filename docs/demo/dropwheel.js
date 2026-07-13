@@ -73,7 +73,7 @@ const DW = (() => {
   const BADGES = {
     copy:   { glyph: "⧉", color: "rgb(31,157,87)" },   // Success
     move:   { glyph: "➜", color: "rgb(224,134,0)" },   // Warning
-    run:    { glyph: "▶", color: "rgb(44,123,229)" },  // Info
+    run:    { glyph: "▶", color: "rgb(224,134,0)" },   // Warning
     sorter: { glyph: "⇅", color: "rgb(232,166,72)" },  // amber (sorter)
     text:   { glyph: "≡", color: "rgb(31,157,87)" },   // text → save (Success)
     add:    { glyph: "+", color: "rgb(44,123,229)" },  // Info
@@ -346,7 +346,12 @@ const DW = (() => {
         let op = clamp01(tt / (A.opacity / sp));
         if (this.tileMul && this.tileMul[i] != null) op *= this.tileMul[i];
         const locked = this.confidence && this.confidence.index === i;
-        if (this.confidence && !locked) op *= (this.confidence.mode === "no" ? 0.58 : 0.42);
+        if (this.confidence && !locked) {
+          const dim = this.confidence.dim && this.confidence.dim[i] != null
+            ? this.confidence.dim[i]
+            : this.confidence.mode === "no" ? 0.58 : 0.42;
+          op *= dim;
+        }
         const scale = A.scale + (1 - A.scale) * p;
         // радиальное или касательное стартовое смещение
         const off = A.offMode === "tangential"

@@ -80,7 +80,8 @@ public sealed class TelegramDropServiceTests : IDisposable
             TimeSpan.Zero,
             TimeSpan.Zero,
             () => pasted = true,
-            () => "Dropwheel");
+            () => "Dropwheel",
+            readyDelay: TimeSpan.Zero);
 
         Assert.False(result);
         Assert.False(pasted);
@@ -95,9 +96,29 @@ public sealed class TelegramDropServiceTests : IDisposable
             TimeSpan.Zero,
             TimeSpan.Zero,
             () => pasted = true,
-            () => "Telegram");
+            () => "Telegram",
+            readyDelay: TimeSpan.Zero);
 
         Assert.True(result);
+        Assert.True(pasted);
+    }
+
+    [Fact]
+    public async Task PasteIntoTelegramWhenReady_pastes_after_activating_telegram_window()
+    {
+        var pasted = false;
+        var activated = false;
+
+        var result = await TelegramDropService.PasteIntoTelegramWhenReady(
+            TimeSpan.Zero,
+            TimeSpan.Zero,
+            () => pasted = true,
+            () => "Dropwheel",
+            () => activated = true,
+            readyDelay: TimeSpan.Zero);
+
+        Assert.True(result);
+        Assert.True(activated);
         Assert.True(pasted);
     }
 
