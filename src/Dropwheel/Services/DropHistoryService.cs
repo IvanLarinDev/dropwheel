@@ -24,6 +24,7 @@ public sealed class DropHistoryEntry
 public static class DropHistoryService
 {
     private const int DefaultLimit = 50;
+    private const int MenuSummaryLimit = 8;
     private static readonly object Gate = new();
     private static readonly JsonSerializerOptions Opts = new()
     {
@@ -34,6 +35,29 @@ public static class DropHistoryService
     public static string FilePath => Path.Combine(TargetStore.Dir, "drop-history.json");
 
     public static IReadOnlyList<DropHistoryEntry> Load() => Load(FilePath);
+
+    public static IReadOnlyList<DropHistoryEntry> LoadForMenu() =>
+        Load().Take(MenuSummaryLimit).ToArray();
+
+    public static string MenuSummary(DropHistoryEntry entry)
+    {
+        var time = entry.AtUtc.ToLocalTime().ToString("HH:mm");
+        var action = ActionLabel(entry.Action);
+        var items = ItemLabel(entry.Action, entry.Payload, entry.ItemCount);
+        var target = string.IsNullOrWhiteSpace(entry.TargetName) ? "Unknown" : entry.TargetName;
+        var status = entry.Status == DropHistoryStatus.Succeeded ? "" : $" ({entry.Status})";
+        return $"{time}  {action} {items} -> {target}{status}";
+    }
+
+    public static void EnsureFileExists()
+    {
+        lock (Gate)
+        {
+            if (File.Exists(FilePath)) return;
+            Directory.CreateDirectory(TargetStore.Dir);
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(Array.Empty<DropHistoryEntry>(), Opts));
+        }
+    }
 
     internal static IReadOnlyList<DropHistoryEntry> Load(string path)
     {
@@ -75,5 +99,34 @@ public static class DropHistoryService
         {
             ErrorLog.Write("Could not write drop history", ex);
         }
+    }
+
+    private static string ActionLabel(DropHistoryAction action) => action switch
+    {
+        DropHistoryAction.Copy => "Copied",
+        DropHistoryAction.Move => "Moved",
+        DropHistoryAction.Sort => "Sorted",
+        DropHistoryAction.Run => "Opened",
+        DropHistoryAction.Telegram => "Telegram",
+        DropHistoryAction.SaveVirtualFiles => "Saved",
+        DropHistoryAction.SaveText => "Saved",
+        DropHistoryAction.AddTargets => "Added",
+        _ => action.ToString(),
+    };
+
+    private static string ItemLabel(DropHistoryAction action, DropPayloadKind payload, int count)
+    {
+        var safeCount = Math.Max(0, count);
+        var noun = action == DropHistoryAction.AddTargets
+            ? "target"
+            : payload switch
+            {
+                DropPayloadKind.Files => "file",
+                DropPayloadKind.VirtualFiles => "virtual file",
+                DropPayloadKind.Link => "link",
+                DropPayloadKind.Text => "text",
+                _ => "item",
+            };
+        return safeCount == 1 ? $"1 {noun}" : $"{safeCount} {noun}s";
     }
 }

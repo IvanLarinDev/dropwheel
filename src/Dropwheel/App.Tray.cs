@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Dropwheel.Services;
 using WF = System.Windows.Forms;
 using SD = System.Drawing;
@@ -66,6 +67,8 @@ public partial class App
         menu.Items.Add(sendTo);
         menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
         menu.Items.Add("Open config folder", null, (_, _) => LaunchService.OpenConfigFolder());
+        var recentDrops = new WF.ToolStripMenuItem("Recent drops");
+        menu.Items.Add(recentDrops);
         menu.Items.Add(new WF.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
         StyleTrayMenu(menu);
@@ -73,10 +76,46 @@ public partial class App
         {
             fsStatus.Visible = Dropwheel.Services.FullscreenDetector.IsFullscreenActive();
             sendTo.Checked = ExplorerBridgeService.IsSendToInstalled();
+            PopulateRecentDrops(recentDrops);
             StyleTrayMenu(menu);
         };
         _tray.ContextMenuStrip = menu;
         _tray.DoubleClick += (_, _) => _overlay?.ToggleCloud();
+    }
+
+    private void PopulateRecentDrops(WF.ToolStripMenuItem recentDrops)
+    {
+        recentDrops.DropDownItems.Clear();
+        var entries = DropHistoryService.LoadForMenu();
+        if (entries.Count == 0)
+        {
+            recentDrops.DropDownItems.Add(new WF.ToolStripMenuItem("No drops yet") { Enabled = false });
+        }
+        else
+        {
+            foreach (var entry in entries)
+            {
+                recentDrops.DropDownItems.Add(new WF.ToolStripMenuItem(DropHistoryService.MenuSummary(entry))
+                { Enabled = false });
+            }
+            recentDrops.DropDownItems.Add(new WF.ToolStripSeparator());
+        }
+        recentDrops.DropDownItems.Add("Open history file...", null, (_, _) => OpenDropHistoryFile());
+    }
+
+    private void OpenDropHistoryFile()
+    {
+        try
+        {
+            DropHistoryService.EnsureFileExists();
+            Process.Start(new ProcessStartInfo(DropHistoryService.FilePath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Could not open drop history", ex);
+            _tray?.ShowBalloonTip(4000, "Dropwheel",
+                "Couldn't open drop history.", WF.ToolTipIcon.Warning);
+        }
     }
 
     /// <summary>WinForms tray menu ignores the WPF theme, so paint it from the palette by hand.

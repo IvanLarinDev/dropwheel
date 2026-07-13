@@ -56,6 +56,48 @@ public sealed class DropHistoryServiceTests : IDisposable
         Assert.Equal(DropHistoryAction.Copy, entry.Action);
     }
 
+    [Fact]
+    public void MenuSummary_describes_action_count_target_and_failed_status()
+    {
+        var entry = Entry("Telegram", 2);
+        entry = new DropHistoryEntry
+        {
+            AtUtc = entry.AtUtc,
+            Action = DropHistoryAction.Telegram,
+            Payload = DropPayloadKind.Files,
+            Status = DropHistoryStatus.Failed,
+            TargetName = entry.TargetName,
+            TargetPath = entry.TargetPath,
+            ItemCount = entry.ItemCount,
+        };
+
+        var summary = DropHistoryService.MenuSummary(entry);
+
+        Assert.Contains("Telegram", summary);
+        Assert.Contains("2 files", summary);
+        Assert.Contains("Failed", summary);
+    }
+
+    [Fact]
+    public void MenuSummary_uses_target_word_for_added_targets()
+    {
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch,
+            Action = DropHistoryAction.AddTargets,
+            Payload = DropPayloadKind.Files,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Wheel",
+            TargetPath = "",
+            ItemCount = 1,
+        };
+
+        var summary = DropHistoryService.MenuSummary(entry);
+
+        Assert.Contains("Added 1 target", summary);
+        Assert.DoesNotContain("Succeeded", summary);
+    }
+
     private static DropHistoryEntry Entry(string targetName, int count) => new()
     {
         AtUtc = DateTimeOffset.UnixEpoch.AddMinutes(count),
