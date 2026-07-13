@@ -57,6 +57,18 @@ public sealed class DropHistoryServiceTests : IDisposable
     }
 
     [Fact]
+    public void Clear_removes_entries_and_leaves_readable_history_file()
+    {
+        var path = Path.Combine(_root, "drop-history.json");
+        DropHistoryService.Append(Entry("Inbox", 1), path, limit: 5);
+
+        DropHistoryService.Clear(path);
+
+        Assert.Empty(DropHistoryService.Load(path));
+        Assert.True(File.Exists(path));
+    }
+
+    [Fact]
     public void MenuSummary_describes_action_count_target_and_failed_status()
     {
         var entry = Entry("Telegram", 2);

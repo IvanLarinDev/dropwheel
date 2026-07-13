@@ -62,6 +62,8 @@ public static class DropHistoryService
         }
     }
 
+    public static void Clear() => Clear(FilePath);
+
     internal static IReadOnlyList<DropHistoryEntry> Load(string path)
     {
         try
@@ -101,6 +103,23 @@ public static class DropHistoryService
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             ErrorLog.Write("Could not write drop history", ex);
+        }
+    }
+
+    internal static void Clear(string path)
+    {
+        try
+        {
+            lock (Gate)
+            {
+                var dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+                File.WriteAllText(path, JsonSerializer.Serialize(Array.Empty<DropHistoryEntry>(), Opts));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            ErrorLog.Write("Could not clear drop history", ex);
         }
     }
 

@@ -103,8 +103,31 @@ public partial class App
                 recentDrops.DropDownItems.Add(item);
             }
             recentDrops.DropDownItems.Add(new WF.ToolStripSeparator());
+            recentDrops.DropDownItems.Add("Clear history...", null, (_, _) => ClearDropHistory(recentDrops));
         }
         recentDrops.DropDownItems.Add("Open history file...", null, (_, _) => OpenDropHistoryFile());
+    }
+
+    private void ClearDropHistory(WF.ToolStripMenuItem recentDrops)
+    {
+        var result = WF.MessageBox.Show(
+            "Clear recent drop history?",
+            "Dropwheel",
+            WF.MessageBoxButtons.YesNo,
+            WF.MessageBoxIcon.Question);
+        if (result != WF.DialogResult.Yes) return;
+
+        try
+        {
+            DropHistoryService.Clear();
+            PopulateRecentDrops(recentDrops);
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Could not clear drop history", ex);
+            _tray?.ShowBalloonTip(4000, "Dropwheel",
+                "Couldn't clear drop history.", WF.ToolTipIcon.Warning);
+        }
     }
 
     private void OpenDropHistoryFolder(string folder)
