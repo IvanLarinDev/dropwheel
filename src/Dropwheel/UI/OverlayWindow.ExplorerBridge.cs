@@ -23,12 +23,21 @@ public partial class OverlayWindow
             return;
         }
 
-        _explorerBridgeFiles = files;
         if (!IsVisible) Show();
         UpdateOrbScreenPos();
         _ignoreDeactivateUntilUtc = DateTime.UtcNow.AddMilliseconds(750);
+
+        if (ShouldAutoAddExplorerTargets(files))
+        {
+            AddExplorerBridgeTargets(files, "Added automatically from Explorer SendTo.");
+            _explorerBridgeFiles = null;
+            if (!_open) OpenCloud();
+            return;
+        }
+
+        _explorerBridgeFiles = files;
         OpenCloud();
-        ShowToast($"Explorer selection: {files.Length} item(s). Choose a target.", kind: ToastKind.Info);
+        ShowToast($"Explorer selection: {files.Length} item(s). Choose a target or click Add.", kind: ToastKind.Info);
     }
 
     private bool TryHandleExplorerBridgeTarget(TargetItem target)
@@ -59,17 +68,34 @@ public partial class OverlayWindow
     {
         if (_explorerBridgeFiles is not { Length: > 0 } files) return false;
 
+        AddExplorerBridgeTargets(files, "Added from Explorer SendTo.");
+        _explorerBridgeFiles = null;
+        return true;
+    }
+
+    private void AddExplorerBridgeTargets(IReadOnlyList<string> files, string detail)
+    {
         AddTargets(files.Select(TargetFromPath), _currentGroup);
         RememberDropHistory(
             DropHistoryAction.AddTargets,
             new TargetItem { Name = _currentGroup?.Name ?? "Wheel", Path = "" },
             DropPayloadKind.Files,
-            files.Length,
+            files.Count,
             DropHistoryStatus.Succeeded,
-            detail: "Added from Explorer SendTo.");
-        _explorerBridgeFiles = null;
-        CloseCloud();
-        return true;
+            detail: detail);
+    }
+
+    internal static bool ShouldAutoAddExplorerTargets(IReadOnlyList<string> files) =>
+        files.Count > 0 && files.All(IsExplorerTargetLike);
+
+    private static bool IsExplorerTargetLike(string path)
+    {
+        if (Directory.Exists(path)) return true;
+        if (!File.Exists(path)) return false;
+
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".lnk", StringComparison.OrdinalIgnoreCase)
+            || TargetItem.IsExeExtension(path);
     }
 
     private bool DropExplorerFiles(TargetItem target, string[] files)

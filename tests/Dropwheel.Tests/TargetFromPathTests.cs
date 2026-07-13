@@ -1,3 +1,4 @@
+using System.IO;
 using Dropwheel.UI;
 
 namespace Dropwheel.Tests;
@@ -30,5 +31,34 @@ public sealed class TargetFromPathTests
 
         Assert.Equal(@"C:\", t.Path);
         Assert.False(string.IsNullOrEmpty(t.Name));
+    }
+
+    [Fact]
+    public void Explorer_sendto_auto_adds_directory_targets()
+    {
+        var dir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
+        try
+        {
+            Assert.True(OverlayWindow.ShouldAutoAddExplorerTargets([dir.FullName]));
+        }
+        finally
+        {
+            dir.Delete();
+        }
+    }
+
+    [Fact]
+    public void Explorer_sendto_keeps_plain_files_as_payload()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".txt");
+        File.WriteAllText(path, "payload");
+        try
+        {
+            Assert.False(OverlayWindow.ShouldAutoAddExplorerTargets([path]));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 }

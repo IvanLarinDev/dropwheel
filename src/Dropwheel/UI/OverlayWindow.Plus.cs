@@ -41,7 +41,8 @@ public partial class OverlayWindow
         var panel = new StackPanel
         { Width = 76, AllowDrop = true, Background = Brushes.Transparent, Opacity = 0.85 };
         panel.Children.Add(g);
-        var label = MakeLabel("Add");
+        bool hasExplorerSelection = _explorerBridgeFiles is { Length: > 0 };
+        var label = MakeLabel(hasExplorerSelection ? "Add selected" : "Add");
         panel.Children.Add(label);
         panel.MouseEnter += (_, _) => { rect.Fill = new SolidColorBrush(th.TileHot); SetSpokeLit(panel, true); };
         panel.MouseLeave += (_, _) => { rect.Fill = Brushes.Transparent; SetSpokeLit(panel, false); };
@@ -86,16 +87,22 @@ public partial class OverlayWindow
             }
             OnOrbDrop(panel, e); // same logic: add to the current level
         };
-        System.Windows.Automation.AutomationProperties.SetName(panel, "Add target");
+        System.Windows.Automation.AutomationProperties.SetName(panel, hasExplorerSelection ? "Add selected" : "Add target");
         RegisterConfidenceVisuals(
             panel,
             confidence.Ring,
             confidence.Chip,
             confidence.ChipText,
             label,
-            "Add target",
-            () => OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup),
-            "Add target. Press Enter to create a new target.");
+            hasExplorerSelection ? "Add selected" : "Add target",
+            () =>
+            {
+                if (!TryAddExplorerBridgeTargets())
+                    OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup);
+            },
+            hasExplorerSelection
+                ? "Add selected Explorer item. Press Enter to add it as a target."
+                : "Add target. Press Enter to create a new target.");
         return panel;
     }
 }
