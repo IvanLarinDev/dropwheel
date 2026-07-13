@@ -582,3 +582,70 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
     window.addEventListener("resize", drawAnno);
     // перерисовать метки после проигрывания открытия (тайлы встают на места)
     setTimeout(drawAnno, 900);
+
+    // ---- Сцена: переполненные уровни (второе кольцо) ----
+    // Раскладки повторяют WheelLayout.cs: одно кольцо до порога, иначе излишек
+    // уходит на внешнее кольцо по выбранной схеме. viewScale вписывает широкое
+    // колесо в фиксированный холст демо (в приложении окно расширяется само).
+    if (document.getElementById("scene-overflow")) {
+      const OVF_TILES = [
+        { label: "Downloads", icon: "download" }, { label: "Documents", icon: "doc" },
+        { label: "Pictures", icon: "pic" }, { label: "Desktop", icon: "desktop" },
+        { label: "Music", icon: "folder" }, { label: "Videos", icon: "folder" },
+        { label: "Projects", icon: "folder" }, { label: "Scripts", icon: "gear" },
+        { label: "Archive", icon: "folder" }, { label: "Inbox", icon: "folder", sorter: true },
+        { label: "Reports", icon: "doc" }, { label: "Photos", icon: "pic" },
+        { label: "Games", icon: "folder" }, { label: "Work", icon: "folder" },
+      ];
+      const ovfTop = -Math.PI / 2, ovfR = 170;
+      const ovfRing = (cnt, r, start) => {
+        const c = [];
+        for (let i = 0; i < cnt; i++) c.push({ a: start + (i * 2 * Math.PI) / cnt, r });
+        return c;
+      };
+      const overflowCells = (mode, n, threshold, reserved) => {
+        const cap = Math.min(16, Math.max(4, threshold)) + reserved;
+        if (mode === "None" || n <= cap) return ovfRing(n, ovfR, ovfTop);
+        if (mode === "SplitBalanced") {
+          const inner = Math.floor(n / 2);
+          return ovfRing(inner, 150, ovfTop).concat(ovfRing(n - inner, 250, ovfTop));
+        }
+        if (mode === "OverflowBand") {
+          const outer = n - cap;
+          return ovfRing(cap, ovfR, ovfTop).concat(ovfRing(outer, 262, ovfTop + Math.PI / outer));
+        }
+        if (mode === "Petals") {
+          const inner = Math.floor((n + 1) / 2), outer = n - inner;
+          const ai = ovfRing(inner, 150, ovfTop);
+          const ao = ovfRing(outer, 236, outer > 0 ? ovfTop + Math.PI / outer : ovfTop);
+          const cells = []; let ci = 0, co = 0;
+          for (let i = 0; i < n; i++) cells.push(i % 2 === 0 ? ai[ci++] : ao[co++]);
+          return cells;
+        }
+        if (mode === "Columns") {
+          const cols = Math.floor((n + 1) / 2), cells = [];
+          for (let i = 0; i < n; i++) {
+            const a = ovfTop + Math.floor(i / 2) * 2 * Math.PI / cols;
+            cells.push({ a, r: i % 2 === 0 ? 150 : 250 });
+          }
+          return cells;
+        }
+        return ovfRing(n, ovfR, ovfTop);
+      };
+      const overflow = new DW.Wheel(document.getElementById("scene-overflow"), OVF_TILES,
+        { startOpen: true, hover: false });
+      overflow.viewScale = 0.74;
+      const applyOverflow = (mode) => {
+        const cells = overflowCells(mode, OVF_TILES.length, 9, 0);
+        overflow.tileAngles = cells.map((c) => c.a);
+        overflow.tileRadii = cells.map((c) => c.r);
+        overflow.open();
+      };
+      applyOverflow("OverflowBand");
+      document.getElementById("layouts-overflow").addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-lay]");
+        if (!b) return;
+        applyOverflow(b.dataset.lay);
+        for (const el of e.currentTarget.children) el.classList.toggle("on", el === b);
+      });
+    }

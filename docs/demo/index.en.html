@@ -288,6 +288,30 @@
       </div>
     </section>
 
+    <section class="scene">
+      <div class="stage" id="stage-overflow"><canvas id="scene-overflow"></canvas></div>
+      <div class="about">
+        <h2>Crowded levels</h2>
+        <p>
+          A small level always draws as the classic single ring. When a level
+          fills up, the surplus can flow onto a second, outer ring instead of
+          cramming everything onto one rim. The layout is chosen in Settings.
+        </p>
+        <p>
+          The threshold is how many real targets fit before the second ring
+          appears (4 to 16). The always-present tiles — “+” and, inside a group,
+          “Back” — don't count. Switch the layout to see how 14 targets are laid out.
+        </p>
+        <div class="themes" id="layouts-overflow">
+          <button data-lay="None">None</button>
+          <button data-lay="SplitBalanced">Split balanced</button>
+          <button data-lay="OverflowBand" class="on">Overflow band</button>
+          <button data-lay="Petals">Petals</button>
+          <button data-lay="Columns">Columns</button>
+        </div>
+      </div>
+    </section>
+
     <section class="windows">
       <h2>Interface windows</h2>
       <p>Dropwheel's dialogs and menus follow the chosen theme too — accent, surfaces

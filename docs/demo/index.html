@@ -295,6 +295,30 @@
       </div>
     </section>
 
+    <section class="scene">
+      <div class="stage" id="stage-overflow"><canvas id="scene-overflow"></canvas></div>
+      <div class="about">
+        <h2>Переполненные уровни</h2>
+        <p>
+          Небольшой уровень всегда рисуется классическим одним кольцом. Когда
+          целей становится много, излишек можно пустить на второе, внешнее
+          кольцо, а не втискивать всё в один обод. Схема выбирается в настройках.
+        </p>
+        <p>
+          Порог — сколько реальных целей помещается до появления второго кольца
+          (от 4 до 16). Служебные тайлы — «плюс» и «Назад» внутри группы — в счёт
+          не идут. Переключите схему, чтобы увидеть, как раскладываются 14 целей.
+        </p>
+        <div class="themes" id="layouts-overflow">
+          <button data-lay="None">Одно кольцо</button>
+          <button data-lay="SplitBalanced">Поровну</button>
+          <button data-lay="OverflowBand" class="on">Внешняя лента</button>
+          <button data-lay="Petals">Лепестки</button>
+          <button data-lay="Columns">Колонки</button>
+        </div>
+      </div>
+    </section>
+
     <section class="windows">
       <h2>Окна интерфейса</h2>
       <p>Диалоги и меню Dropwheel тоже следуют выбранной теме — акцент, поверхности

@@ -220,6 +220,8 @@ const DW = (() => {
       this.highlight = null;          // {x, y, w, h, alpha} — рамка вокруг цели (захват)
       this.pinRing = null;            // {p} — расходящееся кольцо-пульс у хаба (0..1)
       this.tileAngles = null;         // массив углов на тайл (перестановка по ободу)
+      this.tileRadii = null;          // массив радиусов на тайл (второе кольцо при переполнении)
+      this.viewScale = 1;             // общий масштаб рисунка от центра (вписать широкое колесо)
       this.tileMul = null;            // {index: множитель прозрачности} — дим не-совпавших групп
       this.orbBadge = null;           // строка кода на хабе (индикатор группового ввода)
       this.orbOffset = { x: 0, y: 0 };// смещение хаба от центра (перемещение орба)
@@ -247,13 +249,23 @@ const DW = (() => {
       return { x: s.x, y: s.y - 8 };
     }
 
-    /** Слот тайла i с учётом углового оверрайда (перестановка по ободу). */
+    /** Слот тайла i с учётом углового оверрайда (перестановка по ободу) и
+     * радиального (второе кольцо при переполнении). Без оверрайдов — как slot(). */
     _slotOf(i, n) {
-      if (this.tileAngles && this.tileAngles[i] != null) {
-        const a = this.tileAngles[i];
-        return { a, x: CENTER + RING * Math.cos(a), y: CENTER + RING * Math.sin(a) };
-      }
-      return slot(i, n);
+      const a = (this.tileAngles && this.tileAngles[i] != null)
+        ? this.tileAngles[i]
+        : -Math.PI / 2 + (i * 2 * Math.PI) / n;
+      const r = (this.tileRadii && this.tileRadii[i] != null) ? this.tileRadii[i] : RING;
+      return { a, x: CENTER + r * Math.cos(a), y: CENTER + r * Math.sin(a), r };
+    }
+
+    /** Различные радиусы колец в текущей раскладке (одно или два кольца). */
+    _ringRadii() {
+      if (!this.tileRadii) return [RING];
+      const rs = [];
+      for (const r of this.tileRadii)
+        if (r != null && !rs.some((x) => Math.abs(x - r) < 0.5)) rs.push(r);
+      return rs.length ? rs : [RING];
     }
 
     /** Пилюля-индикатор кода на хабе (ShortcutIndicator при вводе группы). */
@@ -301,6 +313,11 @@ const DW = (() => {
       const k = (this.canvas.width / this.dpr) / SIZE;
       ctx.setTransform(this.dpr * k, 0, 0, this.dpr * k, 0, 0);
       ctx.clearRect(0, 0, SIZE, SIZE);
+      if (this.viewScale !== 1) {
+        ctx.translate(CENTER, CENTER);
+        ctx.scale(this.viewScale, this.viewScale);
+        ctx.translate(-CENTER, -CENTER);
+      }
 
       const n = this.tiles.length;
 
@@ -315,7 +332,7 @@ const DW = (() => {
       ctx.scale(0.7 + 0.3 * rimP, 0.7 + 0.3 * rimP);
       ctx.globalAlpha = rimO;
       ctx.strokeStyle = th.rim; ctx.lineWidth = 34;
-      ctx.beginPath(); ctx.arc(0, 0, RING, 0, 7); ctx.stroke();
+      for (const rr of this._ringRadii()) { ctx.beginPath(); ctx.arc(0, 0, rr, 0, 7); ctx.stroke(); }
       ctx.restore();
 
       // спицы (проявляются с ободом)
