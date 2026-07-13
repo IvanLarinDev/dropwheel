@@ -67,30 +67,68 @@
     return win("New group", body, 300);
   }
 
-  /** 3. Настройки: две панели, раздел Wheel behavior. */
+  /** 3. Настройки: четыре раздела, левый список переключает правую панель. */
   function settings() {
     const nav =
       '<div class="wnav">' +
-      '<div class="wnav-i on">Wheel behavior</div>' +
-      '<div class="wnav-i">Appearance</div>' +
-      '<div class="wnav-i">Hotkey &amp; shortcuts</div>' +
-      '<div class="wnav-i">System</div>' +
+      '<div class="wnav-i on" data-sec="wheel">Wheel behavior</div>' +
+      '<div class="wnav-i" data-sec="appearance">Appearance</div>' +
+      '<div class="wnav-i" data-sec="hotkey">Hotkey &amp; shortcuts</div>' +
+      '<div class="wnav-i" data-sec="system">System</div>' +
       "</div>";
-    const pane =
-      '<div class="wpane">' +
+
+    const wheel =
+      '<div class="wpane on" data-sec="wheel">' +
       field("Default drop action", select("Copy")) +
       field("Hover delay to open, ms", input("250", 110)) +
       field("Wheel layout when a level has many targets", select("Overflow band — inner ring stays, extras go outside")) +
       field("Extra ring appears after this many targets", input("12", 110)) +
       '<label class="wcheck"><span class="wbox on">✓</span>Skip duplicate targets on the wheel</label>' +
       "</div>";
+
+    const appearance =
+      '<div class="wpane" data-sec="appearance">' +
+      field("Theme", select("Fluent")) +
+      field("Open animation", select("Pop")) +
+      field("Animation speed", slider(33, "1.0×")) +
+      field("Orb opacity", slider(100, "100%")) +
+      field("Fade orb when idle, seconds (0 = off)", input("8", 110)) +
+      "</div>";
+
+    const hotkey =
+      '<div class="wpane" data-sec="hotkey">' +
+      '<div class="wfield"><div class="wflbl">Global hotkey</div>' +
+      '<div class="whk-row"><div class="wnum wflex">Ctrl+Alt+Space</div>' +
+      '<span class="wbtn wmini">Record</span><span class="wbtn wmini">Reset</span></div>' +
+      '<div class="whk-status">Available</div></div>' +
+      field("Common combinations", select("Default (Ctrl+Alt+Space)")) +
+      field("Group shortcut sequence timeout, ms", input("600", 110)) +
+      '<div class="wflbl wgst-h">Fixed orb gestures</div>' +
+      '<div class="wgst"><span class="wgst-k">Alt + drag</span><span class="wgst-v">Move the orb</span></div>' +
+      '<div class="wgst"><span class="wgst-k">Alt + Shift + drag</span><span class="wgst-v">Add a tile for the object under the cursor</span></div>' +
+      "</div>";
+
+    const system =
+      '<div class="wpane" data-sec="system">' +
+      '<label class="wcheck"><span class="wbox on">✓</span>Start with Windows</label>' +
+      "</div>";
+
     const body =
-      '<div class="wbody wbody-split">' + nav + pane + "</div>" +
+      '<div class="wbody wbody-split">' + nav +
+      '<div class="wpane-host">' + wheel + appearance + hotkey + system + "</div></div>" +
       '<div class="wbtns wbtns-bar">' +
       '<span class="wbtn">Cancel</span>' +
       '<span class="wbtn wpri">Save</span>' +
       "</div>";
     return win("Settings — Dropwheel", body, 470);
+  }
+
+  /** Псевдо-ползунок: заполнение и бегунок на позиции pct с подписью справа. */
+  function slider(pct, label) {
+    return '<div class="wsl"><div class="wsl-track">' +
+      '<div class="wsl-fill" style="width:' + pct + '%"></div>' +
+      '<div class="wsl-thumb" style="left:' + pct + '%"></div></div>' +
+      '<span class="wsl-val">' + label + "</span></div>";
   }
 
   /** Поле настроек: подпись сверху, элемент управления снизу. */
@@ -251,6 +289,14 @@
       if (!b) return;
       applyTheme(gal, b.dataset.th);
       for (const el of b.parentElement.children) el.classList.toggle("on", el === b);
+    });
+
+    root.addEventListener("click", (e) => {
+      const nav = e.target.closest(".wnav-i[data-sec]");
+      if (!nav) return;
+      const host = nav.closest(".wbody-split");
+      for (const it of host.querySelectorAll(".wnav-i")) it.classList.toggle("on", it === nav);
+      for (const p of host.querySelectorAll(".wpane")) p.classList.toggle("on", p.dataset.sec === nav.dataset.sec);
     });
   }
 
