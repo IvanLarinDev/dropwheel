@@ -57,6 +57,7 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Undo last action      | click “Undo” in the toast — covers file drops, adds, sorts, and deleting a target |
 | Edit a target         | right-click its tile                               |
 | Add a target          | drop a folder/exe/link onto the “+” tile or the orb |
+| Send from Explorer    | enable **Explorer SendTo shortcut** in the tray menu, then use Explorer → Send to → Dropwheel |
 | Pin a target from the desktop | Alt+Shift-drag the orb onto a folder, app or file in Explorer or on the desktop — it’s pinned first, next to the hub |
 | Create a group        | right-click the orb → “New group…”                 |
 | Enter a group         | click its tile, or hover it for 0.5 s while dragging |
@@ -65,6 +66,7 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Reorder tiles         | left-drag a target tile onto another tile; drop on “+” to move it last |
 | Move the orb          | Alt + left-drag (any monitor); add Shift to pin instead |
 | Wheel at cursor       | Ctrl+Alt+Space (configurable)                      |
+| Recent drops          | tray icon → **Recent drops** opens destinations, reveals created files, or clears the journal |
 | Settings              | tray icon or orb context menu                      |
 
 The orb hides automatically in full-screen apps (games, presentations) — while
@@ -91,6 +93,17 @@ and validate **inline** instead of popping up error dialogs; the hotkey field ch
 itself as you type, and settings are grouped into sections. If a target's folder or
 file goes missing, its tile shows a small warning mark — not a silent fade — and a
 click offers **Locate…** or **Remove**.
+
+The tray menu also keeps a short **Recent drops** journal backed by
+`%AppData%\Dropwheel\drop-history.json`. Entries open the destination folder, reveal
+a single file Dropwheel created (for example saved text), and show full paths in
+tooltips. The same menu can open the JSON file or clear the journal.
+
+When **Explorer SendTo shortcut** is enabled, Dropwheel installs a normal Windows
+SendTo shortcut. Selecting files or folders in Explorer and choosing
+**Send to → Dropwheel** opens the wheel at the orb's current position; folders and
+other target-like items can be added as targets, while ordinary files can be sent to
+an existing wheel target without dragging them a second time.
 
 ## A living interface
 
