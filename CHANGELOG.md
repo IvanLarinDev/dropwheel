@@ -1,6 +1,17 @@
 # Changelog
 
 - - -
+## [v0.16.4](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.3..v0.16.4) - 2026-07-13
+#### Features
+- (**brand**) иконка приложения в стиле орба (вариант A) - ([fa69d1f](https://github.com/IvanLarinDev/dropwheel/commit/fa69d1f5cf5e2884dfc551942b78b9eec0701066)) - Ivan Larin
+- (**demo**) сцены слоя уверенности и клавиатурной навигации - ([c921322](https://github.com/IvanLarinDev/dropwheel/commit/c92132203497cf8fad44a633ac0c3e817309e076)) - Ivan Larin
+- (**demo**) все четыре раздела настроек в галерее - ([31f287e](https://github.com/IvanLarinDev/dropwheel/commit/31f287e4d4c7260dae938c72b02a80707d9bae9b)) - Ivan Larin
+- (**demo**) сцена переполнения уровня со вторым кольцом - ([20f2a43](https://github.com/IvanLarinDev/dropwheel/commit/20f2a432ff531c8f40d113b157a910c9039527ac)) - Ivan Larin
+- (**demo**) галерея окон интерфейса под четырьмя темами - ([a3cb1db](https://github.com/IvanLarinDev/dropwheel/commit/a3cb1db78ba8a79f8bcec1ca21c047b47094c2c5)) - Ivan Larin
+#### Documentation
+- актуализировал README и demo под 0.16.x - ([dcb1d3d](https://github.com/IvanLarinDev/dropwheel/commit/dcb1d3d6e0eee253f0c478b59755b3b44e26fcb0)) - Ivan Larin
+
+- - -
 ## [v0.16.3](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.2..v0.16.3) - 2026-07-13
 #### Features
 - (**history**) record dragged target adds - ([2a1e042](https://github.com/IvanLarinDev/dropwheel/commit/2a1e042a1dc9cc566e339074a91a31c10e2b8618)) - Ivan Larin
