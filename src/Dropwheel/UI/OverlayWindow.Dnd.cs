@@ -232,12 +232,24 @@ public partial class OverlayWindow
             }
 
             LaunchService.Launch(new TargetItem { Name = t.Name, Path = TelegramDropService.LaunchPathFor(t) });
+            var historyPayload = result.Kind == TelegramDropKind.Files ? DropPayloadKind.Files : DropPayloadKind.Text;
             TelegramDropService.PasteIntoTelegramWhenReady(pasted =>
             {
-                if (pasted) return;
-                _ = Dispatcher.InvokeAsync(() => ShowToast(
-                    "Telegram did not become ready. The payload is still on the clipboard.",
-                    kind: ToastKind.Warning));
+                RememberDropHistory(
+                    DropHistoryAction.Telegram,
+                    t,
+                    historyPayload,
+                    result.Count,
+                    pasted ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                    detail: pasted
+                        ? "Pasted via clipboard handoff."
+                        : "Telegram did not become ready; payload left on clipboard.");
+                if (!pasted)
+                {
+                    _ = Dispatcher.InvokeAsync(() => ShowToast(
+                        "Telegram did not become ready. The payload is still on the clipboard.",
+                        kind: ToastKind.Warning));
+                }
             });
             e.Effects = e.AllowedEffects.HasFlag(DragDropEffects.Copy)
                 ? DragDropEffects.Copy
@@ -260,6 +272,13 @@ public partial class OverlayWindow
                     return;
                 case FileDropRoute.Run:
                     bool launched = LaunchService.LaunchWith(t, files);
+                    RememberDropHistory(
+                        DropHistoryAction.Run,
+                        t,
+                        DropPayloadKind.Files,
+                        files.Length,
+                        launched ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                        detail: launched ? null : "LaunchWith returned false.");
                     ShowToast(launched
                         ? $"Opened {files.Length} item(s) with {t.Name}"
                         : "Could not launch", kind: launched ? ToastKind.Success : ToastKind.Danger);
@@ -269,6 +288,13 @@ public partial class OverlayWindow
             var op = BuildOpBefore(act, files, dest);
             bool ok = FileOps.Execute(files, dest, act);
             if (ok) RememberOp(op);
+            RememberDropHistory(
+                act == DropAction.Move ? DropHistoryAction.Move : DropHistoryAction.Copy,
+                t,
+                DropPayloadKind.Files,
+                files.Length,
+                ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                destination: dest);
             ShowToast(ok
                 ? $"{(act == DropAction.Move ? "Moved" : "Copied")}: {files.Length} item(s) → {t.Name}"
                 : "Operation was not completed", ok, ok ? ToastKind.Success : ToastKind.Danger);
@@ -280,6 +306,17 @@ public partial class OverlayWindow
             {
                 if (t.IsSorter) SortSavedVirtuals(t, saved);
                 else RememberOp(BuildCreatedCopyOp(saved, dest));
+            }
+            if (!t.IsSorter)
+            {
+                RememberDropHistory(
+                    DropHistoryAction.SaveVirtualFiles,
+                    t,
+                    DropPayloadKind.VirtualFiles,
+                    saved.Length,
+                    saved.Length > 0 ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                    destination: dest,
+                    detail: saved.Length > 0 ? null : "No virtual files were extracted.");
             }
             ShowToast(saved.Length > 0
                 ? $"Saved: {saved.Length} item(s) → {t.Name}"
@@ -300,6 +337,17 @@ public partial class OverlayWindow
             {
                 if (t.IsSorter) SortSavedVirtuals(t, new[] { path });
                 else RememberOp(BuildCreatedCopyOp(new[] { path }, dest));
+            }
+            if (!t.IsSorter)
+            {
+                RememberDropHistory(
+                    DropHistoryAction.SaveText,
+                    t,
+                    DropPayloadKind.Text,
+                    saved != null ? 1 : 0,
+                    saved != null ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                    destination: dest,
+                    detail: saved != null ? null : "No text was saved.");
             }
             ShowToast(saved != null
                 ? $"Saved text → {System.IO.Path.GetFileName(saved)}"
