@@ -5,6 +5,9 @@ obj/
 .vs/
 dist/
 
+.claude
+.codex
+
 # agent runtime
 .claude/settings.local.json
 
