@@ -25,8 +25,6 @@ public partial class OverlayWindow
 
         _explorerBridgeFiles = files;
         if (!IsVisible) Show();
-        if (TryCursorDip(out var cursor)) PlaceWindowAtCenter(cursor.X, cursor.Y);
-        else PlaceWindow();
         UpdateOrbScreenPos();
         _ignoreDeactivateUntilUtc = DateTime.UtcNow.AddMilliseconds(750);
         OpenCloud();
