@@ -95,12 +95,30 @@ public partial class App
         {
             foreach (var entry in entries)
             {
-                recentDrops.DropDownItems.Add(new WF.ToolStripMenuItem(DropHistoryService.MenuSummary(entry))
-                { Enabled = false });
+                var folder = DropHistoryService.DestinationFolder(entry);
+                var item = new WF.ToolStripMenuItem(DropHistoryService.MenuSummary(entry))
+                { Enabled = folder != null };
+                if (folder != null)
+                    item.Click += (_, _) => OpenDropHistoryFolder(folder);
+                recentDrops.DropDownItems.Add(item);
             }
             recentDrops.DropDownItems.Add(new WF.ToolStripSeparator());
         }
         recentDrops.DropDownItems.Add("Open history file...", null, (_, _) => OpenDropHistoryFile());
+    }
+
+    private void OpenDropHistoryFolder(string folder)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write($"Could not open drop destination '{folder}'", ex);
+            _tray?.ShowBalloonTip(4000, "Dropwheel",
+                "Couldn't open the drop destination.", WF.ToolTipIcon.Warning);
+        }
     }
 
     private void OpenDropHistoryFile()

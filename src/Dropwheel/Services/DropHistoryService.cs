@@ -49,6 +49,9 @@ public static class DropHistoryService
         return $"{time}  {action} {items} -> {target}{status}";
     }
 
+    public static string? DestinationFolder(DropHistoryEntry entry) =>
+        ExistingFolderFor(entry.Destination) ?? ExistingFolderFor(entry.TargetPath);
+
     public static void EnsureFileExists()
     {
         lock (Gate)
@@ -128,5 +131,23 @@ public static class DropHistoryService
                 _ => "item",
             };
         return safeCount == 1 ? $"1 {noun}" : $"{safeCount} {noun}s";
+    }
+
+    private static string? ExistingFolderFor(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && !uri.IsFile)
+            return null;
+
+        string fullPath;
+        try { fullPath = Path.GetFullPath(path); }
+        catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+
+        if (Directory.Exists(fullPath)) return fullPath;
+        if (File.Exists(fullPath)) return Path.GetDirectoryName(fullPath);
+        return null;
     }
 }

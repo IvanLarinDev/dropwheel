@@ -98,6 +98,63 @@ public sealed class DropHistoryServiceTests : IDisposable
         Assert.DoesNotContain("Succeeded", summary);
     }
 
+    [Fact]
+    public void DestinationFolder_prefers_existing_destination()
+    {
+        var target = Directory.CreateDirectory(Path.Combine(_root, "target"));
+        var destination = Directory.CreateDirectory(Path.Combine(_root, "destination"));
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch,
+            Action = DropHistoryAction.Copy,
+            Payload = DropPayloadKind.Files,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Pictures",
+            TargetPath = target.FullName,
+            Destination = destination.FullName,
+            ItemCount = 1,
+        };
+
+        Assert.Equal(destination.FullName, DropHistoryService.DestinationFolder(entry));
+    }
+
+    [Fact]
+    public void DestinationFolder_uses_parent_for_file_target()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_root, "app"));
+        var file = Path.Combine(folder.FullName, "tool.exe");
+        File.WriteAllText(file, "");
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch,
+            Action = DropHistoryAction.Run,
+            Payload = DropPayloadKind.Files,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Tool",
+            TargetPath = file,
+            ItemCount = 1,
+        };
+
+        Assert.Equal(folder.FullName, DropHistoryService.DestinationFolder(entry));
+    }
+
+    [Fact]
+    public void DestinationFolder_ignores_non_file_uri_targets()
+    {
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch,
+            Action = DropHistoryAction.Telegram,
+            Payload = DropPayloadKind.Files,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Telegram",
+            TargetPath = "tg://privatepost?channel=1&post=1",
+            ItemCount = 1,
+        };
+
+        Assert.Null(DropHistoryService.DestinationFolder(entry));
+    }
+
     private static DropHistoryEntry Entry(string targetName, int count) => new()
     {
         AtUtc = DateTimeOffset.UnixEpoch.AddMinutes(count),
