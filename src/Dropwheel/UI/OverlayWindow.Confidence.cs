@@ -83,7 +83,10 @@ public partial class OverlayWindow
             IsHitTestVisible = false,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, 0, 1),
+            // The chip lives inside the tile's 70px grid, which would cap its measure at 70 no
+            // matter the MaxWidth. Equal negative side margins widen the constraint to the chip's
+            // own MaxWidth while keeping it centered over the tile.
+            Margin = new Thickness(-58, 0, -58, 1),
             Child = chipText,
         };
         return (ring, chip, chipText);
