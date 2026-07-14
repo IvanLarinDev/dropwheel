@@ -15,7 +15,20 @@ public partial class OverlayWindow
     {
         var th = Themes.Current;
         UIElement inner;
-        if (t.IsGroup)
+        if (!string.IsNullOrWhiteSpace(t.Emoji))
+        {
+            // A chosen emoji wins over both the file icon and a group's count — it's the tile's face.
+            // A group keeps its shortcut badge, so the count is the only thing the emoji replaces.
+            inner = new TextBlock
+            {
+                Text = t.Emoji,
+                FontSize = 30,
+                Opacity = t.Exists ? 1.0 : 0.45,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
+        else if (t.IsGroup)
         {
             inner = new TextBlock
             {
@@ -26,17 +39,6 @@ public partial class OverlayWindow
                 FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(th.Label),
                 Opacity = t.Children.Count > 0 ? 1.0 : 0.7,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-        }
-        else if (!string.IsNullOrWhiteSpace(t.Emoji))
-        {
-            inner = new TextBlock
-            {
-                Text = t.Emoji,
-                FontSize = 30,
-                Opacity = t.Exists ? 1.0 : 0.45,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
