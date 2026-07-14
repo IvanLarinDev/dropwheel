@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "target-conflict-policy",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "A per-target name-conflict policy (Ask / Keep both / Overwrite / Skip) is a functional addition, not a redesign. The UI diff only adds one dropdown to the existing target editor next to the rename field, and branches the existing file copy/move drop path to pre-filter on Skip and pass the policy's SHFileOperation flags. Wheel geometry, colours, animations and the editor layout are untouched. The rest of the diff is the TargetItem enum, the config sanitizer entry, FileOps.ConflictFlags and tests. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
