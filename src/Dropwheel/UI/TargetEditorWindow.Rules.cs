@@ -296,7 +296,7 @@ public partial class TargetEditorWindow
         {
             var op = new ComboBox { Width = 72, Margin = new Thickness(8, 0, 0, 0) };
             FillOps(op, cond.Field, cond.Op);
-            op.SelectionChanged += (_, _) => { if (op.SelectedItem is CompareOp o) { cond.Op = o; RebuildMaster(); RefreshMatches(); } };
+            op.SelectionChanged += (_, _) => { if (op.SelectedItem is ComboBoxItem { Tag: CompareOp o }) { cond.Op = o; RebuildMaster(); RefreshMatches(); } };
             DockPanel.SetDock(op, Dock.Right);
             top.Children.Add(op);
         }
@@ -676,8 +676,9 @@ public partial class TargetEditorWindow
     private static void FillOps(ComboBox op, ConditionField field, CompareOp current)
     {
         op.Items.Clear();
-        foreach (var o in OpsFor[field]) op.Items.Add(o);
-        op.SelectedItem = OpsFor[field].Contains(current) ? current : OpsFor[field][0];
+        var ops = OpsFor[field];
+        foreach (var o in ops) op.Items.Add(new ComboBoxItem { Content = OpWord(o), Tag = o });
+        op.SelectedIndex = Math.Max(0, Array.IndexOf(ops, current));
     }
 
     private Button MoveButton(string glyph, string name, bool enabled, Action onClick)
@@ -771,6 +772,10 @@ public partial class TargetEditorWindow
         CompareOp.In => "is",
         CompareOp.Contains => "contains",
         CompareOp.Matches => "matches",
+        CompareOp.Gt => ">",
+        CompareOp.Lt => "<",
+        CompareOp.Gte => "≥",
+        CompareOp.Lte => "≤",
         _ => op.ToString().ToLowerInvariant(),
     };
 
