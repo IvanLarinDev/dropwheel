@@ -88,8 +88,10 @@
           Drag a file onto a target tile. While the cursor is over the tile it
           locks as the current destination: nearby tiles dim, the label strengthens,
           and an action chip names what will happen: Copy or Move (hold Shift).
-          On drop the file flies into the target, the tile flashes, and a toast rises
-          from below with an undo option. The scene loops: first a copy to Downloads,
+          The chip's second line answers "will it fit": the free space on the
+          target's drive and how many items the folder already holds. On drop the
+          file flies into the target, the tile flashes, and a toast rises from
+          below with an undo option. The scene loops: first a copy to Downloads,
           then a move to Documents.
         </p>
       </div>
@@ -430,6 +432,23 @@
              a folder, app or link already on the current wheel level doesn't add a second
              tile: a toast says it's already there and the existing tile gives a quick
              pulse.</p>
+        </div>
+        <div class="card">
+          <h3>Personalised tiles</h3>
+          <p>A tile can wear an emoji instead of its icon and a colour of its own: it
+             paints the border and text-style emoji, making an important target stand
+             out on the wheel (see the “Favs” tile in the scenes). Hovering a tile
+             shows its full path in a tooltip.</p>
+        </div>
+        <div class="card">
+          <h3>Hotkeys, pauses, config</h3>
+          <p>A second global hotkey opens the wheel at the orb without moving the
+             mouse; in Settings both hotkeys are picked from combination chips or
+             recorded. The tray offers sorting pauses (watched folders only, or all
+             drops), settings export, and a live reload of a hand-edited
+             <code>config.json</code> without a restart — a file with a typo is
+             rejected and nothing is reset. Toast duration and an error sound are
+             settings too.</p>
         </div>
       </div>
     </section>

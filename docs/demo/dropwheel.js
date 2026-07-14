@@ -713,11 +713,21 @@ const DW = (() => {
       roundRect(ctx, -s, -s, s * 2, s * 2, 17); ctx.fill();
       ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-      ctx.lineWidth = 1.2;
-      ctx.strokeStyle = t.group ? this.theme.groupBorder : t.sorter ? this.theme.sorterBorder : this.theme.tileBorder;
+      // свой цвет тайла (TileColor из приложения): рамка толще и цветом пользователя
+      ctx.lineWidth = t.color ? 2.2 : 1.2;
+      ctx.strokeStyle = t.color
+        ? t.color
+        : t.group ? this.theme.groupBorder : t.sorter ? this.theme.sorterBorder : this.theme.tileBorder;
       roundRect(ctx, -s, -s, s * 2, s * 2, 17); ctx.stroke();
 
-      if (t.group) {
+      if (t.emoji) {
+        // эмодзи-лицо тайла: текстовые эмодзи красятся цветом тайла или подписи,
+        // полноцветные рисуются своими цветами — как в приложении
+        ctx.fillStyle = t.color || this.theme.label;
+        ctx.font = "30px system-ui,-apple-system,Segoe UI,sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(t.emoji, 0, 2);
+      } else if (t.group) {
         if (t.num) {
           ctx.fillStyle = this.theme.label;
           ctx.font = "bold 22px system-ui,-apple-system,Segoe UI,sans-serif";
@@ -763,22 +773,35 @@ const DW = (() => {
     _drawConfidence(ctx, confidence) {
       const color = confidenceColor(confidence);
       const label = confidence.label || confidenceLabel(confidence);
+      const sub = confidence.sub || null;
       ctx.save();
       ctx.strokeStyle = color;
       ctx.lineWidth = confidence.mode === "no" ? 3 : 2.4;
       roundRect(ctx, -34, -34, 68, 68, 19); ctx.stroke();
 
+      // вторая строка чипа (место на диске · число элементов) делает чип двухэтажным
+      // и шире тайла — в приложении он так же выходит за рамку тайла
       ctx.font = "600 11px system-ui,-apple-system,Segoe UI,sans-serif";
-      const w = Math.min(96, Math.max(42, ctx.measureText(label).width + 14));
+      const wMain = ctx.measureText(label).width;
+      ctx.font = "500 10px system-ui,-apple-system,Segoe UI,sans-serif";
+      const wSub = sub ? ctx.measureText(sub).width : 0;
+      const w = Math.min(186, Math.max(42, Math.max(wMain, wSub) + 14));
+      const h = sub ? 32 : 19;
       ctx.fillStyle = "rgba(22,30,44,.94)";
-      roundRect(ctx, -w / 2, 21, w, 19, 10); ctx.fill();
+      roundRect(ctx, -w / 2, 21, w, h, 10); ctx.fill();
       ctx.strokeStyle = color;
       ctx.lineWidth = 1;
-      roundRect(ctx, -w / 2, 21, w, 19, 10); ctx.stroke();
+      roundRect(ctx, -w / 2, 21, w, h, 10); ctx.stroke();
       ctx.fillStyle = "#fff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(label, 0, 30.5);
+      ctx.font = "600 11px system-ui,-apple-system,Segoe UI,sans-serif";
+      ctx.fillText(label, 0, sub ? 29 : 30.5);
+      if (sub) {
+        ctx.fillStyle = "rgba(255,255,255,.82)";
+        ctx.font = "500 10px system-ui,-apple-system,Segoe UI,sans-serif";
+        ctx.fillText(sub, 0, 43);
+      }
       ctx.restore();
     }
   }

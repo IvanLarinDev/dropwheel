@@ -9,7 +9,7 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
       { label: "Inbox",      icon: "folder", sorter: true },
       { label: "Projects",   icon: "group", group: true, num: "3", code: "1" },
       { label: "Scripts",    icon: "gear" },
-      { label: "Archive",    icon: "folder" },
+      { label: "Favs",       icon: "folder", emoji: "♥", color: "#e5484d" },
       { label: "Media",      icon: "group", group: true, num: "2", code: "2" },
       { label: "Everything", icon: "search" },
       { label: "Add",        icon: "plus", add: true },
@@ -54,14 +54,17 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
       });
       return dims;
     };
-    const dropConfidence = (index, mode, label, activeLabel, payload = "files") => ({
-      index, mode, label, activeLabel, dim: intentDims(payload),
+    const dropConfidence = (index, mode, label, activeLabel, payload = "files", sub = null) => ({
+      index, mode, label, activeLabel, sub, dim: intentDims(payload),
     });
 
     // Два прохода: копирование на Downloads(0) и перемещение на Documents(1).
+    // sub — вторая строка чипа: свободное место на диске и число элементов папки.
     const PASSES = [
-      { index: 0, mode: "copy", label: "report.pdf", toast: "Copied to Downloads", activeLabel: "Copy to Downloads" },
-      { index: 1, mode: "move", label: "notes.txt",  toast: "Moved to Documents", activeLabel: "Move to Documents" },
+      { index: 0, mode: "copy", label: "report.pdf", toast: "Copied to Downloads", activeLabel: "Copy to Downloads",
+        sub: "C: 41.6 GB free · 142 items" },
+      { index: 1, mode: "move", label: "notes.txt",  toast: "Moved to Documents", activeLabel: "Move to Documents",
+        sub: "C: 41.6 GB free · 36 items" },
     ];
     const PASS_MS = 4200;
     const START = { x: 250, y: 505 };
@@ -95,7 +98,9 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
             pass.index,
             pass.mode,
             pass.mode === "move" ? "Move" : "Copy",
-            pass.activeLabel);
+            pass.activeLabel,
+            "files",
+            pass.sub);
         }
       } else if (t < 1500) {
         // сброс: файл гаснет, тайл ещё горит
@@ -110,7 +115,9 @@ const SEL_TEXT = (window.DW_TXT && window.DW_TXT.selectedText) || "selected text
           pass.index,
           pass.mode,
           pass.mode === "move" ? "Move" : "Copy",
-          pass.activeLabel);
+          pass.activeLabel,
+          "files",
+          pass.sub);
       }
       // кольцо-вспышка расходится от тайла после сброса
       if (t >= 1300 && t < 1800) {
