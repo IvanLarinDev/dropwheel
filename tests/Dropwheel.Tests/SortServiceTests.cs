@@ -61,6 +61,41 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
+    public void Negated_condition_matches_when_the_underlying_test_fails()
+    {
+        var draft = MakeFile("draft_report.pdf");
+        var final = MakeFile("report.pdf");
+        var t = Sorter(_root, new SortRule
+        {
+            Dest = "Final",
+            All = { new RuleCondition { Field = ConditionField.NameContains, Value = "draft", Negate = true } },
+        });
+        var plan = SortService.Plan(t, new[] { draft, final });
+        Assert.Contains(final, plan[Path.Combine(_root, "Final")]); // no "draft" → negated condition holds
+        Assert.Contains(draft, plan[_root]);                        // has "draft" → not caught
+    }
+
+    [Fact]
+    public void Negated_extension_also_catches_a_file_with_no_extension()
+    {
+        var noext = MakeFile("README");
+        var t = Sorter(_root, new SortRule
+        {
+            Dest = "Other",
+            All = { new RuleCondition { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg png", Negate = true } },
+        });
+        var plan = SortService.Plan(t, new[] { noext });
+        Assert.Contains(noext, plan[Path.Combine(_root, "Other")]);
+    }
+
+    [Fact]
+    public void Clone_copies_the_negate_flag()
+    {
+        var original = new RuleCondition { Field = ConditionField.NameContains, Value = "x", Negate = true };
+        Assert.True(original.Clone().Negate);
+    }
+
+    [Fact]
     public void SizeMb_greater_than_matches_large_file()
     {
         var big = MakeFile("big.bin", 12L * 1024 * 1024);

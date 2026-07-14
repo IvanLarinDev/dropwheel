@@ -113,7 +113,7 @@ public partial class TargetEditorWindow
     {
         var body = rule.All.Count == 0
             ? "catch-all"
-            : string.Join(", ", rule.All.Select(c => $"{FieldWord(c.Field)} {ShortValue(c)}"));
+            : string.Join(", ", rule.All.Select(c => $"{(c.Negate ? "not " : "")}{FieldWord(c.Field)} {ShortValue(c)}"));
         return rule.Scope == RuleScope.Files ? body : $"[{ScopeWord(rule.Scope).ToLowerInvariant()}] {body}";
     }
 
@@ -285,6 +285,19 @@ public partial class TargetEditorWindow
             DockPanel.SetDock(op, Dock.Right);
             top.Children.Add(op);
         }
+
+        var not = new CheckBox
+        {
+            Content = "not",
+            IsChecked = cond.Negate,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+            ToolTip = "Invert this condition — the rule counts it as met when it does NOT hold.",
+        };
+        not.Checked += (_, _) => { cond.Negate = true; RebuildMaster(); RefreshMatches(); };
+        not.Unchecked += (_, _) => { cond.Negate = false; RebuildMaster(); RefreshMatches(); };
+        DockPanel.SetDock(not, Dock.Left);
+        top.Children.Add(not);
 
         var field = new ComboBox();
         foreach (ConditionField f in Enum.GetValues<ConditionField>()) field.Items.Add(f);

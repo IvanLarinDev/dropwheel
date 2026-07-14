@@ -20,11 +20,16 @@ public sealed class RuleCondition
     public CompareOp Op { get; set; }
     public string Value { get; set; } = "";
 
+    /// <summary>Inverts the condition: the rule treats it as met when the underlying test does NOT hold.
+    /// Default false so old configs and new conditions keep the plain meaning.</summary>
+    public bool Negate { get; set; }
+
     public RuleCondition Clone() => new()
     {
         Field = Field,
         Op = Op,
         Value = Value,
+        Negate = Negate,
     };
 }
 

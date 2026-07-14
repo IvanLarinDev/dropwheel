@@ -511,15 +511,21 @@ public static class SortService
         return new string(chars).Trim().TrimEnd('.', ' ');
     }
 
-    private static bool Match(RuleCondition c, FileMeta meta) => c.Field switch
+    /// <summary>Whether a condition holds for a file, honouring its Negate flag. The underlying test is
+    /// inverted after the fact, so "not extension jpg" also catches a file with no extension at all.</summary>
+    private static bool Match(RuleCondition c, FileMeta meta)
     {
-        ConditionField.Extension => MatchExtension(c.Value, meta.Ext),
-        ConditionField.NameContains => meta.Name.Contains(c.Value, StringComparison.OrdinalIgnoreCase),
-        ConditionField.NameRegex => Compiled(c.Value) is { } rx && IsMatch(rx, meta.Name, c.Value),
-        ConditionField.SizeMb => MatchNumber(c.Op, meta.SizeMb, c.Value),
-        ConditionField.AgeDays => MatchNumber(c.Op, meta.AgeDays, c.Value),
-        _ => false,
-    };
+        bool hit = c.Field switch
+        {
+            ConditionField.Extension => MatchExtension(c.Value, meta.Ext),
+            ConditionField.NameContains => meta.Name.Contains(c.Value, StringComparison.OrdinalIgnoreCase),
+            ConditionField.NameRegex => Compiled(c.Value) is { } rx && IsMatch(rx, meta.Name, c.Value),
+            ConditionField.SizeMb => MatchNumber(c.Op, meta.SizeMb, c.Value),
+            ConditionField.AgeDays => MatchNumber(c.Op, meta.AgeDays, c.Value),
+            _ => false,
+        };
+        return c.Negate ? !hit : hit;
+    }
 
     private static readonly char[] ExtSeparators = { ' ', ',', ';' };
 
