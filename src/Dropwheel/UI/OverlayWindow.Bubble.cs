@@ -85,6 +85,7 @@ public partial class OverlayWindow
         }
         if (!t.IsGroup && !t.Exists) top.Children.Add(MissingBadge());
         top.Children.Add(confidence.Chip);
+        if (TileTooltip(t) is { Length: > 0 } tip) sq.ToolTip = tip;
         var label = MakeLabel(t.Name);
         var tile = WireBubble(t, badge, label, top, sq);
         System.Windows.Automation.AutomationProperties.SetName(tile, AccessibleName(t));
@@ -105,6 +106,16 @@ public partial class OverlayWindow
             badge,
             target: t);
         return tile;
+    }
+
+    /// <summary>The hover tooltip for a tile: a link target's URL, a folder/app/sorter target's full path,
+    /// or a short description for a group (which has no path of its own). Lets two same-named tiles from
+    /// different places be told apart on hover.</summary>
+    internal static string TileTooltip(TargetItem t)
+    {
+        if (t.IsGroup)
+            return t.Children!.Count > 0 ? $"Group · {t.Children.Count} target(s)" : "Group";
+        return t.SourceUrl ?? t.Path;
     }
 
     /// <summary>A small warning mark in the tile's bottom-right corner, shown when the target's folder
