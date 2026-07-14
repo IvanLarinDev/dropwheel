@@ -41,6 +41,37 @@ public static class LinkTargetService
     public static TargetItem? CreateTarget(IDataObject data) =>
         TryGetLaunchUri(data, out var candidate) ? CreateTarget(candidate.Text, candidate.Title) : null;
 
+    /// <summary>Targets for every distinct link in a drop. When the dropped plain text holds two or more
+    /// links (a multi-line selection of URLs), each becomes its own tile, de-duplicated by resolved path.
+    /// Otherwise it falls back to the single-link path so an ordinary link drag keeps its title and
+    /// explicit URL formats. The plain text is used on purpose — scanning the HTML fragment would pull
+    /// dozens of URLs out of the markup.</summary>
+    public static IReadOnlyList<TargetItem> CreateTargets(IDataObject data)
+    {
+        var text = TextDropService.GetText(data);
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            var many = ExtractAll(text);
+            if (many.Count >= 2) return many;
+        }
+        return CreateTarget(data) is { } single ? new[] { single } : Array.Empty<TargetItem>();
+    }
+
+    /// <summary>Every distinct launch URI in the text, in order, de-duplicated by resolved target path.</summary>
+    private static List<TargetItem> ExtractAll(string text)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var list = new List<TargetItem>();
+        foreach (Match m in LaunchUri.Matches(text))
+        {
+            var candidate = NormalizeUri(TrimUri(m.Value));
+            if (!TargetItem.IsLaunchUri(candidate)) continue;
+            var target = CreateTarget(candidate, titleHint: null);
+            if (seen.Add(target.Path)) list.Add(target);
+        }
+        return list;
+    }
+
     public static bool HasSavedMessagesLabel(IDataObject data) =>
         TextCandidates(data).Any(IsSavedMessagesText);
 

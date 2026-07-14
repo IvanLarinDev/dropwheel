@@ -46,9 +46,10 @@ public partial class OverlayWindow
             return true;
         }
 
-        if (LinkTargetService.CreateTarget(data) is { } linkTarget)
+        var linkTargets = LinkTargetService.CreateTargets(data);
+        if (linkTargets.Count > 0)
         {
-            AddTargets(new[] { linkTarget }, group, historyDetail: "Added from link drag/drop.");
+            AddTargets(linkTargets, group, historyDetail: "Added from link drag/drop.");
             return true;
         }
 

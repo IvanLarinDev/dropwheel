@@ -73,6 +73,33 @@ public sealed class LinkTargetServiceTests
         Assert.False(LinkTargetService.HasSelectedText(new WpfDataObject()));
     }
 
+    [Fact]
+    public void CreateTargets_makes_one_tile_per_distinct_link()
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, "https://a.com/1\nhttps://b.com/2\nhttps://a.com/1");
+        var targets = LinkTargetService.CreateTargets(data);
+        Assert.Equal(2, targets.Count); // the duplicate a.com/1 is collapsed
+        Assert.Equal("a.com", targets[0].Name);
+        Assert.Equal("b.com", targets[1].Name);
+    }
+
+    [Fact]
+    public void CreateTargets_falls_back_to_a_single_link()
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, "https://example.com/page");
+        Assert.Single(LinkTargetService.CreateTargets(data));
+    }
+
+    [Fact]
+    public void CreateTargets_is_empty_without_links()
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, "just plain text, no links here");
+        Assert.Empty(LinkTargetService.CreateTargets(data));
+    }
+
     [Theory]
     [InlineData("@durov", "tg://resolve?domain=durov")]
     [InlineData("durov", "tg://resolve?domain=durov")]
