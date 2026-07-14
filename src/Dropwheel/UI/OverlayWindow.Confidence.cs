@@ -68,7 +68,9 @@ public partial class OverlayWindow
             Foreground = Brushes.White,
             TextAlignment = TextAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxWidth = 110,
+            // Wide enough for the full second line ("C: 41.6 GB free · 142 items"); only one chip
+            // is visible at a time, so spilling past the tile's own width is fine.
+            MaxWidth = 170,
         };
         var chip = new Border
         {
@@ -76,7 +78,7 @@ public partial class OverlayWindow
             Padding = new Thickness(6, 1, 6, 2),
             BorderThickness = new Thickness(1),
             MinWidth = 42,
-            MaxWidth = 126,
+            MaxWidth = 186,
             Visibility = Visibility.Collapsed,
             IsHitTestVisible = false,
             HorizontalAlignment = HorizontalAlignment.Center,
