@@ -7,9 +7,22 @@ namespace Dropwheel;
 
 public partial class App
 {
-    // Runtime-only: auto-sort is paused from the tray without touching each target's Watch flag, so a
-    // restart resumes it. Watched folders keep accumulating while paused and are swept on resume.
-    private bool _watchPaused;
+    // Runtime-only pauses from the tray, both reset on restart. "Auto-sort" stops only the background
+    // watcher; "Sorting" also makes a manual drop on a sorter skip the rules. _watcherRunning tracks the
+    // watcher so Start/Stop are idempotent — Start twice would double-subscribe its config-save handler.
+    private bool _autoSortPaused;
+    private bool _sortingPaused;
+    private bool _watcherRunning = true;
+
+    /// <summary>Applies both pauses: the watcher runs only when neither pause is on (idempotent), and a
+    /// manual sorter drop skips the rules only under the full "Pause sorting".</summary>
+    private void ApplyPauseState()
+    {
+        bool shouldRun = !_autoSortPaused && !_sortingPaused;
+        if (shouldRun && !_watcherRunning) { _watcher?.Start(); _watcherRunning = true; }
+        else if (!shouldRun && _watcherRunning) { _watcher?.Stop(); _watcherRunning = false; }
+        DropDispatch.SortingPaused = _sortingPaused;
+    }
 
     private void InitTray()
     {
@@ -69,24 +82,39 @@ public partial class App
             }
         };
         menu.Items.Add(sendTo);
-        var pauseSort = new WF.ToolStripMenuItem("Pause sorting")
+        var pauseAuto = new WF.ToolStripMenuItem("Pause auto-sort (watched folders)")
         {
-            Checked = _watchPaused,
+            Checked = _autoSortPaused,
             CheckOnClick = true,
-            ToolTipText = "Temporarily stop applying sorter rules — both watched folders and a manual drop "
-                        + "on a sorter. Files just land in the folder undistributed. Resets on restart; the "
-                        + "Watch and rule settings are untouched.",
+            ToolTipText = "Temporarily stop watched folders from auto-sorting in the background. A manual "
+                        + "drop on a sorter still sorts. Files pile up in the folder and are swept when "
+                        + "resumed. Resets on restart; the Watch setting is untouched.",
+        };
+        pauseAuto.Click += (_, _) =>
+        {
+            _autoSortPaused = pauseAuto.Checked;
+            ApplyPauseState();
+            _tray?.ShowBalloonTip(2500, "Dropwheel",
+                _autoSortPaused ? "Auto-sort paused — watched folders won't sort until you resume."
+                                : "Auto-sort resumed.",
+                WF.ToolTipIcon.Info);
+        };
+        menu.Items.Add(pauseAuto);
+        var pauseSort = new WF.ToolStripMenuItem("Pause sorting (drops too)")
+        {
+            Checked = _sortingPaused,
+            CheckOnClick = true,
+            ToolTipText = "Temporarily stop applying sorter rules everywhere — watched folders and a manual "
+                        + "drop on a sorter. Files just land in the folder undistributed. Resets on restart; "
+                        + "the Watch and rule settings are untouched.",
         };
         pauseSort.Click += (_, _) =>
         {
-            _watchPaused = pauseSort.Checked;
-            DropDispatch.SortingPaused = _watchPaused;
-            if (_watchPaused) _watcher?.Stop();
-            else _watcher?.Start();
+            _sortingPaused = pauseSort.Checked;
+            ApplyPauseState();
             _tray?.ShowBalloonTip(2500, "Dropwheel",
-                _watchPaused
-                    ? "Sorting paused — files land in the folder without being distributed."
-                    : "Sorting resumed.",
+                _sortingPaused ? "Sorting paused — files land in the folder without being distributed."
+                               : "Sorting resumed.",
                 WF.ToolTipIcon.Info);
         };
         menu.Items.Add(pauseSort);
