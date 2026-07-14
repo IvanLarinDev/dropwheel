@@ -16,6 +16,13 @@ public partial class TargetEditorWindow
     private bool _rulesMode;
     private StackPanel? _matchesHost;
     private TextBlock? _tokenHint;
+    private TextBox? _destBox;
+    private WrapPanel? _tokenChips;
+
+    /// <summary>Built-in tokens offered as clickable chips. A curated, common subset — the f-/c-prefixed
+    /// date twins stay in the destination box tooltip to keep the chip row short.</summary>
+    private static readonly string[] BuiltinChipTokens =
+        { "date", "year", "month", "day", "time", "week", "quarter", "ext", "stem", "initial", "size" };
 
     private static Brush SelectedBg => Palettes.Selection;
     private static Brush SelectedBar => Palettes.Accent;
@@ -212,9 +219,13 @@ public partial class TargetEditorWindow
                     + "token, e.g. ${date:dd-MM-yy} or ${month:MMMM}.",
         };
         destBox.TextChanged += (_, _) => { rule.Dest = destBox.Text; RebuildMaster(); RebuildTokenHint(rule); RefreshMatches(); };
+        _destBox = destBox;
         destRow.Children.Add(browse);
         destRow.Children.Add(destBox);
         DetailHost.Children.Add(destRow);
+
+        _tokenChips = new WrapPanel { Margin = new Thickness(0, 4, 0, 2) };
+        DetailHost.Children.Add(_tokenChips);
 
         _tokenHint = new TextBlock
         {
@@ -394,14 +405,9 @@ public partial class TargetEditorWindow
     private void RebuildTokenHint(SortRule rule)
     {
         if (_tokenHint == null) return;
+        RebuildTokenChips(rule);
         var used = SortService.TokensIn(rule.Dest);
         var available = SortService.AvailableTokens(rule);
-        if (used.Count == 0 && available.Count == 0)
-        {
-            _tokenHint.Visibility = Visibility.Collapsed;
-            return;
-        }
-        _tokenHint.Visibility = Visibility.Visible;
         var missing = used.Where(t => !available.Contains(t) && !SortService.BuiltinTokens.Contains(t)).ToArray();
         var badFormats = SortService.ParseTokens(rule.Dest)
             .Where(p => SortService.TokenTakesFormat(p.Name) && !SortService.IsValidTokenFormat(p.Name, p.Format))
@@ -413,21 +419,63 @@ public partial class TargetEditorWindow
             _tokenHint.Foreground = Palettes.Danger;
             _tokenHint.Text = "No such group: " + string.Join(", ", missing.Select(t => "${" + t + "}"))
                 + " — add a (?<name>…) group in a Name regex condition, or the file goes to the root.";
+            _tokenHint.Visibility = Visibility.Visible;
         }
         else if (badFormats.Length > 0)
         {
             _tokenHint.Foreground = Palettes.Danger;
             _tokenHint.Text = "Bad date format: " + string.Join(", ", badFormats)
                 + " — use a .NET format like dd-MM-yy or yyyy-MM.";
+            _tokenHint.Visibility = Visibility.Visible;
         }
         else
         {
-            _tokenHint.Foreground = Palettes.TextMuted;
-            _tokenHint.Text = available.Count > 0
-                ? "Tokens: " + string.Join(" ", available.OrderBy(t => t, StringComparer.Ordinal).Select(t => "${" + t + "}"))
-                : "";
-            _tokenHint.Visibility = _tokenHint.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            _tokenHint.Visibility = Visibility.Collapsed;
         }
+    }
+
+    /// <summary>Fills the chip row under the destination box with clickable tokens: first this rule's own
+    /// Name-regex groups (accent-bordered), then the common built-in tokens. Clicking a chip inserts it
+    /// into the destination at the caret, so the tokens are discoverable and typed in one click.</summary>
+    private void RebuildTokenChips(SortRule rule)
+    {
+        if (_tokenChips == null) return;
+        _tokenChips.Children.Clear();
+        foreach (var g in SortService.AvailableTokens(rule).OrderBy(t => t, StringComparer.Ordinal))
+            _tokenChips.Children.Add(TokenChip(g, isGroup: true));
+        foreach (var b in BuiltinChipTokens)
+            _tokenChips.Children.Add(TokenChip(b, isGroup: false));
+    }
+
+    private Border TokenChip(string name, bool isGroup)
+    {
+        var chip = new Border
+        {
+            Background = Palettes.Selection,
+            BorderBrush = isGroup ? Palettes.Accent : Palettes.TextMuted,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3),
+            Margin = new Thickness(0, 0, 4, 4),
+            Padding = new Thickness(6, 1, 6, 1),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            Child = new TextBlock { Text = "${" + name + "}", FontSize = 11, Foreground = Palettes.TextMuted },
+            ToolTip = isGroup
+                ? $"Insert ${{{name}}} — a group from this rule's Name regex"
+                : $"Insert ${{{name}}} — a built-in token",
+        };
+        chip.MouseLeftButtonUp += (_, _) => InsertToken("${" + name + "}");
+        return chip;
+    }
+
+    /// <summary>Inserts a token into the destination box at the caret and keeps focus, letting its
+    /// TextChanged refresh the preview and hint.</summary>
+    private void InsertToken(string token)
+    {
+        if (_destBox == null) return;
+        int at = _destBox.SelectionStart;
+        _destBox.Text = _destBox.Text.Insert(at, token);
+        _destBox.SelectionStart = at + token.Length;
+        _destBox.Focus();
     }
 
     // ── Preview (matches for the selected rule) ────────────────────────────
