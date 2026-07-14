@@ -26,5 +26,20 @@ public partial class OverlayWindow
             ItemCount = Math.Max(0, itemCount),
             Detail = detail,
         });
+
+        if (status == DropHistoryStatus.Succeeded
+            && TargetStore.Config.CopyDestinationToClipboard
+            && !string.IsNullOrEmpty(destination))
+        {
+            CopyDestinationToClipboard(destination);
+        }
+    }
+
+    /// <summary>Copies the drop's destination path to the clipboard, swallowing the occasional failure
+    /// (another app holding the clipboard) so it never derails the drop.</summary>
+    private static void CopyDestinationToClipboard(string destination)
+    {
+        try { System.Windows.Clipboard.SetText(destination); }
+        catch (Exception ex) { ErrorLog.Write("Could not copy the drop destination to the clipboard", ex); }
     }
 }

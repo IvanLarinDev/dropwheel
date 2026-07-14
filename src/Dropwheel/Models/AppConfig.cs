@@ -62,4 +62,9 @@ public class AppConfig
     /// ${day}. Empty (the default) keeps the classic text_yyyy-MM-dd_HH-mm-ss name.</summary>
     public string TextFileNameTemplate { get; set; } = "";
 
+    /// <summary>After a successful drop, copy the destination path to the clipboard so it can be pasted
+    /// straight away. The path is the created file for a single saved file, or the destination folder
+    /// otherwise. Off by default.</summary>
+    public bool CopyDestinationToClipboard { get; set; }
+
 }

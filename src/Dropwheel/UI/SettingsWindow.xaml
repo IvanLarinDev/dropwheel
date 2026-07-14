@@ -162,6 +162,9 @@
                         <TextBlock Text="Click a token to insert it (curly braces, with the $):" FontSize="11"
                                    Opacity="0.7" Margin="0,4,0,2"/>
                         <WrapPanel x:Name="TextNameChips"/>
+                        <CheckBox x:Name="CopyDestBox" Content="Copy destination path to clipboard after a drop"
+                                  Margin="0,14,0,4"
+                                  ToolTip="After a successful drop, put the destination path on the clipboard so you can paste it straight away. The created file for a single saved file, or the destination folder otherwise."/>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>

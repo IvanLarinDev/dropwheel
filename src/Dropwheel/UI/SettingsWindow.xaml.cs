@@ -85,6 +85,7 @@ public partial class SettingsWindow : Window
         DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
         TextNameBox.Text = c.TextFileNameTemplate;
+        CopyDestBox.IsChecked = c.CopyDestinationToClipboard;
         BuildTextNameChips();
 
         foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox })
@@ -354,6 +355,7 @@ public partial class SettingsWindow : Window
             c.Hotkey = normalizedHotkey;
         c.DeduplicateTargets = DeduplicateBox.IsChecked == true;
         c.TextFileNameTemplate = TextNameBox.Text.Trim();
+        c.CopyDestinationToClipboard = CopyDestBox.IsChecked == true;
         TargetStore.Save();
         try { StartupService.SetEnabled(AutostartBox.IsChecked == true); }
         catch (Exception ex)
