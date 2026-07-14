@@ -132,28 +132,30 @@ public partial class App
         recentDrops.DropDownItems.Add("Open history file...", null, (_, _) => OpenDropHistoryFile());
     }
 
-    /// <summary>Puts the recent-drops list on the clipboard as plain text. The clipboard occasionally
-    /// refuses to open when another app holds it, so one quick retry before giving up with a balloon.</summary>
+    /// <summary>Puts the recent-drops list on the clipboard as plain text. Uses the WinForms clipboard —
+    /// this runs from a WinForms tray-menu click, where the WPF clipboard can misbehave. The clipboard
+    /// occasionally refuses when another app holds it, so a few quick retries before a balloon.</summary>
     private void CopyDropHistoryList()
     {
         var text = DropHistoryService.ClipboardText(DropHistoryService.LoadForMenu());
+        if (string.IsNullOrEmpty(text)) return;
         for (int attempt = 0; ; attempt++)
         {
             try
             {
-                System.Windows.Clipboard.SetText(text);
+                WF.Clipboard.SetText(text);
                 return;
             }
-            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException)
+            catch (Exception ex)
             {
-                if (attempt >= 1)
+                if (attempt >= 2)
                 {
                     ErrorLog.Write("Could not copy the drop history to the clipboard", ex);
                     _tray?.ShowBalloonTip(4000, "Dropwheel",
                         "Couldn't copy the list — the clipboard is busy.", WF.ToolTipIcon.Warning);
                     return;
                 }
-                System.Threading.Thread.Sleep(50);
+                System.Threading.Thread.Sleep(60);
             }
         }
     }
