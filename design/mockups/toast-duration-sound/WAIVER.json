@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "toast-duration-sound",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Making the toast duration configurable and adding an optional sound is a functional/settings addition, not a redesign. ToastHost now reads the base seconds from config (Danger/undo still doubled), fixes the mouse-leave restart to use the toast's own duration instead of a hard 4s, and plays a SystemSounds cue for Warning/Danger when enabled. The UI diff also adds a seconds field and a sound checkbox to the existing System section of the settings window. The toast's look, layout and the wheel are untouched. The rest is the AppConfig fields and a timing test. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
