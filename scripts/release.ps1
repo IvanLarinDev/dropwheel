@@ -443,6 +443,44 @@ function Remove-SafeTemporaryDirectory {
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
 
+function Sync-LocalReleaseBranch {
+    param(
+        [Parameter(Mandatory)][string] $RepoRoot,
+        [Parameter(Mandatory)][string] $Branch,
+        [Parameter(Mandatory)][string] $ReleaseSha
+    )
+
+    # The release commit is built and pushed from an isolated worktree, so the working checkout's branch
+    # still lags origin by that commit. Fast-forward it now - only when it is safe - so the next push
+    # stays a fast-forward instead of being rejected. Any obstacle just prints guidance; the release is
+    # already done, so this must never fail the run.
+    Push-Location $RepoRoot
+    try {
+        $current = (& git rev-parse --abbrev-ref HEAD 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $current.Trim() -ne $Branch) {
+            Write-Host "Local checkout is not on '$Branch' - run 'git pull --ff-only' there when convenient."
+            return
+        }
+        if (& git status --porcelain) {
+            Write-Warning "Local '$Branch' has uncommitted changes - not fast-forwarding. Run 'git pull --ff-only' when clean."
+            return
+        }
+        & git merge-base --is-ancestor HEAD $ReleaseSha 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Local '$Branch' is not behind the release commit - nothing to fast-forward."
+            return
+        }
+        & git merge --ff-only $ReleaseSha 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Local '$Branch' fast-forwarded to the release commit."
+        } else {
+            Write-Warning "Could not fast-forward local '$Branch'. Run 'git pull --ff-only' manually."
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
 foreach ($tool in @('git', 'dotnet', 'gh')) {
     Assert-Tool $tool
 }
@@ -629,6 +667,8 @@ try {
     foreach ($asset in $release.assets | Sort-Object name) {
         Write-Host "Asset: $($asset.name) ($($asset.size) bytes)"
     }
+
+    Sync-LocalReleaseBranch -RepoRoot $repoRoot -Branch $Branch -ReleaseSha $releaseSha
 } finally {
     Set-Location $originalLocation
     if ($publishPath) {
