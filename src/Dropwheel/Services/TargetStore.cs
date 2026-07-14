@@ -136,13 +136,33 @@ public static class TargetStore
             Directory.CreateDirectory(Dir);
             var tmp = FilePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(Config, Opts));
-            File.Move(tmp, FilePath, overwrite: true);
+            MoveWithRetry(tmp, FilePath);
             Saved?.Invoke();
         }
         catch (Exception ex)
         {
             ErrorLog.Write("Failed to save settings", ex);
             throw new InvalidOperationException("Could not save settings. See error.log for details.", ex);
+        }
+    }
+
+    /// <summary>The atomic rename over config.json occasionally hits a transient "access denied":
+    /// an antivirus or indexer briefly holds the destination right after it was written. A few short
+    /// retries ride that out — without them a save (or even startup, where Load may save) would fail
+    /// on a moment's lock held by someone else.</summary>
+    private static void MoveWithRetry(string tmp, string destination)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(tmp, destination, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when (attempt < 4 && ex is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(40 * attempt);
+            }
         }
     }
 
