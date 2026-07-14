@@ -45,6 +45,16 @@ public sealed class OverlayBubbleTests
     }
 
     [Fact]
+    public void ItemCountText_pluralizes_and_caps_huge_folders()
+    {
+        Assert.Equal("0 items", OverlayWindow.ItemCountText(0));
+        Assert.Equal("1 item", OverlayWindow.ItemCountText(1));
+        Assert.Equal("142 items", OverlayWindow.ItemCountText(142));
+        Assert.Equal("999 items", OverlayWindow.ItemCountText(999));
+        Assert.Equal("999+ items", OverlayWindow.ItemCountText(1000));
+    }
+
+    [Fact]
     public void SortedToastText_names_the_folder_count_only_when_several()
     {
         Assert.Equal("Sorted: 12 item(s) → Video · 3 folders", OverlayWindow.SortedToastText(12, "Video", 3));

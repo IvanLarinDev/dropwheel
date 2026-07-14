@@ -137,7 +137,9 @@ public partial class OverlayWindow
         var name = AccessibleName(target);
         var status = $"{name}. {preview.StatusText}";
         var chipText = preview.ChipText;
-        if (FreeSpaceLine(target) is { } free) chipText += "\n" + free;
+        var extras = string.Join(" · ",
+            new[] { FreeSpaceLine(target), ItemCountLine(target) }.Where(s => s != null));
+        if (extras.Length > 0) chipText += "\n" + extras;
         ShowConfidence(
             element,
             chipText,
@@ -174,6 +176,57 @@ public partial class OverlayWindow
             return null;
         }
     }
+
+    private readonly Dictionary<string, (string? Text, DateTime At)> _itemCountCache =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _itemCountPending = new(StringComparer.OrdinalIgnoreCase);
+
+    private const int ItemCountCap = 999;
+
+    /// <summary>The number of top-level items in a folder target as a chip line piece ("142 items"),
+    /// or null while unknown. Counting walks the disk, so it runs on a background thread and lands in
+    /// a per-path cache — the chip refreshes on every drag-over event, so a null now just means the
+    /// count appears a moment later. Only real folder targets are counted; both the cache and the
+    /// pending set are touched exclusively on the UI thread.</summary>
+    private string? ItemCountLine(TargetItem target)
+    {
+        if (!target.IsFolder) return null;
+        string path;
+        try { path = Path.GetFullPath(target.Path); }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        {
+            return null;
+        }
+        if (_itemCountCache.TryGetValue(path, out var hit) && (DateTime.Now - hit.At).TotalSeconds < 15)
+            return hit.Text;
+        if (!_itemCountPending.Add(path)) return null;
+        Task.Run(() =>
+        {
+            string? text;
+            try
+            {
+                int count = Directory.EnumerateFileSystemEntries(path).Take(ItemCountCap + 1).Count();
+                text = ItemCountText(count);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                text = null;
+            }
+            Dispatcher.BeginInvoke(() =>
+            {
+                _itemCountCache[path] = (text, DateTime.Now);
+                _itemCountPending.Remove(path);
+            });
+        });
+        return null;
+    }
+
+    /// <summary>Formats the item counter: past the cap it reads "999+ items", so a huge folder is
+    /// never walked to the end just for a chip line.</summary>
+    internal static string ItemCountText(int count) =>
+        count > ItemCountCap ? $"{ItemCountCap}+ items"
+        : count == 1 ? "1 item"
+        : $"{count} items";
 
     /// <summary>Bytes as a short human-readable size, e.g. 13123456789 → "12.2 GB".</summary>
     internal static string FormatBytes(long bytes)
