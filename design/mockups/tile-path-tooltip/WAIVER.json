@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "tile-path-tooltip",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Adding a hover tooltip to a wheel tile is a functional/usability addition, not a redesign. The diff only sets sq.ToolTip in the existing MakeBubble to the target's URL or full path (a short description for a group), using WPF's default tooltip — no new visual element on the tile itself. Wheel geometry, colours, animations and layout are untouched. The rest of the diff is the TileTooltip helper and its test. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
