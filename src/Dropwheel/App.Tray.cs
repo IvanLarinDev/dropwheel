@@ -81,6 +81,11 @@ public partial class App
             _watchPaused = pauseSort.Checked;
             if (_watchPaused) _watcher?.Stop();
             else _watcher?.Start();
+            _tray?.ShowBalloonTip(2500, "Dropwheel",
+                _watchPaused
+                    ? "Auto-sort paused — watched folders won't sort until you resume."
+                    : "Auto-sort resumed.",
+                WF.ToolTipIcon.Info);
         };
         menu.Items.Add(pauseSort);
         menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
