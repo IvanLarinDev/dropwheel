@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "text-name-template",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "A template for the saved-text file name is a functional addition to TextDropService, not a redesign. The UI diff only adds a label, a text box and a token hint to the existing System section of the settings window, reusing the established field layout and styles, and passes the config value through at the existing text-drop call site. Wheel geometry, colours, animations and the overall settings layout are untouched. The rest of the diff is AppConfig, TextDropService (BuildName/slug) and tests. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
