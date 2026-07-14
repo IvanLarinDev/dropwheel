@@ -108,9 +108,36 @@ public partial class App
                 recentDrops.DropDownItems.Add(item);
             }
             recentDrops.DropDownItems.Add(new WF.ToolStripSeparator());
+            recentDrops.DropDownItems.Add("Copy list", null, (_, _) => CopyDropHistoryList());
             recentDrops.DropDownItems.Add("Clear history...", null, (_, _) => ClearDropHistory(recentDrops));
         }
         recentDrops.DropDownItems.Add("Open history file...", null, (_, _) => OpenDropHistoryFile());
+    }
+
+    /// <summary>Puts the recent-drops list on the clipboard as plain text. The clipboard occasionally
+    /// refuses to open when another app holds it, so one quick retry before giving up with a balloon.</summary>
+    private void CopyDropHistoryList()
+    {
+        var text = DropHistoryService.ClipboardText(DropHistoryService.LoadForMenu());
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                System.Windows.Clipboard.SetText(text);
+                return;
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException)
+            {
+                if (attempt >= 1)
+                {
+                    ErrorLog.Write("Could not copy the drop history to the clipboard", ex);
+                    _tray?.ShowBalloonTip(4000, "Dropwheel",
+                        "Couldn't copy the list — the clipboard is busy.", WF.ToolTipIcon.Warning);
+                    return;
+                }
+                System.Threading.Thread.Sleep(50);
+            }
+        }
     }
 
     private void ClearDropHistory(WF.ToolStripMenuItem recentDrops)

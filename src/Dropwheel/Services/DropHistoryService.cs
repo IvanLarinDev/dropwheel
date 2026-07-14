@@ -51,6 +51,12 @@ public static class DropHistoryService
         return $"{time}  {action} {items} -> {target}{status}";
     }
 
+    /// <summary>The menu entries as plain text for the clipboard — one line per drop, the menu summary
+    /// plus the destination path when one was recorded. A quick export without opening the json file.</summary>
+    public static string ClipboardText(IEnumerable<DropHistoryEntry> entries) =>
+        string.Join(Environment.NewLine, entries.Select(e =>
+            string.IsNullOrWhiteSpace(e.Destination) ? MenuSummary(e) : $"{MenuSummary(e)} — {e.Destination}"));
+
     public static DropHistoryLocation? DestinationLocation(DropHistoryEntry entry) =>
         ExistingLocationFor(entry.Destination) ?? ExistingLocationFor(entry.TargetPath);
 

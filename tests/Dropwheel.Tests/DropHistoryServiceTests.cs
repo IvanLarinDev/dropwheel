@@ -255,6 +255,30 @@ public sealed class DropHistoryServiceTests : IDisposable
         Assert.Null(DropHistoryService.DestinationFolder(entry));
     }
 
+    [Fact]
+    public void ClipboardText_is_one_line_per_drop_with_the_destination()
+    {
+        var withDest = Entry("Video", 3);
+        var noDest = new DropHistoryEntry
+        {
+            AtUtc = DateTimeOffset.UnixEpoch.AddMinutes(1),
+            Action = DropHistoryAction.Copy,
+            Payload = DropPayloadKind.Files,
+            Status = DropHistoryStatus.Succeeded,
+            TargetName = "Notes",
+            TargetPath = @"C:\Target",
+            ItemCount = 1,
+        };
+
+        var text = DropHistoryService.ClipboardText(new[] { withDest, noDest });
+
+        var lines = text.Split(Environment.NewLine);
+        Assert.Equal(2, lines.Length);
+        Assert.EndsWith(@"— C:\Target", lines[0]);
+        Assert.Contains("-> Video", lines[0]);
+        Assert.DoesNotContain("—", lines[1]);
+    }
+
     private static DropHistoryEntry Entry(string targetName, int count) => new()
     {
         AtUtc = DateTimeOffset.UnixEpoch.AddMinutes(count),
