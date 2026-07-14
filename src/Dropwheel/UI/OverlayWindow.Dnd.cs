@@ -274,7 +274,7 @@ public partial class OverlayWindow
         var dest = LaunchService.DestPath(t);
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
         {
-            switch (DropDispatch.ClassifyFileDrop(t.IsSorter, LaunchService.IsRunTarget(t)))
+            switch (DropDispatch.ClassifyFileDrop(t.IsSorter && !DropDispatch.SortingPaused, LaunchService.IsRunTarget(t)))
             {
                 case FileDropRoute.Sort:
                     DropSorted(t, files, Resolve(t, e));

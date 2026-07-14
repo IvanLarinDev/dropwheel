@@ -69,22 +69,24 @@ public partial class App
             }
         };
         menu.Items.Add(sendTo);
-        var pauseSort = new WF.ToolStripMenuItem("Pause auto-sort")
+        var pauseSort = new WF.ToolStripMenuItem("Pause sorting")
         {
             Checked = _watchPaused,
             CheckOnClick = true,
-            ToolTipText = "Temporarily stop watched folders from auto-sorting. Files pile up while paused "
-                        + "and are sorted when resumed. Resets on restart; the Watch setting is untouched.",
+            ToolTipText = "Temporarily stop applying sorter rules — both watched folders and a manual drop "
+                        + "on a sorter. Files just land in the folder undistributed. Resets on restart; the "
+                        + "Watch and rule settings are untouched.",
         };
         pauseSort.Click += (_, _) =>
         {
             _watchPaused = pauseSort.Checked;
+            DropDispatch.SortingPaused = _watchPaused;
             if (_watchPaused) _watcher?.Stop();
             else _watcher?.Start();
             _tray?.ShowBalloonTip(2500, "Dropwheel",
                 _watchPaused
-                    ? "Auto-sort paused — watched folders won't sort until you resume."
-                    : "Auto-sort resumed.",
+                    ? "Sorting paused — files land in the folder without being distributed."
+                    : "Sorting resumed.",
                 WF.ToolTipIcon.Info);
         };
         menu.Items.Add(pauseSort);

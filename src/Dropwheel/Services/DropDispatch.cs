@@ -33,4 +33,9 @@ public static class DropDispatch
         => isSorter ? FileDropRoute.Sort
          : isRunTarget ? FileDropRoute.Run
          : FileDropRoute.CopyMove;
+
+    /// <summary>Runtime-only switch, toggled from the tray "Pause sorting" item. While on, both the
+    /// background folder watcher and a manual drop on a sorter skip the rules — files just land in the
+    /// folder — so a target can be filled without being distributed. Resets on restart.</summary>
+    public static bool SortingPaused { get; set; }
 }
