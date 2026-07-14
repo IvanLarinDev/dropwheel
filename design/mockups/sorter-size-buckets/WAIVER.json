@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "sorter-size-buckets",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "The ${size} destination token with a user-defined bucket spec is a functional addition to the routing engine, not a redesign. The UI diff only adds a 'By size' submenu to the existing presets menu and widens the existing token format check to also validate a size spec, reusing the established menu, hint and validation-message patterns. Wheel geometry, colours, animations and the editor layout are untouched. The rest of the diff is SortService plumbing (spec parser, bucket resolver, anti-loop shape) and tests. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
