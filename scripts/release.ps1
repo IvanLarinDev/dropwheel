@@ -11,14 +11,16 @@ waits for CI, then creates an annotated tag and verifies the GitHub Release.
 Use an exact version equal to the version already on main to resume an
 interrupted release after the release commit has been pushed.
 
-.EXAMPLE
-pwsh ./scripts/release.ps1 -Bump patch -DryRun
+Runs under Windows PowerShell 5.1 as well as pwsh 7+.
 
 .EXAMPLE
-pwsh ./scripts/release.ps1 -Bump minor
+./scripts/release.ps1 -Bump patch -DryRun
 
 .EXAMPLE
-pwsh ./scripts/release.ps1 -Bump 0.16.0
+./scripts/release.ps1 -Bump minor
+
+.EXAMPLE
+./scripts/release.ps1 -Bump 0.16.0
 #>
 [CmdletBinding()]
 param(
@@ -89,6 +91,28 @@ function Invoke-Native {
     }
 }
 
+function Invoke-NativeRetry {
+    param(
+        [Parameter(Mandatory)][string] $FilePath,
+        [Parameter(Mandatory)][string[]] $ArgumentList,
+        [int] $Attempts = 3,
+        [int] $DelaySeconds = 5
+    )
+
+    # For idempotent network operations (git fetch / git push of the same refs): a transient
+    # "Empty reply from server" must not kill a release run that is otherwise fine.
+    for ($attempt = 1; ; $attempt++) {
+        try {
+            Invoke-Native $FilePath $ArgumentList
+            return
+        } catch {
+            if ($attempt -ge $Attempts) { throw }
+            Write-Warning "Attempt $attempt of $Attempts failed: $($_.Exception.Message) Retrying in $DelaySeconds s."
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+}
+
 function Test-GitRef {
     param([Parameter(Mandatory)][string] $Ref)
 
@@ -102,15 +126,24 @@ function Test-RemoteTag {
         [Parameter(Mandatory)][string] $Tag
     )
 
-    $previousErrorActionPreference = $ErrorActionPreference
-    try {
-        $ErrorActionPreference = 'Continue'
-        & git ls-remote --exit-code --tags $RemoteName "refs/tags/$Tag" *> $null
-        $exitCode = $LASTEXITCODE
-    } finally {
-        $ErrorActionPreference = $previousErrorActionPreference
+    # git ls-remote --exit-code answers 0 = found, 2 = no such ref. Anything else is a transport
+    # failure and must NOT read as "tag is missing" — that once made a resume try to re-push an
+    # existing tag. Transient network errors get a few retries before giving up loudly.
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            & git ls-remote --exit-code --tags $RemoteName "refs/tags/$Tag" *> $null
+            $exitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        if ($exitCode -eq 0) { return $true }
+        if ($exitCode -eq 2) { return $false }
+        Write-Warning "git ls-remote for $Tag failed with exit code $exitCode (attempt $attempt of 3)."
+        Start-Sleep -Seconds 5
     }
-    return $exitCode -eq 0
+    throw "Could not query $RemoteName for tag $Tag after 3 attempts."
 }
 
 function Test-GitAncestor {
@@ -494,28 +527,16 @@ $deadline = [DateTime]::UtcNow.AddMinutes($TimeoutMinutes)
 try {
     Set-Location $repoRoot
     Invoke-Native gh @('auth', 'status')
-    Invoke-Native git @('fetch', $Remote, $Branch, '--tags', '--prune')
+    Invoke-NativeRetry git @('fetch', $Remote, $Branch, '--tags', '--prune')
 
     $mainRef = "$Remote/$Branch"
     $baseSha = Invoke-Native git @('rev-parse', $mainRef) -Capture
     $currentVersion = Get-ProjectVersionAtRef $mainRef
     $targetVersion = Get-NextVersion -Current $currentVersion -RequestedBump $Bump
-    $previousTag = "v$currentVersion"
     $targetTag = "v$targetVersion"
 
     Write-Host "Remote base: $mainRef at $baseSha"
     Write-Host "Version: $currentVersion -> $targetVersion"
-
-    if (-not (Test-GitRef "refs/tags/$previousTag")) {
-        throw "Current project version $currentVersion has no local/fetched tag $previousTag."
-    }
-    if (-not (Test-RemoteTag -RemoteName $Remote -Tag $previousTag)) {
-        throw "Current project version $currentVersion has no remote tag $previousTag on $Remote."
-    }
-    $previousTagSha = Invoke-Native git @('rev-list', '-n', '1', "refs/tags/$previousTag") -Capture
-    if (-not (Test-GitAncestor -Ancestor $previousTagSha -Descendant $mainRef)) {
-        throw "Current version tag $previousTag is not an ancestor of $mainRef."
-    }
 
     $isResume = $targetVersion -eq $currentVersion
     if ($isResume -and $Bump -notmatch $SemVerPattern) {
@@ -523,12 +544,36 @@ try {
     }
 
     if ($isResume) {
+        # On resume the version on main is already the target, so the previous release lives one
+        # commit below the release commit — its csproj still holds the pre-bump version. Deriving
+        # previousTag from the current version here would demand the target tag itself, making a
+        # release that died on the tag push impossible to resume.
         $releaseSha = Get-ReleaseCommit -MainRef $mainRef -Version $targetVersion
         if ((Get-ProjectVersionAtRef $releaseSha) -ne $targetVersion) {
             throw "Release commit $releaseSha does not contain version $targetVersion."
         }
-        Write-Host "Resuming release $targetTag from commit $releaseSha."
+        $previousVersion = Get-ProjectVersionAtRef "$releaseSha^"
+        if ((Compare-SemVer -Left $targetVersion -Right $previousVersion) -le 0) {
+            throw "Release commit $releaseSha does not bump the version ($previousVersion -> $targetVersion)."
+        }
+        $previousTag = "v$previousVersion"
+        Write-Host "Resuming release $targetTag from commit $releaseSha (previous release $previousTag)."
     } else {
+        $previousTag = "v$currentVersion"
+    }
+
+    if (-not (Test-GitRef "refs/tags/$previousTag")) {
+        throw "Previous release $previousTag has no local/fetched tag."
+    }
+    if (-not (Test-RemoteTag -RemoteName $Remote -Tag $previousTag)) {
+        throw "Previous release $previousTag has no remote tag on $Remote."
+    }
+    $previousTagSha = Invoke-Native git @('rev-list', '-n', '1', "refs/tags/$previousTag") -Capture
+    if (-not (Test-GitAncestor -Ancestor $previousTagSha -Descendant $mainRef)) {
+        throw "Previous release tag $previousTag is not an ancestor of $mainRef."
+    }
+
+    if (-not $isResume) {
         if ((Compare-SemVer -Left $targetVersion -Right $currentVersion) -le 0) {
             throw "Target version $targetVersion must be greater than $currentVersion."
         }
@@ -608,7 +653,7 @@ try {
         Invoke-Native git @('diff', '--cached', '--check')
         Invoke-Native git @('commit', '-m', "chore(release): Dropwheel $targetVersion")
         $releaseSha = Invoke-Native git @('rev-parse', 'HEAD') -Capture
-        Invoke-Native git @('push', $Remote, "HEAD:$Branch")
+        Invoke-NativeRetry git @('push', $Remote, "HEAD:$Branch")
         Write-Host "Release commit pushed: $releaseSha"
     }
 
@@ -619,7 +664,7 @@ try {
 
     Set-Location $repoRoot
     [void] (Wait-ForWorkflowRun -Workflow $CiWorkflow -CommitSha $releaseSha -Deadline $deadline)
-    Invoke-Native git @('fetch', $Remote, $Branch, '--tags', '--prune')
+    Invoke-NativeRetry git @('fetch', $Remote, $Branch, '--tags', '--prune')
     if (-not (Test-GitAncestor -Ancestor $releaseSha -Descendant "$Remote/$Branch")) {
         throw "Release commit $releaseSha is no longer an ancestor of $Remote/$Branch."
     }
@@ -627,7 +672,7 @@ try {
     $localTagExists = Test-GitRef "refs/tags/$targetTag"
     $remoteTagExists = Test-RemoteTag -RemoteName $Remote -Tag $targetTag
     if ($remoteTagExists -and -not $localTagExists) {
-        Invoke-Native git @('fetch', $Remote, "refs/tags/${targetTag}:refs/tags/$targetTag")
+        Invoke-NativeRetry git @('fetch', $Remote, "refs/tags/${targetTag}:refs/tags/$targetTag")
         $localTagExists = $true
     }
 
@@ -643,7 +688,7 @@ try {
 
     $tagWasPushed = $false
     if (-not $remoteTagExists) {
-        Invoke-Native git @('push', $Remote, "refs/tags/$targetTag")
+        Invoke-NativeRetry git @('push', $Remote, "refs/tags/$targetTag")
         $tagWasPushed = $true
         Write-Host "Annotated tag pushed: $targetTag"
     } else {
