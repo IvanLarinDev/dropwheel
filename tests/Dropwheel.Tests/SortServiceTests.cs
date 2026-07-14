@@ -61,6 +61,32 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
+    public void MediaKind_matches_by_the_kinds_extension_set()
+    {
+        var img = MakeFile("photo.JPG"); // case-insensitive
+        var vid = MakeFile("clip.mp4");
+        var doc = MakeFile("notes.txt");
+        var t = Sorter(_root, Rule("Images", ConditionField.MediaKind, CompareOp.In, "image"));
+        var plan = SortService.Plan(t, new[] { img, vid, doc });
+        Assert.Contains(img, plan[Path.Combine(_root, "Images")]);
+        Assert.Contains(vid, plan[_root]);
+        Assert.Contains(doc, plan[_root]);
+    }
+
+    [Fact]
+    public void MediaKind_ignores_an_unknown_kind_or_extensionless_file()
+    {
+        var noext = MakeFile("README");
+        var png = MakeFile("a.png");
+        var t = Sorter(_root,
+            Rule("Images", ConditionField.MediaKind, CompareOp.In, "image"),
+            Rule("Bogus", ConditionField.MediaKind, CompareOp.In, "nonsense"));
+        var plan = SortService.Plan(t, new[] { noext, png });
+        Assert.Contains(png, plan[Path.Combine(_root, "Images")]);
+        Assert.Contains(noext, plan[_root]); // no extension → belongs to no kind
+    }
+
+    [Fact]
     public void Negated_condition_matches_when_the_underlying_test_fails()
     {
         var draft = MakeFile("draft_report.pdf");

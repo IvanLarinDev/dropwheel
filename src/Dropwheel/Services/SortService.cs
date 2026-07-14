@@ -525,10 +525,30 @@ public static class SortService
             ConditionField.SizeMb => MatchNumber(c.Op, meta.SizeMb, c.Value),
             ConditionField.AgeDays => MatchNumber(c.Op, meta.AgeDays, c.Value),
             ConditionField.CreatedDaysAgo => MatchNumber(c.Op, meta.CreationAgeDays, c.Value),
+            ConditionField.MediaKind => MatchMediaKind(c.Value, meta.Ext),
             _ => false,
         };
         return c.Negate ? !hit : hit;
     }
+
+    /// <summary>Known media kinds, in the order the editor lists them. Each maps to a set of extensions
+    /// so a rule can match "any image" without spelling out png/jpg/webp/…</summary>
+    public static readonly IReadOnlyList<string> MediaKinds = new[] { "image", "video", "audio", "document", "archive" };
+
+    private static readonly Dictionary<string, string[]> MediaKindExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["image"] = new[] { "jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "tif", "heic", "heif", "svg", "ico", "raw", "cr2", "nef", "arw", "dng" },
+        ["video"] = new[] { "mp4", "mkv", "mov", "avi", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "3gp", "ts", "m2ts" },
+        ["audio"] = new[] { "mp3", "wav", "flac", "aac", "ogg", "oga", "m4a", "wma", "opus", "aiff", "aif", "alac" },
+        ["document"] = new[] { "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "rtf", "txt", "md", "csv", "epub", "pages", "numbers", "key" },
+        ["archive"] = new[] { "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "zst", "tgz", "iso", "cab", "lz", "lzma" },
+    };
+
+    /// <summary>Whether the file's extension belongs to the named media kind. An unknown kind (a
+    /// hand-edited config) or an extensionless file simply does not match.</summary>
+    private static bool MatchMediaKind(string kind, string ext) =>
+        ext.Length > 0 && MediaKindExtensions.TryGetValue(kind, out var exts)
+        && Array.IndexOf(exts, ext) >= 0;
 
     private static readonly char[] ExtSeparators = { ' ', ',', ';' };
 

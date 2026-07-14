@@ -30,6 +30,7 @@ public partial class TargetEditorWindow
         [ConditionField.SizeMb] = new[] { CompareOp.Gt, CompareOp.Lt, CompareOp.Gte, CompareOp.Lte },
         [ConditionField.AgeDays] = new[] { CompareOp.Gt, CompareOp.Lt, CompareOp.Gte, CompareOp.Lte },
         [ConditionField.CreatedDaysAgo] = new[] { CompareOp.Gt, CompareOp.Lt, CompareOp.Gte, CompareOp.Lte },
+        [ConditionField.MediaKind] = new[] { CompareOp.In },
     };
 
     private void ShowRulesEditor()
@@ -327,34 +328,64 @@ public partial class TargetEditorWindow
         };
         top.Children.Add(field); // no dock — fills the remaining width
 
-        var value = new TextBox { Text = cond.Value };
-        var hint = new TextBlock
+        FrameworkElement cell;
+        if (cond.Field == ConditionField.MediaKind)
         {
-            Text = WatermarkFor(cond.Field),
-            Foreground = Palettes.TextMuted,
-            IsHitTestVisible = false,
-            Margin = new Thickness(6, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            Visibility = string.IsNullOrEmpty(cond.Value) ? Visibility.Visible : Visibility.Collapsed,
-        };
-        value.TextChanged += (_, _) =>
+            cell = BuildMediaKindPicker(cond);
+        }
+        else
         {
-            cond.Value = value.Text;
-            hint.Visibility = string.IsNullOrEmpty(value.Text) ? Visibility.Visible : Visibility.Collapsed;
+            var value = new TextBox { Text = cond.Value };
+            var hint = new TextBlock
+            {
+                Text = WatermarkFor(cond.Field),
+                Foreground = Palettes.TextMuted,
+                IsHitTestVisible = false,
+                Margin = new Thickness(6, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Visibility = string.IsNullOrEmpty(cond.Value) ? Visibility.Visible : Visibility.Collapsed,
+            };
+            value.TextChanged += (_, _) =>
+            {
+                cond.Value = value.Text;
+                hint.Visibility = string.IsNullOrEmpty(value.Text) ? Visibility.Visible : Visibility.Collapsed;
+                MarkValue(value, cond);
+                RebuildMaster();
+                RefreshMatches();
+            };
             MarkValue(value, cond);
-            RebuildMaster();
-            RefreshMatches();
-        };
-        MarkValue(value, cond);
 
-        var cell = new Grid();
-        cell.Children.Add(value);
-        cell.Children.Add(hint);
+            var grid = new Grid();
+            grid.Children.Add(value);
+            grid.Children.Add(hint);
+            cell = grid;
+        }
 
         var stack = new StackPanel { Margin = new Thickness(0, 2, 0, 8) };
         stack.Children.Add(top);
         stack.Children.Add(cell);
         return stack;
+    }
+
+    /// <summary>The value control for a media-kind condition: a dropdown of the known kinds instead of a
+    /// free-text box. Seeds the first kind when the condition has no valid value yet — e.g. right after
+    /// the field was switched over from extension or name.</summary>
+    private FrameworkElement BuildMediaKindPicker(RuleCondition cond)
+    {
+        var kinds = SortService.MediaKinds;
+        int idx = 0;
+        for (int i = 0; i < kinds.Count; i++)
+            if (string.Equals(kinds[i], cond.Value, StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
+        cond.Value = kinds[idx];
+
+        var combo = new ComboBox { HorizontalAlignment = HorizontalAlignment.Left, MinWidth = 150 };
+        foreach (var k in kinds) combo.Items.Add(new ComboBoxItem { Content = char.ToUpperInvariant(k[0]) + k[1..], Tag = k });
+        combo.SelectedIndex = idx;
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedItem is ComboBoxItem { Tag: string k }) { cond.Value = k; RebuildMaster(); RefreshMatches(); }
+        };
+        return combo;
     }
 
     /// <summary>Shows, under the Destination box, which ${name} tokens the rule can fill from its
@@ -764,6 +795,7 @@ public partial class TargetEditorWindow
         ConditionField.SizeMb => "size",
         ConditionField.AgeDays => "age",
         ConditionField.CreatedDaysAgo => "created",
+        ConditionField.MediaKind => "type",
         _ => "",
     };
 
