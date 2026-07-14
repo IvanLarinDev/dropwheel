@@ -125,7 +125,7 @@ public partial class OverlayWindow
             return true;
         }
 
-        switch (DropDispatch.ClassifyFileDrop(target.IsSorter, LaunchService.IsRunTarget(target)))
+        switch (DropDispatch.ClassifyFileDrop(DropDispatch.SortsNow(target.IsSorter), LaunchService.IsRunTarget(target)))
         {
             case FileDropRoute.Sort:
                 DropSorted(target, files, DropDispatch.ResolveAction(

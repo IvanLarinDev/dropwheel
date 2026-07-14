@@ -274,7 +274,7 @@ public partial class OverlayWindow
         var dest = LaunchService.DestPath(t);
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
         {
-            switch (DropDispatch.ClassifyFileDrop(t.IsSorter && !DropDispatch.SortingPaused, LaunchService.IsRunTarget(t)))
+            switch (DropDispatch.ClassifyFileDrop(DropDispatch.SortsNow(t.IsSorter), LaunchService.IsRunTarget(t)))
             {
                 case FileDropRoute.Sort:
                     DropSorted(t, files, Resolve(t, e));
@@ -349,12 +349,13 @@ public partial class OverlayWindow
         else if (VirtualFileService.HasVirtualFiles(e.Data))
         {
             var saved = VirtualFileService.Extract(e.Data, dest);
+            bool sortNow = DropDispatch.SortsNow(t.IsSorter);
             if (saved.Length > 0)
             {
-                if (t.IsSorter) SortSavedVirtuals(t, saved);
+                if (sortNow) SortSavedVirtuals(t, saved);
                 else RememberOp(BuildCreatedCopyOp(saved, dest));
             }
-            if (!t.IsSorter)
+            if (!sortNow)
             {
                 RememberDropHistory(
                     DropHistoryAction.SaveVirtualFiles,
@@ -394,12 +395,13 @@ public partial class OverlayWindow
     private void SaveDroppedText(TargetItem t, string dest, IDataObject data)
     {
         var saved = TextDropService.SaveFrom(data, dest, DateTime.Now, TargetStore.Config.TextFileNameTemplate);
+        bool sortNow = DropDispatch.SortsNow(t.IsSorter);
         if (saved is { } path)
         {
-            if (t.IsSorter) SortSavedVirtuals(t, new[] { path });
+            if (sortNow) SortSavedVirtuals(t, new[] { path });
             else RememberOp(BuildCreatedCopyOp(new[] { path }, dest));
         }
-        if (!t.IsSorter)
+        if (!sortNow)
         {
             RememberDropHistory(
                 DropHistoryAction.SaveText,

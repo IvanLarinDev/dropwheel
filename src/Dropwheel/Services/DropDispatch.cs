@@ -38,4 +38,9 @@ public static class DropDispatch
     /// background folder watcher and a manual drop on a sorter skip the rules — files just land in the
     /// folder — so a target can be filled without being distributed. Resets on restart.</summary>
     public static bool SortingPaused { get; set; }
+
+    /// <summary>Whether a sorter tile routes a drop through its rules right now. Every manual drop
+    /// path (files, virtual files, text, Explorer SendTo) must gate on this rather than on IsSorter
+    /// alone, so "Pause sorting" turns the sorter into a plain folder for all payloads alike.</summary>
+    public static bool SortsNow(bool isSorter) => isSorter && !SortingPaused;
 }

@@ -57,4 +57,26 @@ public sealed class DropDispatchTests
         Assert.Equal(FileDropRoute.Run, DropDispatch.ClassifyFileDrop(isSorter: false, isRunTarget: true));
         Assert.Equal(FileDropRoute.CopyMove, DropDispatch.ClassifyFileDrop(isSorter: false, isRunTarget: false));
     }
+
+    [Fact]
+    public void Sorter_stops_routing_while_sorting_is_paused()
+    {
+        try
+        {
+            DropDispatch.SortingPaused = true;
+            Assert.False(DropDispatch.SortsNow(isSorter: true));
+            Assert.False(DropDispatch.SortsNow(isSorter: false));
+        }
+        finally
+        {
+            DropDispatch.SortingPaused = false;
+        }
+    }
+
+    [Fact]
+    public void Sorter_routes_normally_while_sorting_is_not_paused()
+    {
+        Assert.True(DropDispatch.SortsNow(isSorter: true));
+        Assert.False(DropDispatch.SortsNow(isSorter: false));
+    }
 }

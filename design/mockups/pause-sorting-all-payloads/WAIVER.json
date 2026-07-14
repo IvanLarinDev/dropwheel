@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "pause-sorting-all-payloads",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Logic-only fix closing the known edge left by the pause-sorting feature: while 'Pause sorting' is on, dropped text, virtual files (browser/mail drags) and Explorer SendTo files were still routed through sorter rules, unlike regular file drops which already fell back to the plain-folder path. All manual drop paths now gate on the shared DropDispatch.SortsNow instead of raw IsSorter, so a paused sorter takes every payload like a plain folder. No visual, layout or animation change — the affected code picks a code path, it draws nothing.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
