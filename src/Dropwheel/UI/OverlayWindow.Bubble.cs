@@ -14,8 +14,10 @@ public partial class OverlayWindow
     private FrameworkElement MakeBubble(TargetItem t)
     {
         var th = Themes.Current;
-        UIElement inner = t.IsGroup
-            ? new TextBlock
+        UIElement inner;
+        if (t.IsGroup)
+        {
+            inner = new TextBlock
             {
                 // A non-empty group shows how many targets it holds; an empty one shows a container
                 // glyph instead of a bare "0", which read like a bug.
@@ -26,8 +28,22 @@ public partial class OverlayWindow
                 Opacity = t.Children.Count > 0 ? 1.0 : 0.7,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
-            }
-            : new Image
+            };
+        }
+        else if (!string.IsNullOrWhiteSpace(t.Emoji))
+        {
+            inner = new TextBlock
+            {
+                Text = t.Emoji,
+                FontSize = 30,
+                Opacity = t.Exists ? 1.0 : 0.45,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
+        else
+        {
+            inner = new Image
             {
                 Width = 32,
                 Height = 32,
@@ -35,6 +51,7 @@ public partial class OverlayWindow
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
+        }
         var sq = new Border
         {
             Width = 64,

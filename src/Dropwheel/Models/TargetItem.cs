@@ -20,6 +20,11 @@ public class TargetItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? IconPath { get; set; }
 
+    /// <summary>Optional emoji shown on the tile instead of the file icon, so a target reads at a glance
+    /// without a custom .ico. null/empty falls back to the normal icon.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Emoji { get; set; }
+
     public DropAction Override { get; set; } = DropAction.Inherit;
     public bool Pinned { get; set; }
 

@@ -21,6 +21,7 @@ public partial class TargetEditorWindow : Window
         _target = t;
         _preselect = preselectGroup;
         NameBox.Text = t.Name;
+        EmojiBox.Text = t.Emoji ?? "";
         GroupShortcutBox.Text = t.GroupCode ?? "";
         PathBox.Text = t.Path;
         ActionBox.SelectedIndex = (int)t.Override;
@@ -90,6 +91,8 @@ public partial class TargetEditorWindow : Window
             _target.GroupCode = code.Length == 0 ? null : code;
         }
         _target.Name = NameBox.Text.Trim();
+        var emoji = EmojiBox.Text.Trim();
+        _target.Emoji = emoji.Length == 0 ? null : emoji;
         if (!_target.IsGroup)
         {
             _target.Path = PathBox.Text.Trim();
