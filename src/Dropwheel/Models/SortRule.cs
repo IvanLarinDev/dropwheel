@@ -40,12 +40,19 @@ public sealed class SortRule
 {
     public string Dest { get; set; } = "";
     public RuleScope Scope { get; set; } = RuleScope.Files;
+
+    /// <summary>Whether the rule takes part in sorting. A disabled rule is skipped as if it were not
+    /// there, but keeps its settings. Default true (initialiser, like Scope) so a config without the
+    /// field — every rule written before this feature — loads as enabled rather than silently off.</summary>
+    public bool Enabled { get; set; } = true;
+
     public List<RuleCondition> All { get; set; } = new();
 
     public SortRule Clone() => new()
     {
         Dest = Dest,
         Scope = Scope,
+        Enabled = Enabled,
         All = All.Select(c => c.Clone()).ToList(),
     };
 }

@@ -96,6 +96,35 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
+    public void Disabled_rule_is_skipped_during_sorting()
+    {
+        var jpg = MakeFile("a.jpg");
+        var t = Sorter(_root, new SortRule
+        {
+            Dest = "Images",
+            Enabled = false,
+            All = { new RuleCondition { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } },
+        });
+        var plan = SortService.Plan(t, new[] { jpg });
+        Assert.Contains(jpg, plan[_root]); // rule off → file falls through to the root
+    }
+
+    [Fact]
+    public void SortRule_without_an_enabled_field_loads_as_enabled()
+    {
+        // A config written before this feature has no "Enabled" key; it must load on, not silently off.
+        var rule = System.Text.Json.JsonSerializer.Deserialize<SortRule>("{\"Dest\":\"X\"}");
+        Assert.True(rule!.Enabled);
+    }
+
+    [Fact]
+    public void Rule_clone_copies_the_enabled_flag()
+    {
+        var r = new SortRule { Dest = "X", Enabled = false };
+        Assert.False(r.Clone().Enabled);
+    }
+
+    [Fact]
     public void SizeMb_greater_than_matches_large_file()
     {
         var big = MakeFile("big.bin", 12L * 1024 * 1024);

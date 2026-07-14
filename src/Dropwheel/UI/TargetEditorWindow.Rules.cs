@@ -104,6 +104,7 @@ public partial class TargetEditorWindow
             BorderThickness = new Thickness(3, 0, 0, 0),
             ToolTip = string.IsNullOrWhiteSpace(rule.Dest)
                 ? "→ (target root)" : $"→ {rule.Dest}",
+            Opacity = rule.Enabled ? 1.0 : 0.45,
         };
         border.MouseLeftButtonUp += (_, _) => { _selected = index; RebuildMaster(); RebuildDetail(); };
         return border;
@@ -114,7 +115,8 @@ public partial class TargetEditorWindow
         var body = rule.All.Count == 0
             ? "catch-all"
             : string.Join(", ", rule.All.Select(c => $"{(c.Negate ? "not " : "")}{FieldWord(c.Field)} {ShortValue(c)}"));
-        return rule.Scope == RuleScope.Files ? body : $"[{ScopeWord(rule.Scope).ToLowerInvariant()}] {body}";
+        var scoped = rule.Scope == RuleScope.Files ? body : $"[{ScopeWord(rule.Scope).ToLowerInvariant()}] {body}";
+        return rule.Enabled ? scoped : "(off) " + scoped;
     }
 
     private static string ScopeWord(RuleScope scope) => scope switch
@@ -159,6 +161,17 @@ public partial class TargetEditorWindow
         header.Children.Add(tools);
         header.Children.Add(new TextBlock { Text = $"Rule {_selected + 1}", FontWeight = FontWeights.SemiBold });
         DetailHost.Children.Add(header);
+
+        var enabled = new CheckBox
+        {
+            Content = "Enabled",
+            IsChecked = rule.Enabled,
+            Margin = new Thickness(0, 0, 0, 10),
+            ToolTip = "Turn the rule off without deleting it — a disabled rule is skipped during sorting.",
+        };
+        enabled.Checked += (_, _) => { rule.Enabled = true; RebuildMaster(); RefreshMatches(); };
+        enabled.Unchecked += (_, _) => { rule.Enabled = false; RebuildMaster(); RefreshMatches(); };
+        DetailHost.Children.Add(enabled);
 
         DetailHost.Children.Add(new TextBlock { Text = "Applies to", FontSize = 11 });
         var scopeBox = new ComboBox

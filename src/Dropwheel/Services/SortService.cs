@@ -83,11 +83,13 @@ public static class SortService
         MatchedRuleIndex(rules, FileMeta.Read(file));
 
     /// <summary>Overload taking an already-read <see cref="FileMeta"/> so the router does not stat the
-    /// item twice. A rule only catches an item whose kind (file or folder) its Scope allows.</summary>
+    /// item twice. A disabled rule is skipped, and a rule only catches an item whose kind (file or
+    /// folder) its Scope allows.</summary>
     public static int MatchedRuleIndex(IReadOnlyList<SortRule> rules, FileMeta meta)
     {
         for (int i = 0; i < rules.Count; i++)
-            if (ScopeIncludes(rules[i].Scope, meta.IsDirectory) && rules[i].All.All(c => Match(c, meta)))
+            if (rules[i].Enabled && ScopeIncludes(rules[i].Scope, meta.IsDirectory)
+                && rules[i].All.All(c => Match(c, meta)))
                 return i;
         return -1;
     }
