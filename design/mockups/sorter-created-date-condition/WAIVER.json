@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "sorter-created-date-condition",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "A 'created N days ago' rule condition is a functional addition to the rules engine (a CreationAgeDays field on FileMeta and a CreatedDaysAgo ConditionField, matched in SortService like the existing AgeDays), not a redesign. The UI diff only adds the new field to the existing condition dropdown and mirrors AgeDays in the operator list, placeholder, hint and numeric validation, reusing the established row and controls. Wheel geometry, colours, animations and the editor layout are untouched. The rest of the diff is FileMeta/SortService/SortRule plumbing and tests. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
