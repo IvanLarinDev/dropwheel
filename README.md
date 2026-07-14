@@ -66,7 +66,10 @@ common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
 | Reorder tiles         | left-drag a target tile onto another tile; drop on “+” to move it last |
 | Move the orb          | Alt + left-drag (any monitor); add Shift to pin instead |
 | Wheel at cursor       | Ctrl+Alt+Space (configurable)                      |
-| Recent drops          | tray icon → **Recent drops** opens destinations, reveals created files, or clears the journal |
+| Wheel at the orb      | optional second hotkey — opens the wheel at the orb's home spot without moving the mouse; off until set in Settings |
+| Pause sorting         | tray icon → **Pause auto-sort** (watched folders only) or **Pause sorting** (manual sorter drops land unrouted too); both reset on restart |
+| Export / reload settings | tray icon → **Export settings…** saves a copy of `config.json`; **Reload settings** re-reads a hand-edited file and applies it live |
+| Recent drops          | tray icon → **Recent drops** opens destinations, reveals created files, copies the list as text, or clears the journal |
 | Settings              | tray icon or orb context menu                      |
 
 The orb hides automatically in full-screen apps (games, presentations) — while
@@ -87,22 +90,39 @@ to edit or disable its code.
 
 Every action reports back in the same place: a short toast on the wheel names what
 happened in plain words — *Copied*, *Moved*, *Sorted*, *Undone* — with an **Undo**
-link where it applies. All the windows (new group, target editor, settings, and a
+link where it applies. How long a toast stays up is a setting (1–60 s; error and undo
+toasts last twice as long, hovering pauses the timer), and warning/error toasts can
+play a short system sound. All the windows (new group, target editor, settings, and a
 themed message box) share one frame and one button layout, follow the active theme,
 and validate **inline** instead of popping up error dialogs, and settings are grouped
-into sections. The hotkey field in Settings is a small editor of its own: a **Record**
-button that flips to **Stop** while it captures the next pressed combination, a preset
-dropdown (Default `Ctrl+Alt+Space`, `Ctrl+Shift+Space`, `Ctrl+Alt+D`, `Ctrl+Shift+D`,
-`Ctrl+Alt+F12`), and a **Reset** button that restores `Ctrl+Alt+Space`. It accepts the
-**Win** modifier and shows a live status that reads *Available* or *Already taken by
-another app*, blocking **Save** while the combo is invalid or already taken. If a
-target's folder or file goes missing, its tile shows a small warning mark — not a silent
-fade — and a click offers **Locate…** or **Remove**.
+into sections. Hotkeys are picked, not typed: both hotkey fields in Settings are
+read-only displays — click one of the suggestion **chips** under a field (Default
+`Ctrl+Alt+Space`, `Ctrl+Shift+Space`, `Ctrl+Alt+D`, `Ctrl+Shift+D`, `Ctrl+Alt+F12`)
+or press **Record** (it flips to **Stop**) and hit any combination, **Win** modifier
+included. The optional second hotkey — *Open at orb* — starts with an **Off** chip
+that disables it, and a combination held by the other hotkey shows struck through so
+the two can never clash. A live status under each field reads *Available* or *Already
+taken by another app*, blocking **Save** until both combos are fine; **Reset**
+restores `Ctrl+Alt+Space`. If a target's folder or file goes missing, its tile shows
+a small warning mark — not a silent fade — and a click offers **Locate…** or
+**Remove**.
+
+Tiles can be personalised in the target editor: an **emoji** replaces the icon as the
+tile's face (it keeps its own colours if it has them, or takes the tile colour), and a
+**tile colour** swatch paints the tile border — handy for making one target stand out.
+Hovering a tile shows its full path in a tooltip, and while a drag hovers a folder
+target the status chip's second line reports the free space left on that drive. The
+tray menu is grouped by topic with theme-tinted icons; its toggles show an accent
+check mark when on.
 
 The tray menu also keeps a short **Recent drops** journal backed by
 `%AppData%\Dropwheel\drop-history.json`. Entries open the destination folder, reveal
 a single file Dropwheel created (for example saved text), and show full paths in
-tooltips. The same menu can open the JSON file or clear the journal.
+tooltips. The same menu can copy the whole list as plain text, open the JSON file,
+or clear the journal. Next to it live **Export settings…** (saves a dated copy of
+`config.json` wherever you point it) and **Reload settings** — re-reads a hand-edited
+`config.json` and applies it without a restart; a file with a JSON typo is reported
+and the current settings stay untouched, so hand-editing is safe.
 
 When **Explorer SendTo shortcut** is enabled, Dropwheel installs a normal Windows
 SendTo shortcut. Selecting files or folders in Explorer and choosing
@@ -351,7 +371,9 @@ Light and Neon.
                  CursorTargetLocator, ProximityState, FullscreenDetector;
                  sorting & layout: SortService, WheelLayout, WatcherService
                  (auto-sort watched folders), HintPolicy, IconService,
-                 LinkMetadataService, ErrorLog
+                 LinkMetadataService, ErrorLog;
+                 journal & bridge: DropHistoryService (recent drops),
+                 ExplorerBridgeService (SendTo shortcut + single-instance pipe)
       UI/        OverlayWindow (hub + rim + spokes wheel, partial classes),
                  DialogShell (shared dialog frame) + DwMessageBox + ToastHost,
                  TargetEditorWindow (+ .Rules master-detail),

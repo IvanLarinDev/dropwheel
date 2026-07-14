@@ -7,11 +7,15 @@
 ## Ключевые файлы
 
 - `AppConfig.cs` — корень конфига. Свойства = формат `config.json`. `OverflowThreshold`
-  клампится при загрузке в `TargetStore.Load` (диапазон в `WheelLayout`).
+  клампится при загрузке в `TargetStore.Load` (диапазон в `WheelLayout`). Хоткеев два:
+  `Hotkey` (основной) и `HotkeyAtOrb` (опциональный «у орба», пустая строка = выключен);
+  тосты настраиваются `ToastSeconds` (1–60) и `ToastSound`.
 - `TargetItem.cs` — узел колеса. `Children != null` → группа (один уровень вложенности).
   `Rules` — новые правила сортировки, `SortRules` — легаси-словарь. Вычисляемые
   `[JsonIgnore]` признаки: `IsGroup`, `IsSorter`, `IsFolder`, `IsExecutable`, `IsUri`.
-  Статические помощники `IsExeExtension`, `IsLaunchUri`.
+  Статические помощники `IsExeExtension`, `IsLaunchUri`. Оформление плитки: `Emoji`
+  (лицо плитки вместо иконки) и `TileColor` (hex-цвет рамки и текстовых эмодзи;
+  битое значение парсер UI тихо превращает в null, не роняя колесо).
 - `SortRule.cs` — `SortRule` (`Dest` + список `RuleCondition`) и enum-ы `ConditionField`,
   `CompareOp`. Это строгие enum-ы: неизвестный токен в JSON бросает исключение, поэтому
   их чистит санитайзер в `TargetStore` (`SanitizeRules`).

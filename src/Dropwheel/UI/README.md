@@ -12,9 +12,13 @@
   `OrbDrop`, `PinDrop`), проксимити-реакция (`Proximity`, `Charge`), захват Alt+Shift
   (`Capture`), группы и шорткаты (`GroupShortcuts`), отмена (`Undo`), затухание
   (`IdleFade`) и другие.
-- `SettingsWindow` — окно настроек.
+- `SettingsWindow` — окно настроек (секции слева, живая проверка полей; горячие
+  клавиши выбираются чипами или записью, руками не печатаются).
 - `TargetEditorWindow` — редактор цели и правил сортировки (`TargetEditorWindow.Rules.cs`).
+  Здесь же плитке задаются эмодзи и свой цвет.
 - `PromptWindow` — простой ввод строки.
+- `DialogShell`, `DwMessageBox`, `ToastHost` — общий каркас всех диалогов, темизированная
+  замена системного MessageBox и тост обратной связи на колесе.
 - `Themes`, `Palette`, `MenuTheme.xaml` — цвета и оформление.
 
 ## Как работать

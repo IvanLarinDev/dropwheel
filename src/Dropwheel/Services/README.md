@@ -19,6 +19,8 @@
 - Сортировка и раскладка: `SortService`, `WheelLayout`, `WatcherService` (авто-сортировка
   наблюдаемых папок), `HintPolicy` (лимиты показов подсказок), `IconService`,
   `LinkMetadataService`, `ErrorLog`.
+- Журнал и мост: `DropHistoryService` (список недавних дропов для меню трея),
+  `ExplorerBridgeService` (пункт «Send to → Dropwheel» в проводнике).
 
 ## Как работать
 
