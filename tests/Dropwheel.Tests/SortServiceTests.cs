@@ -163,6 +163,19 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
+    public void CreatedDaysAgo_matches_by_creation_date_even_when_recently_modified()
+    {
+        var f = MakeFile("doc.pdf", written: DateTime.Now); // modified just now → young by AgeDays
+        File.SetCreationTime(f, DateTime.Now.AddDays(-40));  // but created 40 days ago → old by creation
+
+        var byCreation = Sorter(_root, Rule("Old", ConditionField.CreatedDaysAgo, CompareOp.Gt, "30"));
+        Assert.Contains(f, SortService.Plan(byCreation, new[] { f })[Path.Combine(_root, "Old")]);
+
+        var byAge = Sorter(_root, Rule("Old", ConditionField.AgeDays, CompareOp.Gt, "30"));
+        Assert.Contains(f, SortService.Plan(byAge, new[] { f })[_root]); // AgeDays sees a fresh file → no match
+    }
+
+    [Fact]
     public void NameContains_and_NameRegex_match()
     {
         var inv = MakeFile("invoice_2024.pdf");

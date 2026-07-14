@@ -29,6 +29,7 @@ public partial class TargetEditorWindow
         [ConditionField.NameRegex] = new[] { CompareOp.Matches },
         [ConditionField.SizeMb] = new[] { CompareOp.Gt, CompareOp.Lt, CompareOp.Gte, CompareOp.Lte },
         [ConditionField.AgeDays] = new[] { CompareOp.Gt, CompareOp.Lt, CompareOp.Gte, CompareOp.Lte },
+        [ConditionField.CreatedDaysAgo] = new[] { CompareOp.Gt, CompareOp.Lt, CompareOp.Gte, CompareOp.Lte },
     };
 
     private void ShowRulesEditor()
@@ -721,7 +722,8 @@ public partial class TargetEditorWindow
                 { error = $"Rule {i + 1}: a condition has an empty value."; return false; }
                 if (c.Field == ConditionField.NameRegex && !IsValidRegex(c.Value))
                 { error = $"Rule {i + 1}: invalid regular expression."; return false; }
-                if ((c.Field == ConditionField.SizeMb || c.Field == ConditionField.AgeDays)
+                if ((c.Field == ConditionField.SizeMb || c.Field == ConditionField.AgeDays
+                        || c.Field == ConditionField.CreatedDaysAgo)
                     && !double.TryParse(c.Value, System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out _))
                 { error = $"Rule {i + 1}: '{c.Value}' is not a number."; return false; }
@@ -760,6 +762,7 @@ public partial class TargetEditorWindow
         ConditionField.NameRegex => "regex",
         ConditionField.SizeMb => "size",
         ConditionField.AgeDays => "age",
+        ConditionField.CreatedDaysAgo => "created",
         _ => "",
     };
 
@@ -779,6 +782,7 @@ public partial class TargetEditorWindow
         ConditionField.NameRegex => "^IMG_\\d+",
         ConditionField.SizeMb => "10",
         ConditionField.AgeDays => "30",
+        ConditionField.CreatedDaysAgo => "30",
         _ => "",
     };
 
@@ -790,6 +794,7 @@ public partial class TargetEditorWindow
         ConditionField.NameRegex => "A .NET regular expression matched against the file name, e.g. ^IMG_\\d+",
         ConditionField.SizeMb => "A size threshold in megabytes, e.g. 10",
         ConditionField.AgeDays => "An age threshold in days since last change, e.g. 30",
+        ConditionField.CreatedDaysAgo => "An age threshold in days since the file was created, e.g. 30",
         _ => "",
     };
 }

@@ -524,6 +524,7 @@ public static class SortService
             ConditionField.NameRegex => Compiled(c.Value) is { } rx && IsMatch(rx, meta.Name, c.Value),
             ConditionField.SizeMb => MatchNumber(c.Op, meta.SizeMb, c.Value),
             ConditionField.AgeDays => MatchNumber(c.Op, meta.AgeDays, c.Value),
+            ConditionField.CreatedDaysAgo => MatchNumber(c.Op, meta.CreationAgeDays, c.Value),
             _ => false,
         };
         return c.Negate ? !hit : hit;

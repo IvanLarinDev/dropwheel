@@ -1,7 +1,8 @@
 namespace Dropwheel.Models;
 
-/// <summary>Which file property a condition inspects.</summary>
-public enum ConditionField { Extension, NameRegex, NameContains, SizeMb, AgeDays }
+/// <summary>Which file property a condition inspects. Appended values keep their numeric position so old
+/// configs (which store the field as a number) still map to the same field.</summary>
+public enum ConditionField { Extension, NameRegex, NameContains, SizeMb, AgeDays, CreatedDaysAgo }
 
 /// <summary>Which kinds of dropped item a rule is allowed to catch. Files is the default so old
 /// configs and freshly added rules keep the original files-only behaviour; a rule must opt in to
