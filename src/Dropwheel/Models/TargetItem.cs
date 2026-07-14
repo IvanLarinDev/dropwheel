@@ -25,6 +25,11 @@ public class TargetItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Emoji { get; set; }
 
+    /// <summary>Optional tile border colour as a hex string (e.g. "#4C8BF5"), for grouping targets by
+    /// colour. null/empty uses the theme's border. Invalid values are ignored at draw time.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TileColor { get; set; }
+
     public DropAction Override { get; set; } = DropAction.Inherit;
     public bool Pinned { get; set; }
 

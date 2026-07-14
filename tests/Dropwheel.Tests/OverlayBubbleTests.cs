@@ -25,4 +25,13 @@ public sealed class OverlayBubbleTests
         var group = new TargetItem { Name = "Work", Children = new() { new TargetItem { Name = "A" } } };
         Assert.Equal("Group · 1 target(s)", OverlayWindow.TileTooltip(group));
     }
+
+    [Fact]
+    public void ParseTileColor_reads_hex_and_ignores_bad_or_empty_values()
+    {
+        Assert.NotNull(OverlayWindow.ParseTileColor("#4C8BF5"));
+        Assert.Null(OverlayWindow.ParseTileColor(null));
+        Assert.Null(OverlayWindow.ParseTileColor(""));
+        Assert.Null(OverlayWindow.ParseTileColor("not a colour"));
+    }
 }

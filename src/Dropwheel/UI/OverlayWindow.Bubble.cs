@@ -54,15 +54,16 @@ public partial class OverlayWindow
                 VerticalAlignment = VerticalAlignment.Center
             };
         }
+        var themeBorder = t.IsGroup ? th.GroupBorder : t.IsSorter ? th.SorterBorder : th.TileBorder;
+        var customBorder = ParseTileColor(t.TileColor);
         var sq = new Border
         {
             Width = 64,
             Height = 64,
             CornerRadius = new CornerRadius(17),
             Background = new SolidColorBrush(th.TileBg),
-            BorderBrush = new SolidColorBrush(
-                t.IsGroup ? th.GroupBorder : t.IsSorter ? th.SorterBorder : th.TileBorder),
-            BorderThickness = new Thickness(1.2),
+            BorderBrush = new SolidColorBrush(customBorder ?? themeBorder),
+            BorderThickness = new Thickness(customBorder != null ? 2.2 : 1.2),
             Child = inner,
             Effect = new DropShadowEffect { BlurRadius = 14, ShadowDepth = 3, Opacity = 0.35 }
         };
@@ -135,6 +136,16 @@ public partial class OverlayWindow
         if (t.IsGroup)
             return t.Children!.Count > 0 ? $"Group · {t.Children.Count} target(s)" : "Group";
         return t.SourceUrl ?? t.Path;
+    }
+
+    /// <summary>A tile's custom border colour parsed from its hex string, or null when unset or invalid
+    /// (so a hand-edited config with a bad colour just falls back to the theme border, never crashes).</summary>
+    internal static Color? ParseTileColor(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex)) return null;
+        try { return (Color)ColorConverter.ConvertFromString(hex); }
+        catch (FormatException) { return null; }
+        catch (InvalidOperationException) { return null; }
     }
 
     /// <summary>A small warning mark in the tile's bottom-right corner, shown when the target's folder

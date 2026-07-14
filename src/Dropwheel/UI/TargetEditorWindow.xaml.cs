@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using Dropwheel.Models;
 using Dropwheel.Services;
 using WF = System.Windows.Forms;
@@ -11,6 +13,10 @@ public partial class TargetEditorWindow : Window
     private readonly TargetItem _target;
     private readonly TargetItem? _preselect;
     private readonly List<TargetItem?> _groupChoices = new() { null };
+    private string? _tileColor;
+
+    private static readonly string?[] TileColorChoices =
+        { null, "#E23B3B", "#F59E0B", "#EAB308", "#22C55E", "#4C8BF5", "#A855F7", "#EC4899" };
 
     public TargetEditorWindow(TargetItem t, TargetItem? preselectGroup = null)
     {
@@ -22,6 +28,8 @@ public partial class TargetEditorWindow : Window
         _preselect = preselectGroup;
         NameBox.Text = t.Name;
         EmojiBox.Text = t.Emoji ?? "";
+        _tileColor = t.TileColor;
+        BuildColorSwatches();
         GroupShortcutBox.Text = t.GroupCode ?? "";
         PathBox.Text = t.Path;
         ActionBox.SelectedIndex = (int)t.Override;
@@ -68,6 +76,43 @@ public partial class TargetEditorWindow : Window
         if (dlg.ShowDialog() == WF.DialogResult.OK) PathBox.Text = dlg.SelectedPath;
     }
 
+    /// <summary>Fills the tile-colour row with clickable swatches — one "no colour" chip plus a preset
+    /// palette. Clicking a swatch selects it (highlighted) and remembers the hex; Save writes it to the
+    /// target. Rebuilt on each click so the highlight follows the selection.</summary>
+    private void BuildColorSwatches()
+    {
+        ColorSwatches.Children.Clear();
+        foreach (var hex in TileColorChoices)
+        {
+            bool selected = string.Equals(hex ?? "", _tileColor ?? "", StringComparison.OrdinalIgnoreCase);
+            var swatch = new Border
+            {
+                Width = 26,
+                Height = 26,
+                CornerRadius = new CornerRadius(6),
+                Margin = new Thickness(0, 0, 6, 0),
+                Cursor = Cursors.Hand,
+                Background = hex == null
+                    ? Brushes.Transparent
+                    : new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
+                BorderBrush = selected ? Palettes.Accent : Palettes.Border,
+                BorderThickness = new Thickness(selected ? 2.5 : 1),
+                ToolTip = hex ?? "No colour (theme border)",
+                Child = hex == null
+                    ? new TextBlock
+                    {
+                        Text = "∅",
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    }
+                    : null,
+            };
+            var captured = hex;
+            swatch.MouseLeftButtonUp += (_, _) => { _tileColor = captured; BuildColorSwatches(); };
+            ColorSwatches.Children.Add(swatch);
+        }
+    }
+
     /// <summary>Shows a validation problem inline above the footer instead of a pop-up, so the user
     /// stays in the form. Cleared on the next save attempt.</summary>
     private void ShowEditorError(string message)
@@ -93,6 +138,7 @@ public partial class TargetEditorWindow : Window
         _target.Name = NameBox.Text.Trim();
         var emoji = EmojiBox.Text.Trim();
         _target.Emoji = emoji.Length == 0 ? null : emoji;
+        _target.TileColor = string.IsNullOrEmpty(_tileColor) ? null : _tileColor;
         if (!_target.IsGroup)
         {
             _target.Path = PathBox.Text.Trim();

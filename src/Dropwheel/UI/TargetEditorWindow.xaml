@@ -25,6 +25,8 @@
                 <TextBlock Text="Emoji (optional)"/>
                 <TextBox x:Name="EmojiBox" Margin="0,4,0,10" MaxLength="8"
                          ToolTip="Optional emoji shown on the tile instead of the file icon, e.g. 📷. Empty uses the normal icon."/>
+                <TextBlock Text="Tile colour"/>
+                <WrapPanel x:Name="ColorSwatches" Margin="0,4,0,10"/>
                 <TextBlock x:Name="GroupShortcutLabel" Text="Group shortcut (1–2 digits)"/>
                 <TextBox x:Name="GroupShortcutBox" Margin="0,4,0,10" MaxLength="2"
                          ToolTip="One or two digits. Leave empty to disable."/>
