@@ -5,6 +5,10 @@ namespace Dropwheel.Models;
 
 public enum DropAction { Inherit, Copy, Move }
 
+/// <summary>What a target does when a dropped file's name already exists at the destination: Ask (the
+/// shell's Replace/Skip dialog, the default), KeepBoth (auto "(2)"), Overwrite, or Skip.</summary>
+public enum ConflictPolicy { Ask, KeepBoth, Overwrite, Skip }
+
 public class TargetItem
 {
     public string Name { get; set; } = "";
@@ -56,6 +60,11 @@ public class TargetItem
     /// null/empty means files keep their own names.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? NameTemplate { get; set; }
+
+    /// <summary>What to do when a dropped file collides with an existing name at this target. Default Ask
+    /// keeps the shell's Replace/Skip dialog, so existing targets are unchanged until the user opts in.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public ConflictPolicy ConflictPolicy { get; set; } = ConflictPolicy.Ask;
 
     /// <summary>Extensions treated as "drop files to run it with them as arguments" targets.</summary>
     public static readonly string[] ExeExtensions =

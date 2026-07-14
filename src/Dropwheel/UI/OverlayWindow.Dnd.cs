@@ -297,20 +297,38 @@ public partial class OverlayWindow
             FileOp op;
             bool ok;
             var historyDest = dest;
+            int skipped = 0;
             if (!string.IsNullOrWhiteSpace(t.NameTemplate))
             {
                 var now = DateTime.Now;
-                var destPaths = files
-                    .Select(f => System.IO.Path.Combine(dest, RenamedFileName(t.NameTemplate!, f, now)))
-                    .ToArray();
-                op = BuildRenamedOp(act, files, dest, destPaths);
-                ok = FileOps.ExecuteTo(files.Zip(destPaths).ToList(), act);
+                var pairs = files
+                    .Select(f => (Source: f, Dest: System.IO.Path.Combine(dest, RenamedFileName(t.NameTemplate!, f, now))))
+                    .ToList();
+                if (t.ConflictPolicy == ConflictPolicy.Skip)
+                {
+                    int before = pairs.Count;
+                    pairs = pairs.Where(p => !(System.IO.File.Exists(p.Dest) || System.IO.Directory.Exists(p.Dest))).ToList();
+                    skipped = before - pairs.Count;
+                }
+                var srcs = pairs.Select(p => p.Source).ToArray();
+                var destPaths = pairs.Select(p => p.Dest).ToArray();
+                op = BuildRenamedOp(act, srcs, dest, destPaths);
+                ok = FileOps.ExecuteTo(pairs, act, policy: t.ConflictPolicy);
                 if (destPaths.Length == 1) historyDest = destPaths[0];
             }
             else
             {
-                op = BuildOpBefore(act, files, dest);
-                ok = FileOps.Execute(files, dest, act);
+                var toCopy = files;
+                if (t.ConflictPolicy == ConflictPolicy.Skip)
+                {
+                    var conflictNames = FileOps.DestinationConflicts(files, dest)
+                        .Select(System.IO.Path.GetFileName)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    toCopy = files.Where(f => !conflictNames.Contains(System.IO.Path.GetFileName(f))).ToArray();
+                    skipped = files.Length - toCopy.Length;
+                }
+                op = BuildOpBefore(act, toCopy, dest);
+                ok = FileOps.Execute(toCopy, dest, act, policy: t.ConflictPolicy);
             }
             if (ok) RememberOp(op);
             RememberDropHistory(
@@ -320,8 +338,12 @@ public partial class OverlayWindow
                 files.Length,
                 ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
                 destination: historyDest);
+            var verb = act == DropAction.Move ? "Moved" : "Copied";
+            int moved = files.Length - skipped;
             ShowToast(ok
-                ? $"{(act == DropAction.Move ? "Moved" : "Copied")}: {files.Length} item(s) → {t.Name}"
+                ? (skipped == 0 ? $"{verb}: {files.Length} item(s) → {t.Name}"
+                    : moved == 0 ? $"All {skipped} already at {t.Name} — skipped"
+                    : $"{verb}: {moved} → {t.Name}, {skipped} skipped")
                 : "Operation was not completed", ok, ok ? ToastKind.Success : ToastKind.Danger);
         }
         else if (VirtualFileService.HasVirtualFiles(e.Data))

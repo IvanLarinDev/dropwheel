@@ -41,12 +41,14 @@ public static class FileOps
     /// <summary>Copy or move files into destFolder. When silent (used by the folder watcher for
     /// auto-sort) the shell shows no progress window, no error UI and no conflict prompt. Callers
     /// that need no-overwrite behavior must preflight with DestinationConflicts first.</summary>
-    public static bool Execute(IEnumerable<string> files, string destFolder, DropAction action, bool silent = false)
+    public static bool Execute(IEnumerable<string> files, string destFolder, DropAction action,
+        bool silent = false, ConflictPolicy policy = ConflictPolicy.Ask)
     {
         var list = files.ToArray();
         if (list.Length == 0) return true; // nothing to do — don't call SHFileOperation with an empty list
         ushort flags = FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR;
         if (silent) flags |= (ushort)(FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION | FOF_RENAMEONCOLLISION);
+        else flags |= ConflictFlags(policy);
         var op = new SHFILEOPSTRUCT
         {
             wFunc = action == DropAction.Move ? FO_MOVE : FO_COPY,
@@ -60,11 +62,13 @@ public static class FileOps
     /// <summary>Copy or move each source to its own explicit destination path, so files can be renamed on
     /// the way. Uses the shell's multi-destination mode; the source and destination lists line up
     /// one-to-one. Destination folders are created without a prompt. An empty list is a no-op success.</summary>
-    public static bool ExecuteTo(IReadOnlyList<(string Source, string Dest)> pairs, DropAction action, bool silent = false)
+    public static bool ExecuteTo(IReadOnlyList<(string Source, string Dest)> pairs, DropAction action,
+        bool silent = false, ConflictPolicy policy = ConflictPolicy.Ask)
     {
         if (pairs.Count == 0) return true;
         ushort flags = (ushort)(FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR | FOF_MULTIDESTFILES);
         if (silent) flags |= (ushort)(FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION | FOF_RENAMEONCOLLISION);
+        else flags |= ConflictFlags(policy);
         var op = new SHFILEOPSTRUCT
         {
             wFunc = action == DropAction.Move ? FO_MOVE : FO_COPY,
@@ -74,6 +78,17 @@ public static class FileOps
         };
         return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
     }
+
+    /// <summary>Extra SHFileOperation flags for a conflict policy on an interactive (non-silent) drop.
+    /// Ask shows the shell's dialog; KeepBoth auto-renames to "(2)"; Overwrite replaces without asking (the
+    /// replaced file still goes to the Recycle Bin through ALLOWUNDO). Skip is handled by the caller
+    /// filtering out the colliding files, so it needs no extra flag here.</summary>
+    public static ushort ConflictFlags(ConflictPolicy policy) => policy switch
+    {
+        ConflictPolicy.KeepBoth => FOF_RENAMEONCOLLISION,
+        ConflictPolicy.Overwrite => FOF_NOCONFIRMATION,
+        _ => 0,
+    };
 
     public static bool HasDestinationCollision(IEnumerable<string> sources, string destFolder)
         => DestinationConflicts(sources, destFolder).Length > 0;

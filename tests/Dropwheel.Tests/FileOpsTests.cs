@@ -19,6 +19,24 @@ public sealed class FileOpsTests
         Assert.True(FileOps.Delete(Array.Empty<string>()));
 
     [Fact]
+    public void ConflictFlags_maps_policy_to_shell_flags()
+    {
+        Assert.Equal(0, (int)FileOps.ConflictFlags(ConflictPolicy.Ask));
+        Assert.Equal(0, (int)FileOps.ConflictFlags(ConflictPolicy.Skip)); // caller pre-filters, no shell flag
+        Assert.NotEqual(0, (int)FileOps.ConflictFlags(ConflictPolicy.KeepBoth));
+        Assert.NotEqual(0, (int)FileOps.ConflictFlags(ConflictPolicy.Overwrite));
+        Assert.NotEqual(FileOps.ConflictFlags(ConflictPolicy.KeepBoth),
+            FileOps.ConflictFlags(ConflictPolicy.Overwrite));
+    }
+
+    [Fact]
+    public void TargetItem_without_a_conflict_policy_defaults_to_ask()
+    {
+        var t = System.Text.Json.JsonSerializer.Deserialize<TargetItem>("{\"Name\":\"X\"}");
+        Assert.Equal(ConflictPolicy.Ask, t!.ConflictPolicy);
+    }
+
+    [Fact]
     public void Destination_collision_detects_existing_file_with_same_name()
     {
         var root = Path.Combine(Path.GetTempPath(), "dw_collision_" + Guid.NewGuid().ToString("N"));

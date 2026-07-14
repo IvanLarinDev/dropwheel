@@ -334,6 +334,7 @@ public static class TargetStore
                 continue;
 
             changed |= RemoveInvalidEnum<DropAction>(targetObject, nameof(TargetItem.Override));
+            changed |= RemoveInvalidEnum<ConflictPolicy>(targetObject, nameof(TargetItem.ConflictPolicy));
 
             if (targetObject[nameof(TargetItem.Rules)] is JsonArray rules)
                 changed |= SanitizeRules(rules);

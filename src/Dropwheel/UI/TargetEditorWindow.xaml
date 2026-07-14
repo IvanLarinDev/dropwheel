@@ -41,6 +41,13 @@
                          ToolTip="Optional ${name} template to rename files copied or moved here — the same tokens as sorter destinations, e.g. archive-${date}-${stem}. The original extension is kept. Empty keeps the file names."/>
                 <TextBlock Text="e.g. archive-${date}-${stem} · ${slug} ${year} ${month} ${ext}" FontSize="11"
                            Opacity="0.7" Margin="0,0,0,10"/>
+                <TextBlock Text="On name conflict"/>
+                <ComboBox x:Name="ConflictBox" Margin="0,4,0,10">
+                    <ComboBoxItem Content="Ask (system dialog)"/>
+                    <ComboBoxItem Content="Keep both (add a number)"/>
+                    <ComboBoxItem Content="Overwrite"/>
+                    <ComboBoxItem Content="Skip"/>
+                </ComboBox>
                 <Expander x:Name="LaunchPanel" Header="Launch options for this target"
                           Margin="0,0,0,10" Visibility="Collapsed">
                     <StackPanel Margin="0,8,0,0">

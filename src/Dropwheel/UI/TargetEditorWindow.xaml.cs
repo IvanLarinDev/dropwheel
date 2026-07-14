@@ -25,6 +25,7 @@ public partial class TargetEditorWindow : Window
         PathBox.Text = t.Path;
         ActionBox.SelectedIndex = (int)t.Override;
         NameTemplateBox.Text = t.NameTemplate ?? "";
+        ConflictBox.SelectedIndex = (int)t.ConflictPolicy;
         PinBox.IsChecked = t.Pinned;
         LoadLaunchOptions(t.Launch);
 
@@ -95,6 +96,7 @@ public partial class TargetEditorWindow : Window
             _target.Override = (DropAction)ActionBox.SelectedIndex;
             var nameTemplate = NameTemplateBox.Text.Trim();
             _target.NameTemplate = nameTemplate.Length == 0 ? null : nameTemplate;
+            _target.ConflictPolicy = (ConflictPolicy)Math.Max(0, ConflictBox.SelectedIndex);
             if (!TrySaveLaunchOptions()) return;
             TargetStore.MoveToGroup(_target, _groupChoices[Math.Max(0, GroupCombo.SelectedIndex)]);
             if (_rulesMode)
