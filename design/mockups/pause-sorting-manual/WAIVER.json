@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "pause-sorting-manual",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Making the tray 'Pause sorting' switch also skip the rules for a manual drop on a sorter (not just the background watcher) is control-flow, not a redesign. The only UI-file change is one condition in OverlayWindow.Dnd.cs — the file-drop classifier treats a sorter as an ordinary folder while DropDispatch.SortingPaused is on, so files land in the folder undistributed. The rest is the DropDispatch flag and the renamed tray item. No wheel geometry, colours, animations, layout or new screen were touched. Nothing visual for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
