@@ -130,14 +130,15 @@ public static class SortService
     /// <summary>Placeholder names the router fills itself, independent of any Name regex group:
     /// drop-time date and time (date, year, month, day, time, week, quarter), the file's own last-write
     /// date (the f-prefixed twins), the file's creation date (the c-prefixed twins), file-name pieces
-    /// (ext, stem, initial), and a coarse size bucket word (sizebucket). Reserved — a Name regex group
-    /// that happens to share one of these names is shadowed by the built-in.</summary>
+    /// (ext, stem, initial), and a coarse size bucket word (size, whose :spec names the buckets).
+    /// Reserved — a Name regex group that happens to share one of these names is shadowed by the
+    /// built-in.</summary>
     public static readonly IReadOnlyCollection<string> BuiltinTokens = new HashSet<string>(StringComparer.Ordinal)
     {
         "date", "year", "month", "day", "time", "week", "quarter",
         "fdate", "fyear", "fmonth", "fday", "fweek", "fquarter",
         "cdate", "cyear", "cmonth", "cday", "cweek", "cquarter",
-        "ext", "stem", "initial", "sizebucket",
+        "ext", "stem", "initial", "size",
     };
 
     /// <summary>Default .NET format for each date-derived built-in token, used when the placeholder
@@ -206,7 +207,7 @@ public static class SortService
             case "ext": return Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
             case "stem": return Path.GetFileNameWithoutExtension(filePath);
             case "initial": return Initial(Path.GetFileName(filePath));
-            case "sizebucket": return SizeBucket(filePath);
+            case "size": return SizeBucket(filePath, format);
         }
 
         // A leading f/c switches the clock to the item's own last-write or creation time; anything else
@@ -255,26 +256,67 @@ public static class SortService
         return "#";
     }
 
-    /// <summary>Coarse size-bucket word for a size in megabytes: tiny below 1, small below 10, medium
-    /// below 100, large below 1000, huge at or above 1000. Public so the editor can show the buckets and
-    /// tests can check the thresholds without writing large files to disk.</summary>
-    public static string SizeBucketOf(double megabytes) => megabytes switch
+    /// <summary>Default buckets a bare ${size} token uses: tiny below 1 MB, small below 10, medium below
+    /// 100, large below 1000, huge for the rest. A ${size:spec} overrides them.</summary>
+    private static readonly IReadOnlyList<(string Name, double? Max)> DefaultSizeBuckets = new (string, double?)[]
     {
-        < 1 => "tiny",
-        < 10 => "small",
-        < 100 => "medium",
-        < 1000 => "large",
-        _ => "huge",
+        ("tiny", 1), ("small", 10), ("medium", 100), ("large", 1000), ("huge", null),
     };
 
+    /// <summary>The bucket word for a size in megabytes against a spec: the first bucket whose upper
+    /// bound the size is below, or the bound-less catch-all bucket. Null/empty spec uses the defaults.
+    /// Returns null when the spec is invalid or every bucket has a bound the size exceeds, so the caller
+    /// falls back to the sorter root. Public so the editor and tests can map a size without touching
+    /// disk.</summary>
+    public static string? SizeBucketOf(double megabytes, string? spec = null)
+    {
+        var buckets = string.IsNullOrWhiteSpace(spec) ? DefaultSizeBuckets : ParseSizeSpec(spec);
+        if (buckets is null) return null;
+        foreach (var (name, max) in buckets)
+            if (max is null || megabytes < max) return name;
+        return null;
+    }
+
     /// <summary>The size bucket of a file on disk, or null when the path is not an existing file (a
-    /// folder or a missing path has no meaningful size), so the item falls back to the sorter root
-    /// rather than a misleading bucket. Megabytes are computed the same way the SizeMb condition reads
-    /// them, so bucket boundaries and size rules agree.</summary>
-    private static string? SizeBucket(string filePath)
+    /// folder or a missing path has no meaningful size) or the spec is invalid, so the item falls back
+    /// to the sorter root. Megabytes are computed the same way the SizeMb condition reads them, so bucket
+    /// boundaries and size rules agree.</summary>
+    private static string? SizeBucket(string filePath, string? spec)
     {
         if (!File.Exists(filePath)) return null;
-        return SizeBucketOf(new FileInfo(filePath).Length / (1024.0 * 1024.0));
+        return SizeBucketOf(new FileInfo(filePath).Length / (1024.0 * 1024.0), spec);
+    }
+
+    /// <summary>Parses a ${size} spec — comma-separated "name limit" buckets in strictly ascending order
+    /// of limit, the last optionally with no limit as the catch-all, e.g. "tiny 0.5, small 10, huge".
+    /// The limit is an upper bound in megabytes (a file is in the first bucket it falls below). Returns
+    /// null when the spec is malformed: an empty name, a missing/non-positive number on a non-final
+    /// bucket, limits not strictly ascending, or a non-final bucket without a limit.</summary>
+    public static IReadOnlyList<(string Name, double? Max)>? ParseSizeSpec(string spec)
+    {
+        var parts = spec.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return null;
+        var buckets = new List<(string Name, double? Max)>();
+        double prev = double.NegativeInfinity;
+        for (int i = 0; i < parts.Length; i++)
+        {
+            var bits = parts[i].Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (bits.Length is 0 or > 2) return null;
+            bool last = i == parts.Length - 1;
+            if (bits.Length == 1)
+            {
+                if (!last) return null; // only the final bucket may drop its limit
+                buckets.Add((bits[0], null));
+            }
+            else
+            {
+                if (!double.TryParse(bits[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var max)
+                    || max <= 0 || max <= prev) return null;
+                prev = max;
+                buckets.Add((bits[0], max));
+            }
+        }
+        return buckets;
     }
 
     /// <summary>True when the destination folder is the source folder itself or lies inside it. Moving a
@@ -336,8 +378,8 @@ public static class SortService
     }
 
     /// <summary>The regex fragment a single ${token} can expand to inside a folder name. Date tokens
-    /// follow their format string; week/quarter/initial/sizebucket have fixed shapes; ext/stem and
-    /// Name-regex groups become "any run of name characters".</summary>
+    /// follow their format string; week/quarter/initial have fixed shapes; size becomes the alternation
+    /// of its bucket names; ext/stem and Name-regex groups become "any run of name characters".</summary>
     private static string TokenShape(string name, string? format)
     {
         if (!BuiltinTokens.Contains(name)) return "[^\\\\/]+"; // a Name-regex group capture
@@ -348,9 +390,18 @@ public static class SortService
             "week" => "\\d{2}",
             "quarter" => "Q[1-4]",
             "initial" => "[^\\\\/]",
-            "sizebucket" => "(?:tiny|small|medium|large|huge)",
+            "size" => SizeShape(format),
             _ => "[^\\\\/]+", // ext, stem
         };
+    }
+
+    /// <summary>The alternation of a ${size} spec's bucket names, so a watched sorter recognises its own
+    /// size folders. Falls back to "any name run" when the spec is empty or invalid.</summary>
+    private static string SizeShape(string? format)
+    {
+        var buckets = string.IsNullOrWhiteSpace(format) ? DefaultSizeBuckets : ParseSizeSpec(format);
+        if (buckets is null || buckets.Count == 0) return "[^\\\\/]+";
+        return "(?:" + string.Join("|", buckets.Select(b => Regex.Escape(b.Name))) + ")";
     }
 
     /// <summary>Turns a .NET date format string into a loose regex: runs of numeric specifiers become
@@ -413,10 +464,20 @@ public static class SortService
             .Select(m => (m.Groups[1].Value, m.Groups[2].Success ? m.Groups[2].Value : (string?)null))
             .ToList();
 
-    /// <summary>Whether a built-in token applies a :format string. Only the plain date/time tokens do;
-    /// week, quarter, ext, stem and initial ignore any format. Used by the editor to decide which
-    /// tokens to format-check.</summary>
-    public static bool TokenAcceptsFormat(string name) => DateTokenFormat.ContainsKey(name);
+    /// <summary>Whether a built-in token carries a :format / :spec the editor should validate: the plain
+    /// date/time tokens (a .NET format) and size (a bucket spec). week, quarter, ext, stem and initial
+    /// ignore any format.</summary>
+    public static bool TokenTakesFormat(string name) => DateTokenFormat.ContainsKey(name) || name == "size";
+
+    /// <summary>True when a token's format/spec is one the router can apply: a valid .NET date format for
+    /// a date token, or a well-formed bucket spec for size. Tokens that ignore format are always valid.
+    /// Used by the editor to block Save on ${date:garbage} or a malformed ${size:…}.</summary>
+    public static bool IsValidTokenFormat(string name, string? format)
+    {
+        if (name == "size") return string.IsNullOrEmpty(format) || ParseSizeSpec(format) is not null;
+        if (DateTokenFormat.ContainsKey(name)) return IsValidDateFormat(format);
+        return true;
+    }
 
     /// <summary>True when a date token's format string is one .NET can apply. An empty format uses the
     /// token default and is always valid. Used by the editor to block Save on ${date:garbage}.</summary>

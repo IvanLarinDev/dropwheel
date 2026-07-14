@@ -437,16 +437,27 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
-    public void TokenAcceptsFormat_only_for_plain_date_tokens()
+    public void TokenTakesFormat_for_date_tokens_and_size()
     {
-        Assert.True(SortService.TokenAcceptsFormat("date"));
-        Assert.True(SortService.TokenAcceptsFormat("fmonth"));
-        Assert.True(SortService.TokenAcceptsFormat("cmonth"));
-        Assert.False(SortService.TokenAcceptsFormat("week"));
-        Assert.False(SortService.TokenAcceptsFormat("quarter"));
-        Assert.False(SortService.TokenAcceptsFormat("initial"));
-        Assert.False(SortService.TokenAcceptsFormat("ext"));
-        Assert.False(SortService.TokenAcceptsFormat("sizebucket"));
+        Assert.True(SortService.TokenTakesFormat("date"));
+        Assert.True(SortService.TokenTakesFormat("fmonth"));
+        Assert.True(SortService.TokenTakesFormat("cmonth"));
+        Assert.True(SortService.TokenTakesFormat("size"));
+        Assert.False(SortService.TokenTakesFormat("week"));
+        Assert.False(SortService.TokenTakesFormat("quarter"));
+        Assert.False(SortService.TokenTakesFormat("initial"));
+        Assert.False(SortService.TokenTakesFormat("ext"));
+    }
+
+    [Fact]
+    public void IsValidTokenFormat_checks_date_formats_and_size_specs()
+    {
+        Assert.True(SortService.IsValidTokenFormat("date", "dd-MM-yy"));
+        Assert.False(SortService.IsValidTokenFormat("date", "%"));
+        Assert.True(SortService.IsValidTokenFormat("size", null));           // bare ${size}
+        Assert.True(SortService.IsValidTokenFormat("size", "tiny 1, huge"));
+        Assert.False(SortService.IsValidTokenFormat("size", "tiny 10, small 5"));
+        Assert.True(SortService.IsValidTokenFormat("ext", "whatever"));      // ignored
     }
 
     [Fact]
@@ -480,7 +491,7 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
-    public void SizeBucketOf_maps_megabytes_to_bucket_words()
+    public void SizeBucketOf_uses_the_default_buckets_without_a_spec()
     {
         Assert.Equal("tiny", SortService.SizeBucketOf(0));
         Assert.Equal("tiny", SortService.SizeBucketOf(0.5));
@@ -495,30 +506,78 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
-    public void Sizebucket_token_routes_a_file_by_its_size_on_disk()
+    public void SizeBucketOf_honours_a_custom_spec()
+    {
+        const string spec = "tiny 0.5, small 10, medium 100, large 1000, huge";
+        Assert.Equal("tiny", SortService.SizeBucketOf(0.2, spec));
+        Assert.Equal("small", SortService.SizeBucketOf(0.5, spec));  // 0.5 is not below 0.5 → next bucket
+        Assert.Equal("small", SortService.SizeBucketOf(9, spec));
+        Assert.Equal("large", SortService.SizeBucketOf(500, spec));
+        Assert.Equal("huge", SortService.SizeBucketOf(5000, spec));  // bound-less catch-all
+    }
+
+    [Fact]
+    public void SizeBucketOf_returns_null_when_no_bucket_catches_the_size()
+    {
+        // No bound-less catch-all and the size exceeds every limit.
+        Assert.Null(SortService.SizeBucketOf(50, "tiny 1, small 10"));
+    }
+
+    [Fact]
+    public void ParseSizeSpec_rejects_malformed_specs()
+    {
+        Assert.NotNull(SortService.ParseSizeSpec("tiny 0.5, small 10, huge"));
+        Assert.Null(SortService.ParseSizeSpec(""));                    // empty
+        Assert.Null(SortService.ParseSizeSpec("tiny, small 10"));      // non-final bucket without a limit
+        Assert.Null(SortService.ParseSizeSpec("tiny 10, small 5"));    // limits not ascending
+        Assert.Null(SortService.ParseSizeSpec("tiny 0"));              // non-positive limit
+        Assert.Null(SortService.ParseSizeSpec("tiny x, small 10"));    // non-numeric limit
+        Assert.Null(SortService.ParseSizeSpec("tiny 1 2, small 10"));  // too many tokens in a bucket
+    }
+
+    [Fact]
+    public void Size_token_routes_a_file_by_its_size_on_disk()
     {
         var tiny = MakeFile("icon.png", bytes: 40 * 1024);          // 40 KB → tiny
         var small = MakeFile("clip.mp4", bytes: 3L * 1024 * 1024);  // 3 MB → small
-        var t = Sorter(_root, new SortRule { Dest = "by-size\\${sizebucket}" }); // catch-all
+        var t = Sorter(_root, new SortRule { Dest = "by-size\\${size}" }); // catch-all
         var plan = SortService.Plan(t, new[] { tiny, small });
         Assert.Contains(tiny, plan[Path.Combine(_root, "by-size", "tiny")]);
         Assert.Contains(small, plan[Path.Combine(_root, "by-size", "small")]);
     }
 
     [Fact]
-    public void Sizebucket_token_on_a_missing_file_falls_back_to_root()
+    public void Size_token_uses_a_custom_spec_from_the_destination()
     {
-        _ = SortService.ExpandTemplate(new SortRule { Dest = "${sizebucket}" }, "no-such-file.txt",
+        var f = MakeFile("clip.mp4", bytes: 3L * 1024 * 1024);      // 3 MB
+        var t = Sorter(_root, new SortRule { Dest = "${size: wee 1, big 100, huge}" });
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[Path.Combine(_root, "big")]);       // 1 <= 3 < 100 → big
+    }
+
+    [Fact]
+    public void Size_token_on_a_missing_file_falls_back_to_root()
+    {
+        _ = SortService.ExpandTemplate(new SortRule { Dest = "${size}" }, "no-such-file.txt",
             new DateTime(2026, 7, 13), out bool ok);
         Assert.False(ok);
     }
 
     [Fact]
-    public void Sizebucket_output_folder_is_left_in_place_when_sorting_folders()
+    public void Size_token_with_an_invalid_spec_falls_back_to_root()
+    {
+        var f = MakeFile("clip.mp4", bytes: 3L * 1024 * 1024);
+        var t = Sorter(_root, new SortRule { Dest = "${size: tiny 10, small 5}" }); // descending → invalid
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[_root]);
+    }
+
+    [Fact]
+    public void Size_output_folder_is_left_in_place_when_sorting_folders()
     {
         // A watched sorter routing by size must not re-file its own bucket folders.
         var bucket = MakeDir(Path.Combine("by-size", "small"));
-        var t = Sorter(_root, new SortRule { Dest = "by-size\\${sizebucket}", Scope = RuleScope.Both });
+        var t = Sorter(_root, new SortRule { Dest = "by-size\\${size}", Scope = RuleScope.Both });
         var moves = SortService.MovePlan(t, new[] { bucket });
         Assert.Empty(moves);
     }

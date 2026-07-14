@@ -345,7 +345,7 @@ public partial class TargetEditorWindow
         _tokenHint.Visibility = Visibility.Visible;
         var missing = used.Where(t => !available.Contains(t) && !SortService.BuiltinTokens.Contains(t)).ToArray();
         var badFormats = SortService.ParseTokens(rule.Dest)
-            .Where(p => SortService.TokenAcceptsFormat(p.Name) && !SortService.IsValidDateFormat(p.Format))
+            .Where(p => SortService.TokenTakesFormat(p.Name) && !SortService.IsValidTokenFormat(p.Name, p.Format))
             .Select(p => "${" + p.Name + ":" + p.Format + "}")
             .Distinct()
             .ToArray();
@@ -487,6 +487,15 @@ public partial class TargetEditorWindow
         ("By file's modified month  —  ${fyear}\\${fmonth}", "${fyear}\\${fmonth}"),
     };
 
+    /// <summary>Ready catch-all rules that route a file into a size-bucket folder. A bare ${size} uses the
+    /// built-in buckets; the custom entry seeds the editable spec syntax "name limit, …, name" so the
+    /// user can rename buckets and move the megabyte boundaries.</summary>
+    private static readonly (string Label, string Dest)[] SizePresets =
+    {
+        ("Default buckets  —  ${size}", "by-size\\${size}"),
+        ("Custom buckets  —  ${size: tiny 0.5, …}", "by-size\\${size: tiny 0.5, small 10, medium 100, large 1000, huge}"),
+    };
+
     /// <summary>Opens the presets menu with two groups: "By extension" holds the file-type categories
     /// from config (plus "Add all categories"), and "Dated folders" offers destinations built from the
     /// built-in date tokens.</summary>
@@ -527,6 +536,16 @@ public partial class TargetEditorWindow
             dated.Items.Add(item);
         }
         menu.Items.Add(dated);
+
+        var bySize = new MenuItem { Header = "By size" };
+        foreach (var (label, dest) in SizePresets)
+        {
+            var item = new MenuItem { Header = label };
+            var captured = dest;
+            item.Click += (_, _) => AddSizeRule(captured);
+            bySize.Items.Add(item);
+        }
+        menu.Items.Add(bySize);
         menu.IsOpen = true;
     }
 
@@ -535,6 +554,16 @@ public partial class TargetEditorWindow
     private void AddDatedRule(string dest)
     {
         _rules.Add(new SortRule { Dest = dest, Scope = RuleScope.Both });
+        _selected = _rules.Count - 1;
+        RebuildMaster();
+        RebuildDetail();
+    }
+
+    /// <summary>Appends a catch-all rule that routes a file into a size-bucket folder. Scope stays Files:
+    /// a folder has no meaningful size, so the size token would send it to the root anyway.</summary>
+    private void AddSizeRule(string dest)
+    {
+        _rules.Add(new SortRule { Dest = dest, Scope = RuleScope.Files });
         _selected = _rules.Count - 1;
         RebuildMaster();
         RebuildDetail();
@@ -664,8 +693,13 @@ public partial class TargetEditorWindow
             {
                 if (!available.Contains(name) && !SortService.BuiltinTokens.Contains(name))
                 { error = $"Rule {i + 1}: destination uses ${{{name}}} but no Name regex has a (?<{name}>…) group."; return false; }
-                if (SortService.TokenAcceptsFormat(name) && !SortService.IsValidDateFormat(format))
-                { error = $"Rule {i + 1}: '{format}' is not a valid date format for ${{{name}}}."; return false; }
+                if (SortService.TokenTakesFormat(name) && !SortService.IsValidTokenFormat(name, format))
+                {
+                    error = name == "size"
+                        ? $"Rule {i + 1}: '{format}' is not a valid size spec — use \"name limit, …, name\" with rising limits, e.g. \"tiny 0.5, small 10, huge\"."
+                        : $"Rule {i + 1}: '{format}' is not a valid date format for ${{{name}}}.";
+                    return false;
+                }
             }
         }
         error = "";
