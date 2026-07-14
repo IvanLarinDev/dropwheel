@@ -84,6 +84,7 @@ public partial class SettingsWindow : Window
         GroupShortcutDelayBox.Text = c.GroupShortcutDelayMs.ToString();
         DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
+        TextNameBox.Text = c.TextFileNameTemplate;
 
         foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox })
             box.TextChanged += (_, _) => QueueValidation();
@@ -316,6 +317,7 @@ public partial class SettingsWindow : Window
         if (hk.Length > 0 && HotkeyService.TryNormalize(hk, out var normalizedHotkey))
             c.Hotkey = normalizedHotkey;
         c.DeduplicateTargets = DeduplicateBox.IsChecked == true;
+        c.TextFileNameTemplate = TextNameBox.Text.Trim();
         TargetStore.Save();
         try { StartupService.SetEnabled(AutostartBox.IsChecked == true); }
         catch (Exception ex)

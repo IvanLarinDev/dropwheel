@@ -139,6 +139,42 @@ public sealed class TextDropServiceTests : IDisposable
         Assert.Equal("directory collision", File.ReadAllText(path));
     }
 
+    [Fact]
+    public void BuildName_keeps_the_classic_name_when_the_template_is_empty()
+    {
+        Assert.Equal("text_2026-07-06_23-15-04.txt", TextDropService.BuildName("", When, "hi", "txt"));
+        Assert.Equal("text_2026-07-06_23-15-04.md", TextDropService.BuildName(null, When, "hi", "md"));
+    }
+
+    [Fact]
+    public void BuildName_expands_date_and_slug_tokens()
+    {
+        var name = TextDropService.BuildName("{slug}_{date}", When, "Review notes\nsecond line", "md");
+        Assert.Equal("Review notes_2026-07-06.md", name);
+    }
+
+    [Fact]
+    public void BuildName_sanitizes_illegal_characters_in_the_slug()
+    {
+        var name = TextDropService.BuildName("{slug}", When, "a/b:c*d", "txt");
+        Assert.Equal("abcd.txt", name);
+    }
+
+    [Fact]
+    public void BuildName_falls_back_when_the_expanded_name_is_empty()
+    {
+        var name = TextDropService.BuildName("{slug}", When, "   \n  ", "txt");
+        Assert.Equal("text_2026-07-06_23-15-04.txt", name);
+    }
+
+    [Fact]
+    public void Save_uses_the_template_for_the_file_name()
+    {
+        var path = TextDropService.Save("Title line\nbody", _root, When, "{slug}");
+        Assert.Equal("Title line.txt", Path.GetFileName(path));
+        Assert.Equal("Title line\nbody", File.ReadAllText(path));
+    }
+
     private sealed class TestDataObject(string format, object? value = null) : System.Windows.IDataObject
     {
         public object? GetData(string requestedFormat) =>

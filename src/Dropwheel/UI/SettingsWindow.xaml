@@ -156,6 +156,11 @@
 
                     <StackPanel x:Name="SystemPanel" Visibility="Collapsed">
                         <CheckBox x:Name="AutostartBox" Content="Start with Windows" Margin="0,2,0,4"/>
+                        <TextBlock Text="Saved text file name (empty = text_&lt;date&gt;)" Margin="0,12,0,0"/>
+                        <TextBox x:Name="TextNameBox" Margin="0,4,0,0"
+                                 ToolTip="Template for dropped-text file names, without extension. Tokens: {slug} (first line), {date} {time} {year} {month} {day}. Empty keeps text_yyyy-MM-dd_HH-mm-ss."/>
+                        <TextBlock Text="Tokens: {slug} {date} {time} {year} {month} {day}" FontSize="11"
+                                   Opacity="0.7" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>

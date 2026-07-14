@@ -341,7 +341,7 @@ public partial class OverlayWindow
         }
         else if (TextDropService.HasText(e.Data))
         {
-            var saved = TextDropService.SaveFrom(e.Data, dest, DateTime.Now);
+            var saved = TextDropService.SaveFrom(e.Data, dest, DateTime.Now, TargetStore.Config.TextFileNameTemplate);
             if (saved is { } path)
             {
                 if (t.IsSorter) SortSavedVirtuals(t, new[] { path });

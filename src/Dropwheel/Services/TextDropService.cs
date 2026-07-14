@@ -42,22 +42,64 @@ public static class TextDropService
         catch (Exception ex) { return $"<formats unavailable: {ex.GetType().Name}>"; }
     }
 
-    /// <summary>Saves dragged text into the folder, or null when the drop carries no text.</summary>
-    public static string? SaveFrom(IDataObject data, string folder, DateTime now)
+    /// <summary>Saves dragged text into the folder, or null when the drop carries no text. An optional
+    /// name template shapes the file name; null or empty keeps the classic text_&lt;date&gt; name.</summary>
+    public static string? SaveFrom(IDataObject data, string folder, DateTime now, string? nameTemplate = null)
     {
         var text = GetText(data);
-        return string.IsNullOrEmpty(text) ? null : Save(text, folder, now);
+        return string.IsNullOrEmpty(text) ? null : Save(text, folder, now, nameTemplate);
     }
 
-    /// <summary>Writes UTF-8 text into "text_yyyy-MM-dd_HH-mm-ss.&lt;ext&gt;", avoiding name
-    /// collisions with a "(2)" suffix. Returns the created path.</summary>
-    public static string Save(string text, string folder, DateTime now)
+    /// <summary>Writes UTF-8 text into the folder and returns the created path, avoiding name collisions
+    /// with a "(2)" suffix. The name comes from <paramref name="nameTemplate"/> (tokens {date} {time}
+    /// {year} {month} {day} {slug}); a null/empty template uses "text_yyyy-MM-dd_HH-mm-ss".</summary>
+    public static string Save(string text, string folder, DateTime now, string? nameTemplate = null)
     {
         Directory.CreateDirectory(folder);
-        var name = $"text_{now:yyyy-MM-dd_HH-mm-ss}.{ExtensionFor(text)}";
+        var name = BuildName(nameTemplate, now, text, ExtensionFor(text));
         var path = Unique(folder, name);
         File.WriteAllText(path, text, new UTF8Encoding(false));
         return path;
+    }
+
+    private static readonly Regex NameTokenRx = new(@"\{(\w+)\}", RegexOptions.Compiled);
+
+    /// <summary>Builds the file name (stem + extension) from a template. Unknown tokens are left as-is;
+    /// if the expanded stem is empty after sanitizing, it falls back to the classic dated name so a drop
+    /// never lands on a nameless file.</summary>
+    public static string BuildName(string? nameTemplate, DateTime now, string text, string ext)
+    {
+        var fallback = $"text_{now:yyyy-MM-dd_HH-mm-ss}";
+        if (string.IsNullOrWhiteSpace(nameTemplate)) return fallback + "." + ext;
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["date"] = now.ToString("yyyy-MM-dd"),
+            ["time"] = now.ToString("HH-mm-ss"),
+            ["year"] = now.ToString("yyyy"),
+            ["month"] = now.ToString("MM"),
+            ["day"] = now.ToString("dd"),
+            ["slug"] = Slug(text),
+        };
+        var stem = NameTokenRx.Replace(nameTemplate, m => map.TryGetValue(m.Groups[1].Value, out var v) ? v : m.Value);
+        stem = SanitizeName(stem);
+        return (stem.Length > 0 ? stem : fallback) + "." + ext;
+    }
+
+    /// <summary>A short, file-name-safe slug from the first non-blank line of the text, for {slug}.
+    /// Empty when the text has no usable line.</summary>
+    private static string Slug(string text)
+    {
+        var line = text.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? "";
+        line = SanitizeName(line);
+        return line.Length > 40 ? line[..40].Trim() : line;
+    }
+
+    /// <summary>Strips characters illegal in a file name (plus trailing dots and spaces Windows forbids).</summary>
+    private static string SanitizeName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var chars = value.Where(ch => Array.IndexOf(invalid, ch) < 0).ToArray();
+        return new string(chars).Trim().TrimEnd('.', ' ');
     }
 
     public static string ExtensionFor(string text) => LooksLikeMarkdown(text) ? "md" : "txt";
