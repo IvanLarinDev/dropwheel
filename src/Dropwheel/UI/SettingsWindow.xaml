@@ -165,6 +165,14 @@
                         <CheckBox x:Name="CopyDestBox" Content="Copy destination path to clipboard after a drop"
                                   Margin="0,14,0,4"
                                   ToolTip="After a successful drop, put the destination path on the clipboard so you can paste it straight away. The created file for a single saved file, or the destination folder otherwise."/>
+                        <TextBlock Text="Toast duration, seconds (error/undo toasts last twice as long)" Margin="0,14,0,0"/>
+                        <TextBox x:Name="ToastSecondsBox" Margin="0,4,0,0"
+                                 ToolTip="How long a toast stays up before fading. 1–60. Hovering it pauses the timer."/>
+                        <TextBlock x:Name="ToastSecondsError" Text="Enter a whole number 1–60" FontSize="11"
+                                   Foreground="{DynamicResource DwDanger}" Visibility="Collapsed" Margin="0,3,0,0"/>
+                        <CheckBox x:Name="ToastSoundBox" Content="Play a sound for warning and error toasts"
+                                  Margin="0,10,0,4"
+                                  ToolTip="A short system sound on Warning and Danger toasts only. Routine drops stay silent."/>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>

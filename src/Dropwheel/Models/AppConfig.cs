@@ -67,4 +67,11 @@ public class AppConfig
     /// otherwise. Off by default.</summary>
     public bool CopyDestinationToClipboard { get; set; }
 
+    /// <summary>Base seconds a toast stays up; a Danger or undoable toast lasts twice as long. Clamped to
+    /// a sane range on use. Default 4.</summary>
+    public int ToastSeconds { get; set; } = 4;
+
+    /// <summary>Play a short system sound for Warning and Danger toasts. Off by default.</summary>
+    public bool ToastSound { get; set; }
+
 }

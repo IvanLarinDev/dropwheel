@@ -51,4 +51,14 @@ public sealed class OverlayBubbleTests
         Assert.Equal("Sorted: 5 item(s) → Video", OverlayWindow.SortedToastText(5, "Video", 1));
         Assert.Equal("Sorted: 2 item(s) → Video", OverlayWindow.SortedToastText(2, "Video", 0));
     }
+
+    [Fact]
+    public void ToastSecondsFor_doubles_for_danger_or_undo_and_clamps_the_base()
+    {
+        Assert.Equal(5, ToastHost.ToastSecondsFor(5, ToastKind.Info, false));
+        Assert.Equal(10, ToastHost.ToastSecondsFor(5, ToastKind.Danger, false));
+        Assert.Equal(10, ToastHost.ToastSecondsFor(5, ToastKind.Success, undoable: true));
+        Assert.Equal(60, ToastHost.ToastSecondsFor(999, ToastKind.Info, false)); // clamped high
+        Assert.Equal(1, ToastHost.ToastSecondsFor(0, ToastKind.Info, false));     // clamped low
+    }
 }

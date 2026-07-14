@@ -1,3 +1,4 @@
+using System.Media;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -5,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Threading;
+using Dropwheel.Services;
 
 namespace Dropwheel.UI;
 
@@ -19,6 +21,19 @@ public partial class ToastHost : UserControl
 {
     private readonly DispatcherTimer _timer;
     private Action? _undo;
+    private int _currentSeconds = 4;
+
+    /// <summary>Seconds this toast should stay up, from the configured base.</summary>
+    private static int ToastSeconds(ToastKind kind, bool undoable) =>
+        ToastSecondsFor(TargetStore.Config.ToastSeconds, kind, undoable);
+
+    /// <summary>The base seconds (clamped to 1–60) doubled for a Danger or undoable toast so it isn't
+    /// missed. Pure, so the timing rule can be tested without the global config.</summary>
+    internal static int ToastSecondsFor(int baseSeconds, ToastKind kind, bool undoable)
+    {
+        int clamped = Math.Clamp(baseSeconds, 1, 60);
+        return kind == ToastKind.Danger || undoable ? clamped * 2 : clamped;
+    }
 
     public ToastHost()
     {
@@ -50,7 +65,21 @@ public partial class ToastHost : UserControl
         var peer = UIElementAutomationPeer.FromElement(this)
                    ?? UIElementAutomationPeer.CreatePeerForElement(this);
         peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
-        Restart(kind == ToastKind.Danger || undo != null ? 8 : 4);
+        PlaySound(kind);
+        _currentSeconds = ToastSeconds(kind, undo != null);
+        Restart(_currentSeconds);
+    }
+
+    /// <summary>Plays a short system sound for a Warning or Danger toast when the option is on. Info and
+    /// Success stay silent so routine drops don't chirp.</summary>
+    private static void PlaySound(ToastKind kind)
+    {
+        if (!TargetStore.Config.ToastSound) return;
+        switch (kind)
+        {
+            case ToastKind.Danger: SystemSounds.Hand.Play(); break;
+            case ToastKind.Warning: SystemSounds.Exclamation.Play(); break;
+        }
     }
 
     /// <summary>Hides the toast and forgets any pending undo.</summary>
@@ -92,6 +121,7 @@ public partial class ToastHost : UserControl
 
     private void OnMouseLeave(object sender, MouseEventArgs e)
     {
-        if (Visibility == Visibility.Visible) Restart(4);
+        // Restart with this toast's own duration, not a hard 4s, so a long (Danger/undo) toast keeps it.
+        if (Visibility == Visibility.Visible) Restart(_currentSeconds);
     }
 }

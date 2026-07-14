@@ -86,9 +86,11 @@ public partial class SettingsWindow : Window
         AutostartBox.IsChecked = StartupService.IsEnabled;
         TextNameBox.Text = c.TextFileNameTemplate;
         CopyDestBox.IsChecked = c.CopyDestinationToClipboard;
+        ToastSecondsBox.Text = c.ToastSeconds.ToString();
+        ToastSoundBox.IsChecked = c.ToastSound;
         BuildTextNameChips();
 
-        foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox })
+        foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox, ToastSecondsBox })
             box.TextChanged += (_, _) => QueueValidation();
         HotkeyBox.TextChanged += OnHotkeyTextChanged;
         HotkeyBox.PreviewKeyDown += OnHotkeyBoxPreviewKeyDown;
@@ -151,11 +153,12 @@ public partial class SettingsWindow : Window
         bool threshold = !OverflowThresholdBox.IsEnabled || ValidateNumber(OverflowThresholdBox, ThresholdError);
         bool idle = ValidateNumber(IdleBox, IdleError);
         bool delay = ValidateNumber(GroupShortcutDelayBox, DelayError);
+        bool toast = ValidateNumber(ToastSecondsBox, ToastSecondsError);
         bool hotkey = ValidateHotkey();
         WheelErrDot.Visibility = hover && threshold ? Visibility.Collapsed : Visibility.Visible;
         AppearanceErrDot.Visibility = idle ? Visibility.Collapsed : Visibility.Visible;
         HotkeyErrDot.Visibility = hotkey && delay ? Visibility.Collapsed : Visibility.Visible;
-        Shell.IsPrimaryEnabled = hover && threshold && idle && delay && hotkey;
+        Shell.IsPrimaryEnabled = hover && threshold && idle && delay && hotkey && toast;
     }
 
     /// <summary>A field that must hold a whole number. Empty is allowed and means "keep the current
@@ -356,6 +359,9 @@ public partial class SettingsWindow : Window
         c.DeduplicateTargets = DeduplicateBox.IsChecked == true;
         c.TextFileNameTemplate = TextNameBox.Text.Trim();
         c.CopyDestinationToClipboard = CopyDestBox.IsChecked == true;
+        if (int.TryParse(ToastSecondsBox.Text, out int toastSeconds))
+            c.ToastSeconds = Math.Clamp(toastSeconds, 1, 60);
+        c.ToastSound = ToastSoundBox.IsChecked == true;
         TargetStore.Save();
         try { StartupService.SetEnabled(AutostartBox.IsChecked == true); }
         catch (Exception ex)
