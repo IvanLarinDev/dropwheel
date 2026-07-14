@@ -1,6 +1,40 @@
 # Changelog
 
 - - -
+## [v0.20.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.19.0..v0.20.0) - 2026-07-14
+#### Features
+- (**tray**) иконки пунктов, акцентные галочки и группировка меню - ([0531ccd](https://github.com/IvanLarinDev/dropwheel/commit/0531ccd53fa4c4967e271cc2453a8318019d3fdc)) - Ivan Larin
+- (**tray**) экспорт настроек и перезагрузка конфига с диска - ([71b6ef2](https://github.com/IvanLarinDev/dropwheel/commit/71b6ef291e970bee812893bf05d290ee4d1896fb)) - Ivan Larin
+- (**ui**) хоткеи выбираются чипами вместо ручного ввода - ([df9d8ea](https://github.com/IvanLarinDev/dropwheel/commit/df9d8ea578b5cc635117f5b00526a8d2bc527c7e)) - Ivan Larin
+- (**ui**) второй хоткей — открыть колесо у орба - ([0c12013](https://github.com/IvanLarinDev/dropwheel/commit/0c120133271a14c86e68f00d5cdfa60cffe012ef)) - Ivan Larin
+- (**ui**) настраиваемое время тоста и звук - ([448ef55](https://github.com/IvanLarinDev/dropwheel/commit/448ef55c3dd165ad8d1f94e5635d370df55fe1a7)) - Ivan Larin
+- (**tray**) раздельные паузы авто-сортировки и всей сортировки - ([1b230cc](https://github.com/IvanLarinDev/dropwheel/commit/1b230cc3ae36d141d00e207078e6dc2cc240f9f3)) - Ivan Larin
+- (**tray**) пауза авто-сортировки из трея - ([8b44907](https://github.com/IvanLarinDev/dropwheel/commit/8b4490765030260b5a8dc18e09fe8e2cb3e4e814)) - Ivan Larin
+- (**history**) копирование журнала недавних дропов в буфер - ([f431838](https://github.com/IvanLarinDev/dropwheel/commit/f431838d8ac706e9f1b00277d574a582965c14c6)) - Ivan Larin
+- (**sort**) тост сортировщика называет число папок - ([5699473](https://github.com/IvanLarinDev/dropwheel/commit/5699473d8ec8ff40059254a61cc16836bddebf75)) - Ivan Larin
+- (**ui**) свободное место на диске в чипе наведения - ([8d2419c](https://github.com/IvanLarinDev/dropwheel/commit/8d2419cab4dd0058628d45edf347a3d1d14e0850)) - Ivan Larin
+- (**ui**) свой цвет рамки плитки - ([5d8f0a4](https://github.com/IvanLarinDev/dropwheel/commit/5d8f0a4990a1632ed94557c7a37e441d709ee625)) - Ivan Larin
+- (**ui**) свой эмодзи на плитке вместо иконки - ([11f2bd7](https://github.com/IvanLarinDev/dropwheel/commit/11f2bd73f3522f9a360a5abf24d22c83ad036af5)) - Ivan Larin
+- (**ui**) полный путь цели во всплывающей подсказке плитки - ([4e7dce1](https://github.com/IvanLarinDev/dropwheel/commit/4e7dce181f7dd620281998f16547c5bd6e3e996c)) - Ivan Larin
+#### Bug Fixes
+- (**ui**) читаемая подсветка тёмного меню трея и цвет эмодзи плитки - ([a52c5c6](https://github.com/IvanLarinDev/dropwheel/commit/a52c5c630b8de163bbdbdf52804e22b8a873ba82)) - Ivan Larin
+- (**ui**) отступ контента настроек от полосы прокрутки - ([f598f33](https://github.com/IvanLarinDev/dropwheel/commit/f598f33f16631bf01d773318252306a0ebeb68b1)) - Ivan Larin
+- (**sort**) пауза останавливает и ручную сортировку на плитке - ([f4d87ba](https://github.com/IvanLarinDev/dropwheel/commit/f4d87ba313faf1304df0222993a10e179da4c72d)) - Ivan Larin
+- (**tray**) подтверждать паузу авто-сортировки балуном - ([c7e3db7](https://github.com/IvanLarinDev/dropwheel/commit/c7e3db784f843b10ebc41663b8e647709d586841)) - Ivan Larin
+- (**history**) копировать список через буфер WinForms - ([7d8c577](https://github.com/IvanLarinDev/dropwheel/commit/7d8c577e6a32bb9a85d01a4356f8fec3327c83eb)) - Ivan Larin
+- (**ui**) эмодзи показывается и на плитке группы - ([89fee86](https://github.com/IvanLarinDev/dropwheel/commit/89fee86eb6955f52ebbb46af56ce416b12e332e4)) - Ivan Larin
+#### Miscellaneous Chores
+- (**design**) waiver на второй хоткей у орба - ([7f19aae](https://github.com/IvanLarinDev/dropwheel/commit/7f19aae283829b9c43e9474882d61576b1c77f44)) - Ivan Larin
+- (**design**) waiver на время и звук тоста - ([0fa26cd](https://github.com/IvanLarinDev/dropwheel/commit/0fa26cdaf12c9f3065f2c1a51169c934d27fbeda)) - Ivan Larin
+- (**design**) waiver на паузу ручной сортировки - ([10ca909](https://github.com/IvanLarinDev/dropwheel/commit/10ca90995bdeb36f1851a6add3c85ce0c8414d15)) - Ivan Larin
+- (**design**) waiver на число папок в тосте сортировщика - ([10854d1](https://github.com/IvanLarinDev/dropwheel/commit/10854d121b42c6a76d2ef2096f9ba2e110cf0849)) - Ivan Larin
+- (**design**) waiver на свободное место в чипе - ([502ee5c](https://github.com/IvanLarinDev/dropwheel/commit/502ee5cf0117659f5e5a8d7e00e5081ba6672539)) - Ivan Larin
+- (**design**) waiver на цвет рамки плитки - ([03b557f](https://github.com/IvanLarinDev/dropwheel/commit/03b557fdb6eb3cc69b4794d2af19fa4cf92a711c)) - Ivan Larin
+- (**design**) waiver на эмодзи плитки - ([feeb15c](https://github.com/IvanLarinDev/dropwheel/commit/feeb15c19928ee8db3c2565c832cb44ff3913305)) - Ivan Larin
+- (**design**) waiver на подсказку пути на плитке - ([ca296b6](https://github.com/IvanLarinDev/dropwheel/commit/ca296b65ac2c3146c3401c3c0bee7c311b4eafe7)) - Ivan Larin
+- (**release**) подтягивать локальный main после релиза - ([5c5d616](https://github.com/IvanLarinDev/dropwheel/commit/5c5d6161bceba74e450a2bb245e33e8ebd3bcfe1)) - Ivan Larin
+
+- - -
 ## [v0.19.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.18.0..v0.19.0) - 2026-07-14
 #### Features
 - (**drop**) выбор поведения при конфликте имён у цели - ([86ab1e5](https://github.com/IvanLarinDev/dropwheel/commit/86ab1e544ce7558c69df2f3503f45acef9053331)) - Ivan Larin
