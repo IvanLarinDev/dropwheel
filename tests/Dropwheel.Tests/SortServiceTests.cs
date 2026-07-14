@@ -446,6 +446,7 @@ public sealed class SortServiceTests : IDisposable
         Assert.False(SortService.TokenAcceptsFormat("quarter"));
         Assert.False(SortService.TokenAcceptsFormat("initial"));
         Assert.False(SortService.TokenAcceptsFormat("ext"));
+        Assert.False(SortService.TokenAcceptsFormat("sizebucket"));
     }
 
     [Fact]
@@ -476,6 +477,50 @@ public sealed class SortServiceTests : IDisposable
         _ = SortService.ExpandTemplate(new SortRule { Dest = "${cyear}" }, "no-such-file.txt",
             new DateTime(2026, 7, 13), out bool ok);
         Assert.False(ok);
+    }
+
+    [Fact]
+    public void SizeBucketOf_maps_megabytes_to_bucket_words()
+    {
+        Assert.Equal("tiny", SortService.SizeBucketOf(0));
+        Assert.Equal("tiny", SortService.SizeBucketOf(0.5));
+        Assert.Equal("small", SortService.SizeBucketOf(1));
+        Assert.Equal("small", SortService.SizeBucketOf(9.99));
+        Assert.Equal("medium", SortService.SizeBucketOf(10));
+        Assert.Equal("medium", SortService.SizeBucketOf(99));
+        Assert.Equal("large", SortService.SizeBucketOf(100));
+        Assert.Equal("large", SortService.SizeBucketOf(999));
+        Assert.Equal("huge", SortService.SizeBucketOf(1000));
+        Assert.Equal("huge", SortService.SizeBucketOf(5000));
+    }
+
+    [Fact]
+    public void Sizebucket_token_routes_a_file_by_its_size_on_disk()
+    {
+        var tiny = MakeFile("icon.png", bytes: 40 * 1024);          // 40 KB → tiny
+        var small = MakeFile("clip.mp4", bytes: 3L * 1024 * 1024);  // 3 MB → small
+        var t = Sorter(_root, new SortRule { Dest = "by-size\\${sizebucket}" }); // catch-all
+        var plan = SortService.Plan(t, new[] { tiny, small });
+        Assert.Contains(tiny, plan[Path.Combine(_root, "by-size", "tiny")]);
+        Assert.Contains(small, plan[Path.Combine(_root, "by-size", "small")]);
+    }
+
+    [Fact]
+    public void Sizebucket_token_on_a_missing_file_falls_back_to_root()
+    {
+        _ = SortService.ExpandTemplate(new SortRule { Dest = "${sizebucket}" }, "no-such-file.txt",
+            new DateTime(2026, 7, 13), out bool ok);
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public void Sizebucket_output_folder_is_left_in_place_when_sorting_folders()
+    {
+        // A watched sorter routing by size must not re-file its own bucket folders.
+        var bucket = MakeDir(Path.Combine("by-size", "small"));
+        var t = Sorter(_root, new SortRule { Dest = "by-size\\${sizebucket}", Scope = RuleScope.Both });
+        var moves = SortService.MovePlan(t, new[] { bucket });
+        Assert.Empty(moves);
     }
 
     // ── Folder sorting ─────────────────────────────────────────────────────

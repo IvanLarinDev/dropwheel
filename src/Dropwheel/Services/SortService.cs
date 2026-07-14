@@ -129,15 +129,15 @@ public static class SortService
 
     /// <summary>Placeholder names the router fills itself, independent of any Name regex group:
     /// drop-time date and time (date, year, month, day, time, week, quarter), the file's own last-write
-    /// date (the f-prefixed twins), the file's creation date (the c-prefixed twins), and file-name
-    /// pieces (ext, stem, initial). Reserved — a Name regex group that happens to share one of these
-    /// names is shadowed by the built-in.</summary>
+    /// date (the f-prefixed twins), the file's creation date (the c-prefixed twins), file-name pieces
+    /// (ext, stem, initial), and a coarse size bucket word (sizebucket). Reserved — a Name regex group
+    /// that happens to share one of these names is shadowed by the built-in.</summary>
     public static readonly IReadOnlyCollection<string> BuiltinTokens = new HashSet<string>(StringComparer.Ordinal)
     {
         "date", "year", "month", "day", "time", "week", "quarter",
         "fdate", "fyear", "fmonth", "fday", "fweek", "fquarter",
         "cdate", "cyear", "cmonth", "cday", "cweek", "cquarter",
-        "ext", "stem", "initial",
+        "ext", "stem", "initial", "sizebucket",
     };
 
     /// <summary>Default .NET format for each date-derived built-in token, used when the placeholder
@@ -195,10 +195,10 @@ public static class SortService
     public static string ExpandTemplate(SortRule rule, string filePath, out bool ok) =>
         ExpandTemplate(rule, filePath, DateTime.Now, out ok);
 
-    /// <summary>Value for a built-in token, or null when it cannot be produced (an f/c-token on a file
-    /// that is not on disk, or a date format string .NET rejects). Date/time tokens come from
-    /// <paramref name="now"/>; the f-prefixed twins from the file's last-write time, the c-prefixed
-    /// twins from its creation time; ext/stem/initial from the path.</summary>
+    /// <summary>Value for a built-in token, or null when it cannot be produced (an f/c-token or
+    /// sizebucket on a file that is not on disk, or a date format string .NET rejects). Date/time tokens
+    /// come from <paramref name="now"/>; the f-prefixed twins from the file's last-write time, the
+    /// c-prefixed twins from its creation time; ext/stem/initial and sizebucket from the path.</summary>
     private static string? ResolveBuiltin(string name, string? format, string filePath, DateTime now)
     {
         switch (name)
@@ -206,6 +206,7 @@ public static class SortService
             case "ext": return Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
             case "stem": return Path.GetFileNameWithoutExtension(filePath);
             case "initial": return Initial(Path.GetFileName(filePath));
+            case "sizebucket": return SizeBucket(filePath);
         }
 
         // A leading f/c switches the clock to the item's own last-write or creation time; anything else
@@ -252,6 +253,28 @@ public static class SortService
             if (char.IsDigit(ch)) break;
         }
         return "#";
+    }
+
+    /// <summary>Coarse size-bucket word for a size in megabytes: tiny below 1, small below 10, medium
+    /// below 100, large below 1000, huge at or above 1000. Public so the editor can show the buckets and
+    /// tests can check the thresholds without writing large files to disk.</summary>
+    public static string SizeBucketOf(double megabytes) => megabytes switch
+    {
+        < 1 => "tiny",
+        < 10 => "small",
+        < 100 => "medium",
+        < 1000 => "large",
+        _ => "huge",
+    };
+
+    /// <summary>The size bucket of a file on disk, or null when the path is not an existing file (a
+    /// folder or a missing path has no meaningful size), so the item falls back to the sorter root
+    /// rather than a misleading bucket. Megabytes are computed the same way the SizeMb condition reads
+    /// them, so bucket boundaries and size rules agree.</summary>
+    private static string? SizeBucket(string filePath)
+    {
+        if (!File.Exists(filePath)) return null;
+        return SizeBucketOf(new FileInfo(filePath).Length / (1024.0 * 1024.0));
     }
 
     /// <summary>True when the destination folder is the source folder itself or lies inside it. Moving a
@@ -313,8 +336,8 @@ public static class SortService
     }
 
     /// <summary>The regex fragment a single ${token} can expand to inside a folder name. Date tokens
-    /// follow their format string; week/quarter/initial have fixed shapes; ext/stem and Name-regex
-    /// groups become "any run of name characters".</summary>
+    /// follow their format string; week/quarter/initial/sizebucket have fixed shapes; ext/stem and
+    /// Name-regex groups become "any run of name characters".</summary>
     private static string TokenShape(string name, string? format)
     {
         if (!BuiltinTokens.Contains(name)) return "[^\\\\/]+"; // a Name-regex group capture
@@ -325,6 +348,7 @@ public static class SortService
             "week" => "\\d{2}",
             "quarter" => "Q[1-4]",
             "initial" => "[^\\\\/]",
+            "sizebucket" => "(?:tiny|small|medium|large|huge)",
             _ => "[^\\\\/]+", // ext, stem
         };
     }
