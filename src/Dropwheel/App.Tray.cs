@@ -7,6 +7,10 @@ namespace Dropwheel;
 
 public partial class App
 {
+    // Runtime-only: auto-sort is paused from the tray without touching each target's Watch flag, so a
+    // restart resumes it. Watched folders keep accumulating while paused and are swept on resume.
+    private bool _watchPaused;
+
     private void InitTray()
     {
         _tray = new WF.NotifyIcon
@@ -65,6 +69,20 @@ public partial class App
             }
         };
         menu.Items.Add(sendTo);
+        var pauseSort = new WF.ToolStripMenuItem("Pause auto-sort")
+        {
+            Checked = _watchPaused,
+            CheckOnClick = true,
+            ToolTipText = "Temporarily stop watched folders from auto-sorting. Files pile up while paused "
+                        + "and are sorted when resumed. Resets on restart; the Watch setting is untouched.",
+        };
+        pauseSort.Click += (_, _) =>
+        {
+            _watchPaused = pauseSort.Checked;
+            if (_watchPaused) _watcher?.Stop();
+            else _watcher?.Start();
+        };
+        menu.Items.Add(pauseSort);
         menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
         menu.Items.Add("Open config folder", null, (_, _) => LaunchService.OpenConfigFolder());
         var recentDrops = new WF.ToolStripMenuItem("Recent drops");
