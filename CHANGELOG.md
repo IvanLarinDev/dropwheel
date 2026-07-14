@@ -1,6 +1,11 @@
 # Changelog
 
 - - -
+## [v0.21.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.21.0..v0.21.1) - 2026-07-14
+#### Bug Fixes
+- (**ui**) чип наведения выходит за сетку плитки, а не режется по ней - ([69871ef](https://github.com/IvanLarinDev/dropwheel/commit/69871effbe2e54f4dcf8e1051b224e9f16bdae93)) - Ivan Larin
+
+- - -
 ## [v0.21.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.20.0..v0.21.0) - 2026-07-14
 #### Features
 - (**ui**) число элементов папки в чипе наведения - ([b2d26b5](https://github.com/IvanLarinDev/dropwheel/commit/b2d26b560cdf972a7d4fdd9721337347ac785625)) - Ivan Larin
