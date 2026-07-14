@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -135,14 +136,53 @@ public partial class OverlayWindow
 
         var name = AccessibleName(target);
         var status = $"{name}. {preview.StatusText}";
+        var chipText = preview.ChipText;
+        if (FreeSpaceLine(target) is { } free) chipText += "\n" + free;
         ShowConfidence(
             element,
-            preview.ChipText,
+            chipText,
             status,
             preview.Tone,
             preview.CanDrop,
             preview.ActiveLabelText,
             preview.PayloadKind);
+    }
+
+    private readonly Dictionary<string, (string Text, DateTime At)> _freeSpaceCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The target drive's free space as a short second chip line (e.g. "C: 12.3 GB free"), or
+    /// null when the target has no real drive (a link or a group) or the drive isn't ready. Cached per
+    /// drive root for a few seconds so a hovering drag doesn't hit the disk on every frame.</summary>
+    private string? FreeSpaceLine(TargetItem target)
+    {
+        if (target.IsGroup || target.IsUri) return null;
+        try
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath(target.Path));
+            if (string.IsNullOrEmpty(root)) return null;
+            if (_freeSpaceCache.TryGetValue(root, out var hit) && (DateTime.Now - hit.At).TotalSeconds < 15)
+                return hit.Text;
+            var drive = new DriveInfo(root);
+            if (!drive.IsReady) return null;
+            var text = $"{drive.Name.TrimEnd('\\', '/')} {FormatBytes(drive.AvailableFreeSpace)} free";
+            _freeSpaceCache[root] = (text, DateTime.Now);
+            return text;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Bytes as a short human-readable size, e.g. 13123456789 → "12.2 GB".</summary>
+    internal static string FormatBytes(long bytes)
+    {
+        string[] units = { "B", "KB", "MB", "GB", "TB" };
+        double value = bytes;
+        int unit = 0;
+        while (value >= 1024 && unit < units.Length - 1) { value /= 1024; unit++; }
+        return $"{value:0.#} {units[unit]}";
     }
 
     private void ShowGeneralConfidence(

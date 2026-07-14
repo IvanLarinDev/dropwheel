@@ -34,4 +34,13 @@ public sealed class OverlayBubbleTests
         Assert.Null(OverlayWindow.ParseTileColor(""));
         Assert.Null(OverlayWindow.ParseTileColor("not a colour"));
     }
+
+    [Fact]
+    public void FormatBytes_scales_to_readable_units()
+    {
+        Assert.Equal("512 B", OverlayWindow.FormatBytes(512));
+        Assert.Equal("1 KB", OverlayWindow.FormatBytes(1024));
+        Assert.Equal("1.5 KB", OverlayWindow.FormatBytes(1536));
+        Assert.Equal("12.2 GB", OverlayWindow.FormatBytes(13_100_000_000));
+    }
 }
