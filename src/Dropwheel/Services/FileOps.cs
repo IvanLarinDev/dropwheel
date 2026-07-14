@@ -9,8 +9,8 @@ namespace Dropwheel.Services;
 public static class FileOps
 {
     private const uint FO_MOVE = 0x0001, FO_COPY = 0x0002, FO_DELETE = 0x0003;
-    private const ushort FOF_ALLOWUNDO = 0x0040, FOF_NOCONFIRMMKDIR = 0x0200, FOF_NOCONFIRMATION = 0x0010,
-        FOF_SILENT = 0x0004, FOF_RENAMEONCOLLISION = 0x0008, FOF_NOERRORUI = 0x0400;
+    private const ushort FOF_MULTIDESTFILES = 0x0001, FOF_ALLOWUNDO = 0x0040, FOF_NOCONFIRMMKDIR = 0x0200,
+        FOF_NOCONFIRMATION = 0x0010, FOF_SILENT = 0x0004, FOF_RENAMEONCOLLISION = 0x0008, FOF_NOERRORUI = 0x0400;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct SHFILEOPSTRUCT
@@ -52,6 +52,24 @@ public static class FileOps
             wFunc = action == DropAction.Move ? FO_MOVE : FO_COPY,
             pFrom = string.Join("\0", list) + "\0\0",
             pTo = destFolder + "\0\0",
+            fFlags = flags,
+        };
+        return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
+    }
+
+    /// <summary>Copy or move each source to its own explicit destination path, so files can be renamed on
+    /// the way. Uses the shell's multi-destination mode; the source and destination lists line up
+    /// one-to-one. Destination folders are created without a prompt. An empty list is a no-op success.</summary>
+    public static bool ExecuteTo(IReadOnlyList<(string Source, string Dest)> pairs, DropAction action, bool silent = false)
+    {
+        if (pairs.Count == 0) return true;
+        ushort flags = (ushort)(FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR | FOF_MULTIDESTFILES);
+        if (silent) flags |= (ushort)(FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION | FOF_RENAMEONCOLLISION);
+        var op = new SHFILEOPSTRUCT
+        {
+            wFunc = action == DropAction.Move ? FO_MOVE : FO_COPY,
+            pFrom = string.Join("\0", pairs.Select(p => p.Source)) + "\0\0",
+            pTo = string.Join("\0", pairs.Select(p => p.Dest)) + "\0\0",
             fFlags = flags,
         };
         return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;

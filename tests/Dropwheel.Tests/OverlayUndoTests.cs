@@ -60,6 +60,38 @@ public sealed class OverlayUndoTests : IDisposable
     }
 
     [Fact]
+    public void RenamedFileName_expands_template_and_keeps_the_extension()
+    {
+        var src = Path.Combine(_root, "report.pdf");
+        var name = OverlayWindow.RenamedFileName("archive-${date}-${stem}", src, new DateTime(2026, 7, 14));
+        Assert.Equal("archive-2026-07-14-report.pdf", name);
+    }
+
+    [Fact]
+    public void RenamedFileName_falls_back_to_the_original_name_when_unfillable()
+    {
+        var src = Path.Combine(_root, "report.pdf");
+        // ${nope} is neither a built-in token nor a regex group → unfillable → keep the original name
+        var name = OverlayWindow.RenamedFileName("${nope}", src, new DateTime(2026, 7, 14));
+        Assert.Equal("report.pdf", name);
+    }
+
+    [Fact]
+    public void CopyUndoTargets_uses_explicit_destination_paths_for_a_renamed_drop()
+    {
+        var src = Path.Combine(_root, "src", "report.pdf");
+        var dest = Path.Combine(_root, "dest");
+        Directory.CreateDirectory(Path.GetDirectoryName(src)!);
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(src, "new");
+        var renamed = Path.Combine(dest, "archive-report.pdf");
+        var op = OverlayWindow.BuildRenamedOp(DropAction.Copy, new[] { src }, dest, new[] { renamed });
+        File.WriteAllText(renamed, "new"); // the copy the drop created
+
+        Assert.Equal(new[] { renamed }, OverlayWindow.CopyUndoTargets(op));
+    }
+
+    [Fact]
     public void UndoOne_move_reports_incomplete_when_destination_preexisted()
     {
         var src = Path.Combine(_root, "src", "report.txt");

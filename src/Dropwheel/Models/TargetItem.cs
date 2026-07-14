@@ -51,6 +51,12 @@ public class TargetItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public LaunchOptions? Launch { get; set; }
 
+    /// <summary>Optional ${name}-token template for renaming files copied or moved onto this folder — the
+    /// same tokens as sorter destinations, e.g. "archive-${date}-${stem}". The original extension is kept.
+    /// null/empty means files keep their own names.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NameTemplate { get; set; }
+
     /// <summary>Extensions treated as "drop files to run it with them as arguments" targets.</summary>
     public static readonly string[] ExeExtensions =
         { ".exe", ".com", ".bat", ".cmd", ".ps1", ".py", ".pyw", ".vbs", ".wsf", ".js", ".jar" };

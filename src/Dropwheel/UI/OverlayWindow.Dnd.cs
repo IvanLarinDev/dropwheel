@@ -294,8 +294,24 @@ public partial class OverlayWindow
                     return;
             }
             var act = Resolve(t, e);
-            var op = BuildOpBefore(act, files, dest);
-            bool ok = FileOps.Execute(files, dest, act);
+            FileOp op;
+            bool ok;
+            var historyDest = dest;
+            if (!string.IsNullOrWhiteSpace(t.NameTemplate))
+            {
+                var now = DateTime.Now;
+                var destPaths = files
+                    .Select(f => System.IO.Path.Combine(dest, RenamedFileName(t.NameTemplate!, f, now)))
+                    .ToArray();
+                op = BuildRenamedOp(act, files, dest, destPaths);
+                ok = FileOps.ExecuteTo(files.Zip(destPaths).ToList(), act);
+                if (destPaths.Length == 1) historyDest = destPaths[0];
+            }
+            else
+            {
+                op = BuildOpBefore(act, files, dest);
+                ok = FileOps.Execute(files, dest, act);
+            }
             if (ok) RememberOp(op);
             RememberDropHistory(
                 act == DropAction.Move ? DropHistoryAction.Move : DropHistoryAction.Copy,
@@ -303,7 +319,7 @@ public partial class OverlayWindow
                 DropPayloadKind.Files,
                 files.Length,
                 ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                destination: dest);
+                destination: historyDest);
             ShowToast(ok
                 ? $"{(act == DropAction.Move ? "Moved" : "Copied")}: {files.Length} item(s) → {t.Name}"
                 : "Operation was not completed", ok, ok ? ToastKind.Success : ToastKind.Danger);

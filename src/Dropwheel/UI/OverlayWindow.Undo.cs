@@ -11,7 +11,8 @@ public partial class OverlayWindow
         DropAction Act,
         string[] Sources,
         string Dest,
-        string[] ExistingDestinations);
+        string[] ExistingDestinations,
+        string[]? DestPaths = null);
 
     /// <summary>A snapshot of a level taken before targets were added, so the add can be undone by
     /// restoring the level to exactly what it was — order and pin positions included. The added
@@ -65,6 +66,33 @@ public partial class OverlayWindow
 
     internal static FileOp BuildCreatedCopyOp(string[] sources, string dest) =>
         new(DropAction.Copy, sources, dest, Array.Empty<string>());
+
+    /// <summary>An op for a renamed drop: each source went to its own explicit destination path
+    /// (destPaths lines up with sources), so Undo targets those exact paths instead of dest\originalName.
+    /// A destination that already existed before the drop is protected from Undo, like the folder case.</summary>
+    internal static FileOp BuildRenamedOp(DropAction act, string[] sources, string dest, string[] destPaths)
+    {
+        var existing = destPaths.Where(p => File.Exists(p) || Directory.Exists(p)).ToArray();
+        return new(act, sources, dest, existing, destPaths);
+    }
+
+    /// <summary>The file name a target's NameTemplate produces for a source file: the template expanded
+    /// with the built-in ${name} tokens, sanitized to a single name, then the source's own extension. An
+    /// empty or unfillable template falls back to the source file's own name.</summary>
+    internal static string RenamedFileName(string template, string filePath, DateTime now)
+    {
+        var expanded = SortService.ExpandTemplate(new SortRule { Dest = template }, filePath, now, out bool ok);
+        var stem = ok ? SanitizeFileName(expanded) : "";
+        if (stem.Length == 0) stem = IOPath.GetFileNameWithoutExtension(filePath);
+        return stem + IOPath.GetExtension(filePath);
+    }
+
+    private static string SanitizeFileName(string value)
+    {
+        var invalid = IOPath.GetInvalidFileNameChars();
+        var chars = value.Where(ch => Array.IndexOf(invalid, ch) < 0).ToArray();
+        return new string(chars).Trim().TrimEnd('.', ' ');
+    }
 
     /// <summary>Best-effort: copy → delete the copies (to Recycle Bin), move → move back.
     /// Files renamed by the conflict dialog are not tracked. Adding a target is undone by
@@ -123,8 +151,9 @@ public partial class OverlayWindow
         var protectedPaths = new HashSet<string>(
             op.ExistingDestinations.Select(p => IOPath.GetFullPath(p)),
             StringComparer.OrdinalIgnoreCase);
-        return op.Sources
-            .Select(s => IOPath.Combine(op.Dest, IOPath.GetFileName(s)))
+        // A renamed drop knows its exact destination paths; a plain drop keeps the source names in Dest.
+        var candidates = op.DestPaths ?? op.Sources.Select(s => IOPath.Combine(op.Dest, IOPath.GetFileName(s)));
+        return candidates
             .Where(p => !protectedPaths.Contains(IOPath.GetFullPath(p)))
             .Where(p => File.Exists(p) || Directory.Exists(p))
             .ToArray();
@@ -137,6 +166,17 @@ public partial class OverlayWindow
         {
             var copies = CopyUndoTargets(op);
             if (copies.Length > 0) ok = FileOps.Delete(copies);
+        }
+        else if (op.DestPaths is { } destPaths)
+        {
+            // Renamed move: put each file back at its original full path (name and folder).
+            for (int i = 0; i < op.Sources.Length; i++)
+            {
+                var dst = destPaths[i];
+                if (!op.ExistingDestinations.Contains(dst, StringComparer.OrdinalIgnoreCase)
+                    && (File.Exists(dst) || Directory.Exists(dst)))
+                    ok &= FileOps.ExecuteTo(new[] { (dst, op.Sources[i]) }, DropAction.Move);
+            }
         }
         else
         {

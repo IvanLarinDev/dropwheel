@@ -24,6 +24,7 @@ public partial class TargetEditorWindow : Window
         GroupShortcutBox.Text = t.GroupCode ?? "";
         PathBox.Text = t.Path;
         ActionBox.SelectedIndex = (int)t.Override;
+        NameTemplateBox.Text = t.NameTemplate ?? "";
         PinBox.IsChecked = t.Pinned;
         LoadLaunchOptions(t.Launch);
 
@@ -92,6 +93,8 @@ public partial class TargetEditorWindow : Window
         {
             _target.Path = PathBox.Text.Trim();
             _target.Override = (DropAction)ActionBox.SelectedIndex;
+            var nameTemplate = NameTemplateBox.Text.Trim();
+            _target.NameTemplate = nameTemplate.Length == 0 ? null : nameTemplate;
             if (!TrySaveLaunchOptions()) return;
             TargetStore.MoveToGroup(_target, _groupChoices[Math.Max(0, GroupCombo.SelectedIndex)]);
             if (_rulesMode)
