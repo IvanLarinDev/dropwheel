@@ -29,6 +29,14 @@ public partial class OverlayWindow
         return groups;
     }
 
+    /// <summary>The success toast for a sorter run. Once the batch fanned out into several folders, the
+    /// toast says how many, so the result reads at a glance ("Sorted: 12 item(s) → Video · 3 folders").
+    /// A single folder is not worth the extra words.</summary>
+    internal static string SortedToastText(int items, string targetName, int folders) =>
+        folders > 1
+            ? $"Sorted: {items} item(s) → {targetName} · {folders} folders"
+            : $"Sorted: {items} item(s) → {targetName}";
+
     /// <summary>Real files dropped on a sorter target: distribute by the rules.</summary>
     private void DropSorted(TargetItem t, string[] files, DropAction act)
     {
@@ -51,10 +59,11 @@ public partial class OverlayWindow
             ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
             destination: t.Path,
             detail: ok
-                ? ops.Count == 0 ? "No file moves were needed." : null
+                ? ops.Count == 0 ? "No file moves were needed."
+                    : ops.Count > 1 ? $"Routed into {ops.Count} folders." : null
                 : "At least one sorter route failed.");
         ShowToast(ok
-            ? $"Sorted: {files.Length} item(s) → {t.Name}"
+            ? SortedToastText(files.Length, t.Name, ops.Count)
             : "Sorting was not completed", ops.Count > 0,
             ok ? ToastKind.Success : ToastKind.Danger);
     }
@@ -126,9 +135,11 @@ public partial class OverlayWindow
                 moved,
                 ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
                 destination: t.Path,
-                detail: ok ? "Manual sorter run." : "Manual sorter run failed.");
+                detail: ok
+                    ? ops.Count > 1 ? $"Manual sorter run, into {ops.Count} folders." : "Manual sorter run."
+                    : "Manual sorter run failed.");
             ShowToast(ok
-                ? $"Sorted: {moved} item(s) → {t.Name}"
+                ? SortedToastText(moved, t.Name, ops.Count)
                 : "Sorting was not completed", ops.Count > 0,
                 ok ? ToastKind.Success : ToastKind.Danger);
         }

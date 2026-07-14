@@ -43,4 +43,12 @@ public sealed class OverlayBubbleTests
         Assert.Equal("1.5 KB", OverlayWindow.FormatBytes(1536));
         Assert.Equal("12.2 GB", OverlayWindow.FormatBytes(13_100_000_000));
     }
+
+    [Fact]
+    public void SortedToastText_names_the_folder_count_only_when_several()
+    {
+        Assert.Equal("Sorted: 12 item(s) → Video · 3 folders", OverlayWindow.SortedToastText(12, "Video", 3));
+        Assert.Equal("Sorted: 5 item(s) → Video", OverlayWindow.SortedToastText(5, "Video", 1));
+        Assert.Equal("Sorted: 2 item(s) → Video", OverlayWindow.SortedToastText(2, "Video", 0));
+    }
 }
