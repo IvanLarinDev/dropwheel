@@ -126,6 +126,10 @@
                         <TextBlock x:Name="HotkeyStatus" FontSize="11" Visibility="Collapsed" Margin="0,3,0,0"/>
                         <TextBlock Text="Common combinations" Margin="0,10,0,0"/>
                         <ComboBox x:Name="HotkeyPresetBox" Margin="0,4,0,0"/>
+                        <TextBlock Text="Open at orb — second hotkey (optional)" Margin="0,12,0,0"/>
+                        <TextBox x:Name="OrbHotkeyBox" Margin="0,4,0,0"
+                                 ToolTip="An optional second global shortcut that opens the wheel at the orb's home position, not at the cursor. Type a combination like Ctrl+Shift+Space. Empty disables it."/>
+                        <TextBlock x:Name="OrbHotkeyStatus" FontSize="11" Visibility="Collapsed" Margin="0,3,0,0"/>
                         <TextBlock Text="Group shortcut sequence timeout, ms" Margin="0,10,0,0"/>
                         <TextBox x:Name="GroupShortcutDelayBox" Margin="0,4,0,0"
                                  ToolTip="Maximum pause between digits. Range: 150–1500 ms."/>

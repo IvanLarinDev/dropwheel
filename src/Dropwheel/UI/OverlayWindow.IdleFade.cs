@@ -61,6 +61,7 @@ public partial class OverlayWindow
         // The string was already validated for parsing in settings, but being taken by another
         // process is only checked here: on failure the previous working combo stays.
         ApplyHotkey(TargetStore.Config.Hotkey, notify: true);
+        ApplyHotkeyAtOrb(TargetStore.Config.HotkeyAtOrb, notify: true);
     }
 
     public void OpenSettings()

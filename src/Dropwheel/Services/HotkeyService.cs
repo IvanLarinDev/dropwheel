@@ -11,25 +11,30 @@ public sealed class HotkeyService : IDisposable
     [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);
     [DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-    private const int WM_HOTKEY = 0x0312, Id = 0x0D27;
+    private const int WM_HOTKEY = 0x0312;
+    /// <summary>Default hotkey id (the primary "open at cursor" shortcut). A second shortcut passes its
+    /// own distinct id so both can be registered on the same window at once.</summary>
+    public const int DefaultId = 0x0D27;
     private const uint ModAlt = 0x1;
     private const uint ModCtrl = 0x2;
     private const uint ModShift = 0x4;
     private const uint ModWin = 0x8;
     private readonly HwndSource _src;
     private readonly Action _callback;
+    private readonly int _id;
 
-    public HotkeyService(Window owner, string hotkey, Action callback)
+    public HotkeyService(Window owner, string hotkey, Action callback, int id = DefaultId)
     {
         _callback = callback;
+        _id = id;
         _src = (HwndSource)PresentationSource.FromVisual(owner)!;
         // Validate and register BEFORE attaching the hook. If either step threw after AddHook, the
         // half-built instance would be discarded without Dispose, leaking the Hook delegate on the
-        // window's HwndSource for the whole process — and since Id is shared, every later successful
-        // registration would then fire each leaked hook too.
+        // window's HwndSource for the whole process — and since the hook fires for the id, every later
+        // successful registration would then fire each leaked hook too.
         if (!TryParse(hotkey, out uint mods, out uint vk))
             throw new FormatException($"Hotkey '{hotkey}' is not a valid combination");
-        if (!RegisterHotKey(_src.Handle, Id, mods, vk))
+        if (!RegisterHotKey(_src.Handle, _id, mods, vk))
             throw new InvalidOperationException($"Hotkey '{hotkey}' is already taken");
         _src.AddHook(Hook);
     }
@@ -203,13 +208,13 @@ public sealed class HotkeyService : IDisposable
 
     private IntPtr Hook(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)
     {
-        if (msg == WM_HOTKEY && checked((int)w) == Id) { _callback(); handled = true; }
+        if (msg == WM_HOTKEY && checked((int)w) == _id) { _callback(); handled = true; }
         return IntPtr.Zero;
     }
 
     public void Dispose()
     {
-        UnregisterHotKey(_src.Handle, Id);
+        UnregisterHotKey(_src.Handle, _id);
         _src.RemoveHook(Hook);
     }
 }

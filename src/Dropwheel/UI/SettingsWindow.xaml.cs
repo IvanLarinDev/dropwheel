@@ -81,6 +81,7 @@ public partial class SettingsWindow : Window
         OpacitySlider.Value = c.OrbOpacity;
         IdleBox.Text = c.IdleFadeSeconds.ToString();
         HotkeyBox.Text = DisplayHotkey(c.Hotkey);
+        OrbHotkeyBox.Text = c.HotkeyAtOrb.Length > 0 ? DisplayHotkey(c.HotkeyAtOrb) : "";
         GroupShortcutDelayBox.Text = c.GroupShortcutDelayMs.ToString();
         DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
@@ -94,6 +95,7 @@ public partial class SettingsWindow : Window
             box.TextChanged += (_, _) => QueueValidation();
         HotkeyBox.TextChanged += OnHotkeyTextChanged;
         HotkeyBox.PreviewKeyDown += OnHotkeyBoxPreviewKeyDown;
+        OrbHotkeyBox.TextChanged += (_, _) => QueueValidation();
         HotkeyCaptureButton.Click += OnHotkeyCaptureClick;
         HotkeyResetButton.Click += OnHotkeyResetClick;
         HotkeyResetButton.ToolTip = $"Restore {AppConfig.DefaultHotkey}.";
@@ -155,10 +157,11 @@ public partial class SettingsWindow : Window
         bool delay = ValidateNumber(GroupShortcutDelayBox, DelayError);
         bool toast = ValidateNumber(ToastSecondsBox, ToastSecondsError);
         bool hotkey = ValidateHotkey();
+        bool orbHotkey = ValidateOrbHotkey();
         WheelErrDot.Visibility = hover && threshold ? Visibility.Collapsed : Visibility.Visible;
         AppearanceErrDot.Visibility = idle ? Visibility.Collapsed : Visibility.Visible;
-        HotkeyErrDot.Visibility = hotkey && delay ? Visibility.Collapsed : Visibility.Visible;
-        Shell.IsPrimaryEnabled = hover && threshold && idle && delay && hotkey && toast;
+        HotkeyErrDot.Visibility = hotkey && delay && orbHotkey ? Visibility.Collapsed : Visibility.Visible;
+        Shell.IsPrimaryEnabled = hover && threshold && idle && delay && hotkey && orbHotkey && toast;
     }
 
     /// <summary>A field that must hold a whole number. Empty is allowed and means "keep the current
@@ -205,6 +208,38 @@ public partial class SettingsWindow : Window
         };
         HotkeyBox.BorderBrush = ok == false ? Palettes.Danger
             : _recordingHotkey ? Palettes.Accent : Palettes.Border;
+        return ok != false;
+    }
+
+    /// <summary>Live check for the optional second hotkey: empty disables it; it must differ from the
+    /// primary combo (they would clash), parse, and be free right now. The currently saved second combo
+    /// reads as available since we hold it.</summary>
+    private bool ValidateOrbHotkey()
+    {
+        var hk = OrbHotkeyBox.Text.Trim();
+        if (hk.Length == 0) return SetOrbHotkeyStatus("Off — no second hotkey", null);
+        if (!HotkeyService.TryNormalize(hk, out var normalized))
+            return SetOrbHotkeyStatus("Use Ctrl, Alt, Shift, or Win plus one key", false);
+        if (HotkeyService.TryNormalize(HotkeyBox.Text.Trim(), out var primary)
+            && HotkeyService.IsSameCombination(normalized, primary))
+            return SetOrbHotkeyStatus("Same as the main hotkey", false);
+        if (HotkeyService.IsSameCombination(normalized, TargetStore.Config.HotkeyAtOrb))
+            return SetOrbHotkeyStatus("Available", true);
+        if (HotkeyService.IsAvailable(normalized)) return SetOrbHotkeyStatus("Available", true);
+        return SetOrbHotkeyStatus("Already taken by another app", false);
+    }
+
+    private bool SetOrbHotkeyStatus(string text, bool? ok)
+    {
+        OrbHotkeyStatus.Text = text;
+        OrbHotkeyStatus.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        OrbHotkeyStatus.Foreground = ok switch
+        {
+            true => Palettes.Success,
+            false => Palettes.Danger,
+            _ => Palettes.TextMuted,
+        };
+        OrbHotkeyBox.BorderBrush = ok == false ? Palettes.Danger : Palettes.Border;
         return ok != false;
     }
 
@@ -356,6 +391,8 @@ public partial class SettingsWindow : Window
             c.GroupShortcutDelayMs = Math.Clamp(sequenceDelay, 150, 1500);
         if (hk.Length > 0 && HotkeyService.TryNormalize(hk, out var normalizedHotkey))
             c.Hotkey = normalizedHotkey;
+        var orbHk = OrbHotkeyBox.Text.Trim();
+        c.HotkeyAtOrb = orbHk.Length > 0 && HotkeyService.TryNormalize(orbHk, out var orbNorm) ? orbNorm : "";
         c.DeduplicateTargets = DeduplicateBox.IsChecked == true;
         c.TextFileNameTemplate = TextNameBox.Text.Trim();
         c.CopyDestinationToClipboard = CopyDestBox.IsChecked == true;

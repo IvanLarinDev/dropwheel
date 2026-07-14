@@ -15,6 +15,10 @@ public class AppConfig
     public int HoverDelayMs { get; set; } = 250;
     public string Hotkey { get; set; } = DefaultHotkey;
 
+    /// <summary>Optional second global hotkey that opens the wheel at the orb's home position instead of
+    /// at the cursor. Empty means no second hotkey.</summary>
+    public string HotkeyAtOrb { get; set; } = "";
+
     /// <summary>Maximum pause between digits of a group shortcut.</summary>
     public int GroupShortcutDelayMs { get; set; } = 400;
 
