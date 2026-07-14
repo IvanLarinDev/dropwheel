@@ -6,6 +6,8 @@ using SD = System.Drawing;
 
 namespace Dropwheel;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "Process-lifetime singleton: the tray icon, its icon handle and the bridge CTS are released in ExitApp; a WPF Application is not idiomatically IDisposable.")]
 public partial class App : Application
 {
     private static Mutex? _mutex;
@@ -113,9 +115,12 @@ public partial class App : Application
         }
     }
 
+    // Assembly.Location is NOT a valid fallback here: in the single-file publish it returns an
+    // empty string, which would silently produce a broken SendTo shortcut. ProcessPath is present
+    // on Windows in practice; if it ever is not, failing loudly beats installing a dead shortcut.
     private static string CurrentAppPath() =>
         Environment.ProcessPath
-        ?? System.Reflection.Assembly.GetExecutingAssembly().Location;
+        ?? throw new InvalidOperationException("Could not determine the executable path.");
 
     private void StartExplorerBridgeServer()
     {

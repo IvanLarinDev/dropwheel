@@ -408,7 +408,7 @@ public static class SortService
     private static string TokenShape(string name, string? format)
     {
         if (!BuiltinTokens.Contains(name)) return "[^\\\\/]+"; // a Name-regex group capture
-        if (DateTokenFormat.ContainsKey(name)) return DateFormatShape(format ?? DateTokenFormat[name]);
+        if (DateTokenFormat.TryGetValue(name, out var defaultFormat)) return DateFormatShape(format ?? defaultFormat);
         var kind = name[0] is 'f' or 'c' ? name[1..] : name;
         return kind switch
         {

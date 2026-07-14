@@ -5,6 +5,8 @@ using Dropwheel.Services;
 
 namespace Dropwheel.UI;
 
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "Window alive for the whole process: the hooks and both hotkeys are disposed in the Closed handler; a WPF Window is not idiomatically IDisposable.")]
 public partial class OverlayWindow : Window
 {
     /// <summary>Wheel center in window coordinates. The window is square and the orb sits at its

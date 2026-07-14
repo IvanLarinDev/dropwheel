@@ -11,6 +11,8 @@ namespace Dropwheel.Services;
 /// the dated folders it creates. An item that resolves to its own folder (no rule match, an unfilled
 /// token, or a folder-scope guard) is left untouched. Auto-sort moves items silently and is not tracked
 /// by Undo.</summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "Process-lifetime singleton: watchers and their lifetimes are released in Stop. The semaphore is deliberately never disposed — a background sort may still hold it briefly after Stop, and disposing it under a waiter throws.")]
 public sealed class WatcherService
 {
     private const int PollMs = 1000;
@@ -74,7 +76,7 @@ public sealed class WatcherService
             dispose?.Dispose();
         }
 
-        public bool TryRunSort(CancellationToken cancellationToken, Action sort)
+        public bool TryRunSort(Action sort, CancellationToken cancellationToken)
         {
             // Only the stop/cancel check is guarded; the blocking SHFileOperation runs OUTSIDE the lock.
             // Holding _gate across the move would make a UI-thread Cancel() (app Exit, or dropping a
@@ -223,8 +225,8 @@ public sealed class WatcherService
             try
             {
                 entry.TryRunSort(
-                    cancellationToken,
-                    () => SortOne(entry, file, cancellationToken)); // off-thread: planning and the silent move never touch the UI
+                    () => SortOne(entry, file, cancellationToken), // off-thread: planning and the silent move never touch the UI
+                    cancellationToken);
             }
             finally { _moveGate.Release(); }
         }

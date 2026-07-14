@@ -428,6 +428,8 @@ public partial class OverlayWindow
         if (hwnd == IntPtr.Zero) return;
         int style = GetWindowLong(hwnd, GWL_EXSTYLE);
         int updated = on ? style | WS_EX_TRANSPARENT : style & ~WS_EX_TRANSPARENT;
-        if (updated != style) SetWindowLong(hwnd, GWL_EXSTYLE, updated);
+        // The return value (the previous style) is of no use; failure here just means the probe
+        // reads the window itself once more, which the caller tolerates.
+        if (updated != style) _ = SetWindowLong(hwnd, GWL_EXSTYLE, updated);
     }
 }

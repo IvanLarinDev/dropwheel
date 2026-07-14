@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "ca-warnings-cleanup",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Compiler-warning cleanup with zero visual effect. The two touched UI files change no pixel: OverlayWindow.Capture.cs explicitly discards SetWindowLong's unused return value (CA1806), and OverlayWindow.xaml.cs gains a CA1001 suppression attribute documenting that the window's hooks and hotkeys are already disposed in the Closed handler. No layout, colour, animation or text changes anywhere.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}

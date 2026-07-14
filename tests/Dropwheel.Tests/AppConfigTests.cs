@@ -5,7 +5,7 @@ using Dropwheel.Services;
 namespace Dropwheel.Tests;
 
 [Collection("TargetStoreState")]
-public class AppConfigTests : IDisposable
+public sealed class AppConfigTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "dw_config_" + Guid.NewGuid().ToString("N"));
 
