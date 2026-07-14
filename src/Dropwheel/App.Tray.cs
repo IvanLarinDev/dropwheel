@@ -120,6 +120,14 @@ public partial class App
         menu.Items.Add(pauseSort);
         menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
         menu.Items.Add("Open config folder", null, (_, _) => LaunchService.OpenConfigFolder());
+        menu.Items.Add("Export settings…", null, (_, _) => ExportConfig());
+        var reload = new WF.ToolStripMenuItem("Reload settings")
+        {
+            ToolTipText = "Re-read config.json from disk after a manual edit and apply it without "
+                        + "restarting. A broken file is reported and the current settings stay untouched.",
+        };
+        reload.Click += (_, _) => ReloadConfig();
+        menu.Items.Add(reload);
         var recentDrops = new WF.ToolStripMenuItem("Recent drops");
         menu.Items.Add(recentDrops);
         menu.Items.Add(new WF.ToolStripSeparator());
@@ -165,6 +173,49 @@ public partial class App
             recentDrops.DropDownItems.Add("Clear history...", null, (_, _) => ClearDropHistory(recentDrops));
         }
         recentDrops.DropDownItems.Add("Open history file...", null, (_, _) => OpenDropHistoryFile());
+    }
+
+    /// <summary>Copies config.json to a user-chosen file as a backup or for moving to another machine.
+    /// The WinForms dialog is used on purpose — this runs from a WinForms tray-menu click.</summary>
+    private void ExportConfig()
+    {
+        using var dialog = new WF.SaveFileDialog
+        {
+            Title = "Export Dropwheel settings",
+            FileName = $"dropwheel-config_{DateTime.Now:yyyy-MM-dd}.json",
+            Filter = "JSON settings (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = "json",
+        };
+        if (dialog.ShowDialog() != WF.DialogResult.OK) return;
+        try
+        {
+            // The dialog has already asked about overwriting, so the copy may replace the file.
+            System.IO.File.Copy(TargetStore.FilePath, dialog.FileName, overwrite: true);
+            _tray?.ShowBalloonTip(2500, "Dropwheel",
+                $"Settings exported to {dialog.FileName}.", WF.ToolTipIcon.Info);
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write($"Could not export settings to '{dialog.FileName}'", ex);
+            _tray?.ShowBalloonTip(4000, "Dropwheel",
+                "Couldn't export settings. See error.log for details.", WF.ToolTipIcon.Warning);
+        }
+    }
+
+    /// <summary>Re-reads config.json from disk and applies it live. A parse error keeps the current
+    /// settings and shows what went wrong, so a typo in a hand-edited file can't wipe anything.</summary>
+    private void ReloadConfig()
+    {
+        if (TargetStore.TryReload(out var error))
+        {
+            _overlay?.ApplySettings();
+            _tray?.ShowBalloonTip(2500, "Dropwheel", "Settings reloaded from disk.", WF.ToolTipIcon.Info);
+            return;
+        }
+        ErrorLog.Write($"Reload settings failed: {error}");
+        _tray?.ShowBalloonTip(6000, "Dropwheel",
+            $"Settings NOT reloaded — the file has a problem, current settings are kept.\n{error}",
+            WF.ToolTipIcon.Warning);
     }
 
     /// <summary>Puts the recent-drops list on the clipboard as plain text. Uses the WinForms clipboard —

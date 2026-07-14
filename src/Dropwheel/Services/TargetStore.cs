@@ -63,6 +63,46 @@ public static class TargetStore
         Save();
     }
 
+    /// <summary>Re-reads config.json from disk after a manual edit. Unlike Load, a broken or unreadable
+    /// file never resets anything: on any failure the in-memory config stays exactly as it was and the
+    /// error text is returned for the UI to show. On success the loaded config gets the same fixups as
+    /// at startup and is saved back — the Saved event then re-syncs the folder watcher.</summary>
+    public static bool TryReload(out string error)
+    {
+        error = "";
+        if (!File.Exists(FilePath))
+        {
+            error = $"Settings file not found: {FilePath}";
+            return false;
+        }
+        AppConfig loaded;
+        try
+        {
+            loaded = DeserializeConfig(File.ReadAllText(FilePath), out _) ?? new();
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            error = ex.Message;
+            return false;
+        }
+        var previous = Config;
+        Config = loaded;
+        Config.Presets ??= PresetService.Defaults();
+        Config.OverflowThreshold = WheelLayout.ClampThreshold(Config.OverflowThreshold);
+        InitializeGroupShortcuts();
+        try
+        {
+            Save();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Config = previous;
+            error = ex.Message;
+            return false;
+        }
+        return true;
+    }
+
     internal static string BackupPath(DateTime now)
     {
         var stamp = now.ToString("yyyyMMdd_HHmmss");
