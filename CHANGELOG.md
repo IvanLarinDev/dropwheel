@@ -1,6 +1,21 @@
 # Changelog
 
 - - -
+## [v0.21.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.20.0..v0.21.0) - 2026-07-14
+#### Features
+- (**ui**) число элементов папки в чипе наведения - ([b2d26b5](https://github.com/IvanLarinDev/dropwheel/commit/b2d26b560cdf972a7d4fdd9721337347ac785625)) - Ivan Larin
+#### Bug Fixes
+- (**config**) сохранение переживает мимолётную блокировку config.json - ([6e65d3c](https://github.com/IvanLarinDev/dropwheel/commit/6e65d3cb0ae50e961bff0186afee27f2748127bc)) - Ivan Larin
+- (**ui**) чип наведения вмещает строку места и счётчика - ([a294ccb](https://github.com/IvanLarinDev/dropwheel/commit/a294ccb64e419dd95588d7d232603621154388a8)) - Ivan Larin
+- (**sort**) пауза сортировки действует на текст, виртуальные файлы и SendTo - ([8447d5f](https://github.com/IvanLarinDev/dropwheel/commit/8447d5f5f784b720fc5923d0ec9409827afc191a)) - Ivan Larin
+- (**release**) возобновление после падения пуша тега и retry сетевых операций - ([ecbaca1](https://github.com/IvanLarinDev/dropwheel/commit/ecbaca172228a692e95c4c6437b5dba2b9e34aa9)) - Ivan Larin
+#### Documentation
+- (**demo**) плитка с эмодзи и цветом, вторая строка чипа, карточки новых фич - ([e0dbc06](https://github.com/IvanLarinDev/dropwheel/commit/e0dbc0691f9330bc7512a008ed312a9d80c47f94)) - Ivan Larin
+- документация догнала фичи v0.20.0, добавлены README/LLM для tests и scripts - ([3a83533](https://github.com/IvanLarinDev/dropwheel/commit/3a83533916bea4e13bedd69932dfd1c324303243)) - Ivan Larin
+#### Miscellaneous Chores
+- убраны все предупреждения компилятора - ([0a27aea](https://github.com/IvanLarinDev/dropwheel/commit/0a27aea30efa330cd436a929fc30966756be81b3)) - Ivan Larin
+
+- - -
 ## [v0.20.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.19.0..v0.20.0) - 2026-07-14
 #### Features
 - (**tray**) иконки пунктов, акцентные галочки и группировка меню - ([0531ccd](https://github.com/IvanLarinDev/dropwheel/commit/0531ccd53fa4c4967e271cc2453a8318019d3fdc)) - Ivan Larin
