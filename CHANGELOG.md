@@ -1,6 +1,30 @@
 # Changelog
 
 - - -
+## [v0.18.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.17.0..v0.18.0) - 2026-07-14
+#### Features
+- (**sort**) кликабельные чипы токенов в редакторе правил - ([59c1ffd](https://github.com/IvanLarinDev/dropwheel/commit/59c1ffd38d5bdda6e184edbb29df127a21bb29ed)) - Ivan Larin
+- (**sort**) условие по типу медиа - ([ec6b79a](https://github.com/IvanLarinDev/dropwheel/commit/ec6b79a826a9465c0b44f72091880624b4625434)) - Ivan Larin
+- (**sort**) привычные символы сравнения вместо Gt/Lt в редакторе - ([8e22c0f](https://github.com/IvanLarinDev/dropwheel/commit/8e22c0f630896f0e423aa9c08df946cf00a04586)) - Ivan Larin
+- (**sort**) условие по дате создания файла - ([6112ea5](https://github.com/IvanLarinDev/dropwheel/commit/6112ea5e6464bd07e648a26a7f9283f4f4312ecb)) - Ivan Larin
+- (**sort**) кнопка дублирования правила сортировщика - ([bf977bf](https://github.com/IvanLarinDev/dropwheel/commit/bf977bf3d7d0d9b4c6e199347273e88bf6b5b4e7)) - Ivan Larin
+- (**sort**) включение и выключение правила сортировщика - ([3fe1121](https://github.com/IvanLarinDev/dropwheel/commit/3fe11214846e543de62eafa0e491165f8afd4c38)) - Ivan Larin
+- (**sort**) флажок «НЕ» для инверсии условия правила - ([6866d49](https://github.com/IvanLarinDev/dropwheel/commit/6866d49079b8ebdf14f89c29c8c2a1c4382afcba)) - Ivan Larin
+- (**sort**) настраиваемые размерные корзины в токене size - ([c1bc287](https://github.com/IvanLarinDev/dropwheel/commit/c1bc287c131cc8d1d4fa330137d92aefae3b5880)) - Ivan Larin
+- (**sort**) токен размерной корзины sizebucket в назначении - ([04d8b64](https://github.com/IvanLarinDev/dropwheel/commit/04d8b64254806eceef4405ae79bb1b64d70bee22)) - Ivan Larin
+#### Documentation
+- новые условия и токен size сортировщика в README и демо - ([f016307](https://github.com/IvanLarinDev/dropwheel/commit/f01630727302aa8438237e4d224e047d92c33073)) - Ivan Larin
+#### Miscellaneous Chores
+- (**design**) waiver на чипы токенов в редакторе - ([d7f36a6](https://github.com/IvanLarinDev/dropwheel/commit/d7f36a68b091f1cb2e954c870bc5d10975254d40)) - Ivan Larin
+- (**design**) waiver на UI-правки условия типа медиа - ([4260c37](https://github.com/IvanLarinDev/dropwheel/commit/4260c37f5ff3ba0279359b37bf86c77d60842f2e)) - Ivan Larin
+- (**design**) waiver на символы операторов сравнения - ([ab5bc25](https://github.com/IvanLarinDev/dropwheel/commit/ab5bc253ae36d830e63b0bfcdc2d3366ef779d91)) - Ivan Larin
+- (**design**) waiver на UI-правки условия даты создания - ([179e9bf](https://github.com/IvanLarinDev/dropwheel/commit/179e9bf43b725065d0b612001f831770120601a3)) - Ivan Larin
+- (**design**) waiver на UI-правки дублирования правила - ([23a95b9](https://github.com/IvanLarinDev/dropwheel/commit/23a95b955c70bf03b61a08c9909e4ec1f2bb7f41)) - Ivan Larin
+- (**design**) waiver на UI-правки вкл/выкл правила - ([08d97de](https://github.com/IvanLarinDev/dropwheel/commit/08d97dea736478edaa35422a04a71d1843bca398)) - Ivan Larin
+- (**design**) waiver на UI-правки флажка «НЕ» - ([26f4e89](https://github.com/IvanLarinDev/dropwheel/commit/26f4e89625961f55f539f6d068522dbe1ccb7ab6)) - Ivan Larin
+- (**design**) waiver на UI-правки размерных корзин - ([70cf738](https://github.com/IvanLarinDev/dropwheel/commit/70cf7389e3407f6c0ce4c7c1fd429c2c14d35a41)) - Ivan Larin
+
+- - -
 ## [v0.17.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.4..v0.17.0) - 2026-07-13
 #### Features
 - (**sort**) токены даты и сортировка папок в правилах - ([3c76761](https://github.com/IvanLarinDev/dropwheel/commit/3c767610a3d3b2bf16d906844dfc2550debfd24f)) - Ivan Larin
