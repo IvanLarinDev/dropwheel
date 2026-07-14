@@ -300,6 +300,9 @@ quick-access target. Browser URL drags keep the page title when the drag payload
 includes one, and Dropwheel fetches a favicon in the background when the page
 exposes a PNG/JPG/ICO/WEBP icon.
 
+Selecting several links in text and dropping that selection on the orb or the “+” tile makes one
+tile per distinct link at once, de-duplicated — three lines of URLs become three tiles, not one.
+
 Telegram web links are converted to desktop deep links where possible, so
 clicking a `t.me` tile opens Telegram Desktop when the `tg://` protocol is
 registered. Dropping files or selected text onto a Telegram tile is confirmed first:
@@ -308,6 +311,22 @@ clipboard, open Telegram, and paste it when Telegram is active.*) with a **Send*
 button and **Cancel** appears before anything happens. On confirm, Dropwheel copies
 the payload to the clipboard, opens the chat or topic, and pastes it once Telegram is
 foreground; review and press Send in Telegram.
+
+## Renaming, conflicts, and the clipboard
+
+A folder target can rename what lands in it. Its **Rename dropped files** template uses the same
+`${name}` tokens as sorter destinations — for example `archive-${date}-${stem}` turns `report.pdf` into
+`archive-2026-07-14-report.pdf`, keeping the extension. Leave it empty to keep the original names; Undo
+covers renamed drops too.
+
+Each target also has an **On name conflict** choice for when a dropped file's name already exists at the
+destination: **Ask** (the system Replace/Skip dialog, the default), **Keep both** (adds a number),
+**Overwrite** (the replaced file still goes to the Recycle Bin), or **Skip** (leaves the file and reports
+how many were skipped).
+
+Turn on **Copy destination path to clipboard after a drop** in Settings and every successful drop puts
+its destination on the clipboard — the created file for a single saved file, the destination folder
+otherwise — so you can paste the path straight into a chat or an email.
 
 ## Themes
 
@@ -347,7 +366,9 @@ Light and Neon.
 
 - Dragging from elevated (admin) processes does not work — Windows UIPI.
 - Virtual files (Outlook attachments, browser drags) and dropped text are always
-  copied; files renamed by the conflict dialog are not tracked by Undo.
+  copied; files auto-renamed on a name clash (the system conflict dialog, or the
+  **Keep both** policy) are not tracked by Undo. A target's own **Rename dropped
+  files** template is tracked.
 - One orb (multi-monitor placement works; one wheel instance).
 
 ## Contributing
