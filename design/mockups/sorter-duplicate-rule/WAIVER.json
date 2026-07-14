@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "sorter-duplicate-rule",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Duplicating a routing rule reuses the existing SortRule.Clone() and is a convenience action, not a redesign. The UI diff only adds one glyph button to the rule detail's existing ▲▼✕ tool row, built with the same MoveButton helper, size, palette and layout as its neighbours. Wheel geometry, colours, animations and the editor layout are untouched. The rest of the diff is the DuplicateSelected list operation and a deep-copy test. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
