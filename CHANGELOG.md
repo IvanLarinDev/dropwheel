@@ -1,6 +1,31 @@
 # Changelog
 
 - - -
+## [v0.19.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.18.0..v0.19.0) - 2026-07-14
+#### Features
+- (**drop**) выбор поведения при конфликте имён у цели - ([86ab1e5](https://github.com/IvanLarinDev/dropwheel/commit/86ab1e544ce7558c69df2f3503f45acef9053331)) - Ivan Larin
+- (**drop**) переименование файлов по шаблону на цели - ([a316bae](https://github.com/IvanLarinDev/dropwheel/commit/a316bae2cb65ae3fc297db53cfe76c7a5d8153e6)) - Ivan Larin
+- (**link**) дроп нескольких ссылок одним броском - ([f9ea3e5](https://github.com/IvanLarinDev/dropwheel/commit/f9ea3e5fb982845d5e411c98f7d3a1db4896d4b0)) - Ivan Larin
+- (**drop**) копировать путь назначения в буфер после дропа - ([bd1738b](https://github.com/IvanLarinDev/dropwheel/commit/bd1738ba37ee5b62f7feec200ac51200e3ffdd28)) - Ivan Larin
+- (**text**) вставка токенов имени текста кликом по чипам - ([190a0b8](https://github.com/IvanLarinDev/dropwheel/commit/190a0b8be3f637f56b1bd1fa56a54ff8b6bbe587)) - Ivan Larin
+- (**sort**) единый синтаксис ${...} для имени текста и токен ${slug} - ([a565481](https://github.com/IvanLarinDev/dropwheel/commit/a5654815322ab5f6b98d29899fadc736d558b108)) - Ivan Larin
+- (**text**) шаблон имени для сохранённого текста - ([31094e8](https://github.com/IvanLarinDev/dropwheel/commit/31094e8ef72c612ecbecc75435d18c97168cab2d)) - Ivan Larin
+#### Bug Fixes
+- (**drop**) текст с сайта на папку сохраняется файлом, а не ссылкой - ([f5f4e22](https://github.com/IvanLarinDev/dropwheel/commit/f5f4e227234002c387cacd1873434cbf13f49c48)) - Ivan Larin
+#### Documentation
+- возможности группы B в README и демо - ([2958666](https://github.com/IvanLarinDev/dropwheel/commit/2958666a9c5a207baf903f4f8611efdad2cebe91)) - Ivan Larin
+- токен ${slug} и единый синтаксис имени текста в README и демо - ([0858efa](https://github.com/IvanLarinDev/dropwheel/commit/0858efaa8e61f1d8463ed0b5962bc8a66183f595)) - Ivan Larin
+#### Miscellaneous Chores
+- (**design**) waiver на политику конфликта имён - ([b3b0b99](https://github.com/IvanLarinDev/dropwheel/commit/b3b0b998133ea33d0815e72797a4598a949f412b)) - Ivan Larin
+- (**design**) waiver на шаблон имени файла на цели - ([448e060](https://github.com/IvanLarinDev/dropwheel/commit/448e060c5582a6ec864b2e87977da139531ec52d)) - Ivan Larin
+- (**design**) waiver на дроп нескольких ссылок - ([e3fff4c](https://github.com/IvanLarinDev/dropwheel/commit/e3fff4cd0948300f7175ca1bbc369c61097604ed)) - Ivan Larin
+- (**design**) waiver на копирование пути в буфер - ([8aefa07](https://github.com/IvanLarinDev/dropwheel/commit/8aefa07bfa17df3fee34558da94ab1b7b6591670)) - Ivan Larin
+- (**design**) waiver на чипы токенов имени текста - ([460ff83](https://github.com/IvanLarinDev/dropwheel/commit/460ff83db664278f436bf4cb705137534971a686)) - Ivan Larin
+- (**design**) waiver на единый синтаксис токенов и ${slug} - ([119c09c](https://github.com/IvanLarinDev/dropwheel/commit/119c09c95567fbb293504d2c90e5fd0b322b9d40)) - Ivan Larin
+- (**design**) waiver на приоритет текста над ссылкой при дропе - ([32e5129](https://github.com/IvanLarinDev/dropwheel/commit/32e5129f45738515a1316dc7df60fc618bb359df)) - Ivan Larin
+- (**design**) waiver на настройку имени текст-дропа - ([ab8ac2c](https://github.com/IvanLarinDev/dropwheel/commit/ab8ac2c832ee8f745f7594c6dde7f6892f0557f3)) - Ivan Larin
+
+- - -
 ## [v0.18.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.17.0..v0.18.0) - 2026-07-14
 #### Features
 - (**sort**) кликабельные чипы токенов в редакторе правил - ([59c1ffd](https://github.com/IvanLarinDev/dropwheel/commit/59c1ffd38d5bdda6e184edbb29df127a21bb29ed)) - Ivan Larin
