@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "sorter-token-chips",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Making destination tokens discoverable is a usability addition, not a redesign. The diff adds a chip row under the existing destination box: each chip is a small Border+TextBlock built from the current palette (Selection background, Accent/TextMuted border) and clicking one inserts its ${token} into the destination at the caret. The rule's own Name-regex groups plus a curated set of built-in tokens (already listed in the box tooltip) become the chips; the token hint text now only carries error messages. No wheel geometry, colours, animations, layout or new screen were introduced — chips are a standard pattern rendered in the established theme — so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
