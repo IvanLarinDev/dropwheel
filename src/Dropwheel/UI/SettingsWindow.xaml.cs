@@ -85,6 +85,7 @@ public partial class SettingsWindow : Window
         DeduplicateBox.IsChecked = c.DeduplicateTargets;
         AutostartBox.IsChecked = StartupService.IsEnabled;
         TextNameBox.Text = c.TextFileNameTemplate;
+        BuildTextNameChips();
 
         foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox })
             box.TextChanged += (_, _) => QueueValidation();
@@ -103,6 +104,41 @@ public partial class SettingsWindow : Window
     {
         for (int i = 0; i < _sections.Length; i++)
             _sections[i].Visibility = i == SectionList.SelectedIndex ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static readonly string[] TextNameTokens = { "slug", "date", "time", "year", "month", "day" };
+
+    /// <summary>Fills the chip row under the text-name box so the ${name} tokens are inserted by a click,
+    /// sparing the user from mistyping the ${...} syntax.</summary>
+    private void BuildTextNameChips()
+    {
+        TextNameChips.Children.Clear();
+        foreach (var name in TextNameTokens)
+        {
+            var token = "${" + name + "}";
+            var chip = new Border
+            {
+                Background = Palettes.Selection,
+                BorderBrush = Palettes.TextMuted,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(3),
+                Margin = new Thickness(0, 0, 4, 4),
+                Padding = new Thickness(6, 1, 6, 1),
+                Cursor = Cursors.Hand,
+                Child = new TextBlock { Text = token, FontSize = 11, Foreground = Palettes.TextMuted },
+                ToolTip = $"Insert {token} into the file name",
+            };
+            chip.MouseLeftButtonUp += (_, _) => InsertTextNameToken(token);
+            TextNameChips.Children.Add(chip);
+        }
+    }
+
+    private void InsertTextNameToken(string token)
+    {
+        int at = TextNameBox.SelectionStart;
+        TextNameBox.Text = TextNameBox.Text.Insert(at, token);
+        TextNameBox.SelectionStart = at + token.Length;
+        TextNameBox.Focus();
     }
 
     /// <summary>Validates every field, shows inline errors, marks the sections that hold a problem,
