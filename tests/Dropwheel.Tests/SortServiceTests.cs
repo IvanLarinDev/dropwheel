@@ -125,6 +125,22 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
+    public void Rule_clone_is_an_independent_deep_copy()
+    {
+        // Duplicating a rule must not share condition objects with the original.
+        var original = new SortRule
+        {
+            Dest = "A",
+            All = { new RuleCondition { Field = ConditionField.NameContains, Value = "x" } },
+        };
+        var copy = original.Clone();
+        copy.Dest = "B";
+        copy.All[0].Value = "y";
+        Assert.Equal("A", original.Dest);
+        Assert.Equal("x", original.All[0].Value);
+    }
+
+    [Fact]
     public void SizeMb_greater_than_matches_large_file()
     {
         var big = MakeFile("big.bin", 12L * 1024 * 1024);

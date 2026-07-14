@@ -157,6 +157,7 @@ public partial class TargetEditorWindow
         DockPanel.SetDock(tools, Dock.Right);
         tools.Children.Add(MoveButton("▲", "Move rule up", _selected > 0, () => MoveSelected(-1)));
         tools.Children.Add(MoveButton("▼", "Move rule down", _selected < _rules.Count - 1, () => MoveSelected(+1)));
+        tools.Children.Add(MoveButton("❐", "Duplicate rule", true, DuplicateSelected));
         tools.Children.Add(MoveButton("✕", "Delete rule", true, DeleteSelected));
         header.Children.Add(tools);
         header.Children.Add(new TextBlock { Text = $"Rule {_selected + 1}", FontWeight = FontWeights.SemiBold });
@@ -647,6 +648,17 @@ public partial class TargetEditorWindow
         if (_selected < 0 || _selected >= _rules.Count) return;
         _rules.RemoveAt(_selected);
         if (_selected >= _rules.Count) _selected = _rules.Count - 1;
+        RebuildMaster();
+        RebuildDetail();
+    }
+
+    /// <summary>Inserts an independent copy of the selected rule right after it and selects the copy, so
+    /// a similar rule takes one click instead of re-entering every condition.</summary>
+    private void DuplicateSelected()
+    {
+        if (_selected < 0 || _selected >= _rules.Count) return;
+        _rules.Insert(_selected + 1, _rules[_selected].Clone());
+        _selected++;
         RebuildMaster();
         RebuildDetail();
     }
