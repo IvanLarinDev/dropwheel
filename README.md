@@ -230,8 +230,10 @@ into a dated folder, and `Archive\${cyear}\${cmonth}` lays files out by the mont
 created. One more built-in sorts by size: `${size}` drops a file into a coarse bucket —
 `tiny`/`small`/`medium`/`large`/`huge` by default, or your own with
 `${size: tiny 0.5, small 10, big 100, huge}` (each bucket is a name and its upper bound in MB, the
-last one with no number catching the rest). The **Presets** menu has a **Dated folders** section
-with the date tokens and a **By size** section with the size buckets, ready to add in one click.
+last one with no number catching the rest). And `${slug}` is the first non-blank line of a file's
+text, handy for filing dropped text by its opening line — `notes\${slug}`. The **Presets** menu has a
+**Dated folders** section with the date tokens and a **By size** section with the size buckets, ready
+to add in one click.
 
 **Files, folders, or both** — each rule has an **Applies to** setting: Files (the default),
 Folders, or both. A rule only catches the kinds it is set to, so an existing file rule never
@@ -270,6 +272,11 @@ Drag selected text from a browser, editor, or chat onto a folder tile and
 Dropwheel writes it to `text_YYYY-MM-DD_HH-mm-ss.txt` — or `.md` when the text
 looks like Markdown (headings, code fences, links). Dropped on a sorter, the new
 file is routed by the rules; Undo removes it.
+
+Settings has a **Saved text file name** template for this: leave it empty for the classic
+`text_<date>` name, or use the same `${name}` tokens as sorter destinations — `${slug}` is the first
+line of the text, plus `${date}` `${time}` `${year}` `${month}` `${day}`. So `${slug}_${date}` turns
+a dragged article heading into `Review of the finale_2026-07-14.md`.
 
 ## Run targets (open with)
 

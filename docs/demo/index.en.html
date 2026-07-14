@@ -176,9 +176,10 @@
           <code>${name}</code> groups of a regex; plus built-ins that need no setup:
           the drop-time date <code>${date}</code>, the file's own date
           <code>${cyear}\${cmonth}</code>, and <code>${week}</code>,
-          <code>${quarter}</code>, <code>${initial}</code>, plus size buckets
-          <code>${size}</code> (tiny/small/…/huge, thresholds configurable). So one rule
-          both matches and routes into a dated structure. Each rule has an “applies to” scope —
+          <code>${quarter}</code>, <code>${initial}</code>, size buckets
+          <code>${size}</code> (tiny/small/…/huge, thresholds configurable) and
+          <code>${slug}</code> — the first line of the text. So one rule both matches
+          and routes into a dated structure. Each rule has an “applies to” scope —
           files, folders, or both — so the sorter can date whole folders too without
           mistaking them for files. The same engine powers “watch folder” — the sorter
           files new files and folders in the background and never re-files the dated
