@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "sorter-negate-condition",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Inverting a routing condition is a functional addition to the rules engine (a Negate flag on RuleCondition, applied in SortService.Match), not a redesign. The UI diff only adds a small 'not' checkbox to the left of the existing condition row and a 'not ' prefix to the rule's one-line summary, reusing the established row layout, palette and controls. Wheel geometry, colours, animations and the editor layout are untouched. The rest of the diff is SortService and tests. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
