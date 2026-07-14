@@ -57,9 +57,9 @@ public class AppConfig
     /// user setting — it just stops a tip (fullscreen notice, hidden gestures) from repeating forever.</summary>
     public Dictionary<string, int> HintShows { get; set; } = new();
 
-    /// <summary>Template for the file name of dropped text, without extension. Supports {date} {time}
-    /// {year} {month} {day} and {slug} (first line of the text). Empty (the default) keeps the classic
-    /// text_yyyy-MM-dd_HH-mm-ss name.</summary>
+    /// <summary>Template for the file name of dropped text, without extension. Uses the same ${name}
+    /// tokens as sorter destinations: ${slug} (first line of the text), ${date} ${time} ${year} ${month}
+    /// ${day}. Empty (the default) keeps the classic text_yyyy-MM-dd_HH-mm-ss name.</summary>
     public string TextFileNameTemplate { get; set; } = "";
 
 }

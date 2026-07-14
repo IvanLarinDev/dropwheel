@@ -62,11 +62,11 @@ public static class TextDropService
         return path;
     }
 
-    private static readonly Regex NameTokenRx = new(@"\{(\w+)\}", RegexOptions.Compiled);
+    private static readonly Regex NameTokenRx = new(@"\$\{(\w+)\}", RegexOptions.Compiled);
 
-    /// <summary>Builds the file name (stem + extension) from a template. Unknown tokens are left as-is;
-    /// if the expanded stem is empty after sanitizing, it falls back to the classic dated name so a drop
-    /// never lands on a nameless file.</summary>
+    /// <summary>Builds the file name (stem + extension) from a template using ${name} tokens — the same
+    /// syntax as sorter destinations. Unknown tokens are left as-is; if the expanded stem is empty after
+    /// sanitizing, it falls back to the classic dated name so a drop never lands on a nameless file.</summary>
     public static string BuildName(string? nameTemplate, DateTime now, string text, string ext)
     {
         var fallback = $"text_{now:yyyy-MM-dd_HH-mm-ss}";
@@ -78,17 +78,19 @@ public static class TextDropService
             ["year"] = now.ToString("yyyy"),
             ["month"] = now.ToString("MM"),
             ["day"] = now.ToString("dd"),
-            ["slug"] = Slug(text),
+            ["slug"] = SlugOf(text),
         };
         var stem = NameTokenRx.Replace(nameTemplate, m => map.TryGetValue(m.Groups[1].Value, out var v) ? v : m.Value);
         stem = SanitizeName(stem);
         return (stem.Length > 0 ? stem : fallback) + "." + ext;
     }
 
-    /// <summary>A short, file-name-safe slug from the first non-blank line of the text, for {slug}.
-    /// Empty when the text has no usable line.</summary>
-    private static string Slug(string text)
+    /// <summary>A short, path-segment-safe slug from the first non-blank line of the text, for the ${slug}
+    /// token. Empty when the text has no usable line. Shared by the text file name and the sorter's
+    /// ${slug} destination token so both derive the same label.</summary>
+    public static string SlugOf(string? text)
     {
+        if (string.IsNullOrEmpty(text)) return "";
         var line = text.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Length > 0) ?? "";
         line = SanitizeName(line);
         return line.Length > 40 ? line[..40].Trim() : line;

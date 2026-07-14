@@ -140,7 +140,7 @@ public static class SortService
         "date", "year", "month", "day", "time", "week", "quarter",
         "fdate", "fyear", "fmonth", "fday", "fweek", "fquarter",
         "cdate", "cyear", "cmonth", "cday", "cweek", "cquarter",
-        "ext", "stem", "initial", "size",
+        "ext", "stem", "initial", "size", "slug",
     };
 
     /// <summary>Default .NET format for each date-derived built-in token, used when the placeholder
@@ -210,6 +210,7 @@ public static class SortService
             case "stem": return Path.GetFileNameWithoutExtension(filePath);
             case "initial": return Initial(Path.GetFileName(filePath));
             case "size": return SizeBucket(filePath, format);
+            case "slug": return FileSlug(filePath);
         }
 
         // A leading f/c switches the clock to the item's own last-write or creation time; anything else
@@ -243,6 +244,28 @@ public static class SortService
     {
         try { return source.ToString(format, CultureInfo.InvariantCulture); }
         catch (FormatException) { return null; }
+    }
+
+    /// <summary>The slug of a file's first non-blank line, for the ${slug} token — handy for dropped text,
+    /// whose file the sorter routes by its opening line. Null when the file is missing, empty, or cannot
+    /// be read as text (a binary file), so the item falls back to the sorter root instead of a garbled
+    /// name. Only the first few lines are read, so it stays cheap on large files.</summary>
+    private static string? FileSlug(string filePath)
+    {
+        if (!File.Exists(filePath)) return null;
+        try
+        {
+            foreach (var line in File.ReadLines(filePath).Take(20))
+            {
+                var slug = TextDropService.SlugOf(line);
+                if (slug.Length > 0) return slug;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.DecoderFallbackException)
+        {
+            return null;
+        }
+        return null;
     }
 
     /// <summary>First letter of the file name, upper-cased, for alphabetical buckets. A name whose
@@ -393,7 +416,7 @@ public static class SortService
             "quarter" => "Q[1-4]",
             "initial" => "[^\\\\/]",
             "size" => SizeShape(format),
-            _ => "[^\\\\/]+", // ext, stem
+            _ => "[^\\\\/]+", // ext, stem, slug
         };
     }
 

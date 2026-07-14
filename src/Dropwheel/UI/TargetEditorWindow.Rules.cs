@@ -22,7 +22,7 @@ public partial class TargetEditorWindow
     /// <summary>Built-in tokens offered as clickable chips. A curated, common subset — the f-/c-prefixed
     /// date twins stay in the destination box tooltip to keep the chip row short.</summary>
     private static readonly string[] BuiltinChipTokens =
-        { "date", "year", "month", "day", "time", "week", "quarter", "ext", "stem", "initial", "size" };
+        { "date", "year", "month", "day", "time", "week", "quarter", "ext", "stem", "initial", "size", "slug" };
 
     private static Brush SelectedBg => Palettes.Selection;
     private static Brush SelectedBar => Palettes.Accent;

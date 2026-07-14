@@ -149,28 +149,37 @@ public sealed class TextDropServiceTests : IDisposable
     [Fact]
     public void BuildName_expands_date_and_slug_tokens()
     {
-        var name = TextDropService.BuildName("{slug}_{date}", When, "Review notes\nsecond line", "md");
+        var name = TextDropService.BuildName("${slug}_${date}", When, "Review notes\nsecond line", "md");
         Assert.Equal("Review notes_2026-07-06.md", name);
     }
 
     [Fact]
     public void BuildName_sanitizes_illegal_characters_in_the_slug()
     {
-        var name = TextDropService.BuildName("{slug}", When, "a/b:c*d", "txt");
+        var name = TextDropService.BuildName("${slug}", When, "a/b:c*d", "txt");
         Assert.Equal("abcd.txt", name);
     }
 
     [Fact]
     public void BuildName_falls_back_when_the_expanded_name_is_empty()
     {
-        var name = TextDropService.BuildName("{slug}", When, "   \n  ", "txt");
+        var name = TextDropService.BuildName("${slug}", When, "   \n  ", "txt");
         Assert.Equal("text_2026-07-06_23-15-04.txt", name);
+    }
+
+    [Fact]
+    public void SlugOf_takes_the_first_non_blank_line_sanitized()
+    {
+        Assert.Equal("Review notes", TextDropService.SlugOf("\n  Review notes  \nsecond"));
+        Assert.Equal("abcd", TextDropService.SlugOf("a/b:c*d"));
+        Assert.Equal("", TextDropService.SlugOf("   \n  "));
+        Assert.Equal("", TextDropService.SlugOf(null));
     }
 
     [Fact]
     public void Save_uses_the_template_for_the_file_name()
     {
-        var path = TextDropService.Save("Title line\nbody", _root, When, "{slug}");
+        var path = TextDropService.Save("Title line\nbody", _root, When, "${slug}");
         Assert.Equal("Title line.txt", Path.GetFileName(path));
         Assert.Equal("Title line\nbody", File.ReadAllText(path));
     }

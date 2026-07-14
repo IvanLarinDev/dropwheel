@@ -675,6 +675,25 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
+    public void Slug_token_routes_a_text_file_by_its_first_line()
+    {
+        var f = MakeFile("note.txt");
+        File.WriteAllText(f, "Meeting agenda\nline two");
+        var t = Sorter(_root, new SortRule { Dest = "notes\\${slug}" });
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[Path.Combine(_root, "notes", "Meeting agenda")]);
+    }
+
+    [Fact]
+    public void Slug_token_on_an_empty_file_falls_back_to_root()
+    {
+        var f = MakeFile("empty.txt"); // 0 bytes → no first line
+        var t = Sorter(_root, new SortRule { Dest = "${slug}" });
+        var plan = SortService.Plan(t, new[] { f });
+        Assert.Contains(f, plan[_root]);
+    }
+
+    [Fact]
     public void Size_token_on_a_missing_file_falls_back_to_root()
     {
         _ = SortService.ExpandTemplate(new SortRule { Dest = "${size}" }, "no-such-file.txt",
