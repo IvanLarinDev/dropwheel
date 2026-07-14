@@ -373,10 +373,20 @@ public partial class App
     private static void StyleTrayMenu(WF.ContextMenuStrip menu)
     {
         var p = Dropwheel.UI.Palettes.Current;
-        menu.RenderMode = WF.ToolStripRenderMode.Professional;
-        menu.Renderer = new TrayMenuRenderer(new PaletteMenuColors(p));
-        menu.BackColor = ToSd(p.Surface);
-        menu.ForeColor = ToSd(p.Text);
+        StyleStrip(menu, new TrayMenuRenderer(new PaletteMenuColors(p)), ToSd(p.Surface), ToSd(p.Text));
+    }
+
+    /// <summary>Applies the renderer and colors to the strip and every nested drop-down. A submenu is
+    /// its own ToolStrip that does not inherit the parent's colors — without this it keeps the stock
+    /// light look, unreadable next to a dark main menu.</summary>
+    private static void StyleStrip(WF.ToolStrip strip, WF.ToolStripRenderer renderer, SD.Color back, SD.Color fore)
+    {
+        strip.Renderer = renderer;
+        strip.BackColor = back;
+        strip.ForeColor = fore;
+        foreach (WF.ToolStripItem item in strip.Items)
+            if (item is WF.ToolStripDropDownItem dd)
+                StyleStrip(dd.DropDown, renderer, back, fore);
     }
 
     /// <summary>The checked state is already shown by the item's accent check glyph (SetToggleIcon),
@@ -410,12 +420,15 @@ public partial class App
 
     private sealed class PaletteMenuColors : WF.ProfessionalColorTable
     {
-        private readonly SD.Color _bg, _hover, _line;
+        private readonly SD.Color _bg, _hover, _pressed, _line;
 
         public PaletteMenuColors(Dropwheel.UI.Palette p)
         {
             _bg = ToSd(p.Surface);
             _hover = Blend(p.Surface, p.Accent, 0.30);
+            // An item whose submenu is open is drawn "pressed" — without these overrides the stock
+            // near-white gradient kicks in and light text on it becomes unreadable.
+            _pressed = Blend(p.Surface, p.Accent, 0.18);
             _line = ToSd(p.Border);
         }
 
@@ -428,6 +441,9 @@ public partial class App
         public override SD.Color MenuItemSelected => _hover;
         public override SD.Color MenuItemSelectedGradientBegin => _hover;
         public override SD.Color MenuItemSelectedGradientEnd => _hover;
+        public override SD.Color MenuItemPressedGradientBegin => _pressed;
+        public override SD.Color MenuItemPressedGradientMiddle => _pressed;
+        public override SD.Color MenuItemPressedGradientEnd => _pressed;
         public override SD.Color CheckBackground => _hover;
         public override SD.Color CheckSelectedBackground => _hover;
         public override SD.Color SeparatorDark => _line;

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "emoji-tile-colour",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Bug-level colour fix requested directly by the author: a tile's emoji TextBlock had no Foreground, so text-presentation emoji (hearts, checks) rendered in the default black and disappeared on dark tiles. The emoji now takes the tile's own colour when one is set and the theme's in-tile text colour otherwise; full-colour emoji are unaffected. No layout, sizing or new controls — one Foreground assignment in MakeBubble reusing the existing ParseTileColor value, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}

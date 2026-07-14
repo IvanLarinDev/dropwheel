@@ -14,15 +14,20 @@ public partial class OverlayWindow
     private FrameworkElement MakeBubble(TargetItem t)
     {
         var th = Themes.Current;
+        var customBorder = ParseTileColor(t.TileColor);
         UIElement inner;
         if (!string.IsNullOrWhiteSpace(t.Emoji))
         {
             // A chosen emoji wins over both the file icon and a group's count — it's the tile's face.
             // A group keeps its shortcut badge, so the count is the only thing the emoji replaces.
+            // Text-presentation emoji (hearts, checks) take the foreground: the tile's own colour when
+            // set, the theme's in-tile text otherwise — a black default is invisible on dark tiles.
+            // Full-colour emoji ignore the foreground and stay as they are.
             inner = new TextBlock
             {
                 Text = t.Emoji,
                 FontSize = 30,
+                Foreground = new SolidColorBrush(customBorder ?? th.Label),
                 Opacity = t.Exists ? 1.0 : 0.45,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
@@ -55,7 +60,6 @@ public partial class OverlayWindow
             };
         }
         var themeBorder = t.IsGroup ? th.GroupBorder : t.IsSorter ? th.SorterBorder : th.TileBorder;
-        var customBorder = ParseTileColor(t.TileColor);
         var sq = new Border
         {
             Width = 64,
