@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "sorter-operator-symbols",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Showing the comparison operators as the familiar >, ≥, <, ≤ instead of the enum names Gt/Gte/Lt/Lte is a label change in the existing operator dropdown, not a redesign. The diff only maps CompareOp to a symbol in OpWord and switches the combo to ComboBoxItem+Tag entries, reusing the established control, layout and palette. Wheel geometry, colours, animations and the editor layout are untouched. No new screen or visual language was introduced, so there is nothing for a mockup set to compare against.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-14"
+}
