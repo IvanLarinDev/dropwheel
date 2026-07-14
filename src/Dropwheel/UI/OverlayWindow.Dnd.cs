@@ -332,6 +332,12 @@ public partial class OverlayWindow
                 : "Nothing to save", saved.Length > 0,
                 saved.Length > 0 ? ToastKind.Success : ToastKind.Warning);
         }
+        // Selected text (a browser attaches the page URL to it) must save as a file before the link
+        // branch, or a text selection dropped on a folder would be mistaken for a link tile.
+        else if (LinkTargetService.HasSelectedText(e.Data))
+        {
+            SaveDroppedText(t, dest, e.Data);
+        }
         else if (AddTargetsFromDrop(e.Data, _currentGroup))
         {
         }
@@ -341,28 +347,35 @@ public partial class OverlayWindow
         }
         else if (TextDropService.HasText(e.Data))
         {
-            var saved = TextDropService.SaveFrom(e.Data, dest, DateTime.Now, TargetStore.Config.TextFileNameTemplate);
-            if (saved is { } path)
-            {
-                if (t.IsSorter) SortSavedVirtuals(t, new[] { path });
-                else RememberOp(BuildCreatedCopyOp(new[] { path }, dest));
-            }
-            if (!t.IsSorter)
-            {
-                RememberDropHistory(
-                    DropHistoryAction.SaveText,
-                    t,
-                    DropPayloadKind.Text,
-                    saved != null ? 1 : 0,
-                    saved != null ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                    destination: saved ?? dest,
-                    detail: saved != null ? null : "No text was saved.");
-            }
-            ShowToast(saved != null
-                ? $"Saved text → {System.IO.Path.GetFileName(saved)}"
-                : "No text to save", saved != null,
-                saved != null ? ToastKind.Success : ToastKind.Warning);
+            SaveDroppedText(t, dest, e.Data);
         }
+    }
+
+    /// <summary>Saves dropped text into the target folder (or routes it through a sorter), records the
+    /// drop, and reports the result. Shared by the selected-text and plain-text drop branches.</summary>
+    private void SaveDroppedText(TargetItem t, string dest, IDataObject data)
+    {
+        var saved = TextDropService.SaveFrom(data, dest, DateTime.Now, TargetStore.Config.TextFileNameTemplate);
+        if (saved is { } path)
+        {
+            if (t.IsSorter) SortSavedVirtuals(t, new[] { path });
+            else RememberOp(BuildCreatedCopyOp(new[] { path }, dest));
+        }
+        if (!t.IsSorter)
+        {
+            RememberDropHistory(
+                DropHistoryAction.SaveText,
+                t,
+                DropPayloadKind.Text,
+                saved != null ? 1 : 0,
+                saved != null ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                destination: saved ?? dest,
+                detail: saved != null ? null : "No text was saved.");
+        }
+        ShowToast(saved != null
+            ? $"Saved text → {System.IO.Path.GetFileName(saved)}"
+            : "No text to save", saved != null,
+            saved != null ? ToastKind.Success : ToastKind.Warning);
     }
 
     private static DragDropEffects TelegramDropEffect(DragEventArgs e)

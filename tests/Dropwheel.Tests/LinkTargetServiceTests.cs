@@ -43,6 +43,36 @@ public sealed class LinkTargetServiceTests
         Assert.True(LinkTargetService.HasSavedMessagesLabel(data));
     }
 
+    [Fact]
+    public void HasSelectedText_true_for_selection_that_merely_contains_a_url()
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, "Interesting article, see https://example.com/page for more.");
+        Assert.True(LinkTargetService.HasSelectedText(data));
+    }
+
+    [Fact]
+    public void HasSelectedText_false_for_a_bare_link()
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, "https://example.com/page");
+        Assert.False(LinkTargetService.HasSelectedText(data));
+    }
+
+    [Fact]
+    public void HasSelectedText_true_for_plain_text_without_a_url()
+    {
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, "just some notes");
+        Assert.True(LinkTargetService.HasSelectedText(data));
+    }
+
+    [Fact]
+    public void HasSelectedText_false_when_there_is_no_text()
+    {
+        Assert.False(LinkTargetService.HasSelectedText(new WpfDataObject()));
+    }
+
     [Theory]
     [InlineData("@durov", "tg://resolve?domain=durov")]
     [InlineData("durov", "tg://resolve?domain=durov")]

@@ -19,6 +19,18 @@ public static class LinkTargetService
 
     public static bool HasLaunchUri(IDataObject data) => TryGetLaunchUri(data, out _);
 
+    /// <summary>True when the drop carries real selected text rather than a bare link — text that is not
+    /// just a URL on its own. A browser attaches the page URL (and the selection's HTML) even to a plain
+    /// text selection, so a folder drop must treat such text as a file to save, not as a link target to
+    /// add. A drop whose whole text is just a URL is still a link.</summary>
+    public static bool HasSelectedText(IDataObject data)
+    {
+        var text = TextDropService.GetText(data);
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        return !(TryExtractLaunchUri(text, out var uri)
+                 && string.Equals(uri.Trim(), text.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
     public static bool HasPotentialLaunchUriData(IDataObject data) =>
         data.GetDataPresent("UniformResourceLocatorW")
         || data.GetDataPresent("UniformResourceLocator")
