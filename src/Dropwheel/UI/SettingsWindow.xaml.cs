@@ -19,15 +19,13 @@ public partial class SettingsWindow : Window
         new("Magnetic settle", OpenAnimation.MagneticSettle),
     ];
 
-    private sealed record HotkeyPresetChoice(string Label, string Value);
-
-    private static readonly HotkeyPresetChoice[] HotkeyPresetChoices =
+    private static readonly string[] HotkeyChipCombos =
     [
-        new($"Default ({AppConfig.DefaultHotkey})", AppConfig.DefaultHotkey),
-        new("Ctrl+Shift+Space", "Ctrl+Shift+Space"),
-        new("Ctrl+Alt+D", "Ctrl+Alt+D"),
-        new("Ctrl+Shift+D", "Ctrl+Shift+D"),
-        new("Ctrl+Alt+F12", "Ctrl+Alt+F12"),
+        AppConfig.DefaultHotkey,
+        "Ctrl+Shift+Space",
+        "Ctrl+Alt+D",
+        "Ctrl+Shift+D",
+        "Ctrl+Alt+F12",
     ];
 
     private sealed record OverflowLayoutChoice(string Label, OverflowLayout Value);
@@ -43,8 +41,7 @@ public partial class SettingsWindow : Window
 
     private readonly StackPanel[] _sections;
     private readonly DispatcherTimer _validateTimer;
-    private bool _recordingHotkey;
-    private bool _updatingHotkeyPreset;
+    private TextBox? _recordingBox;
 
     public SettingsWindow()
     {
@@ -60,8 +57,6 @@ public partial class SettingsWindow : Window
         foreach (var name in Themes.All.Keys) ThemeBox.Items.Add(name);
         foreach (var choice in OpenAnimationChoices) OpenAnimationBox.Items.Add(choice);
         OpenAnimationBox.DisplayMemberPath = nameof(OpenAnimationChoice.Label);
-        foreach (var choice in HotkeyPresetChoices) HotkeyPresetBox.Items.Add(choice);
-        HotkeyPresetBox.DisplayMemberPath = nameof(HotkeyPresetChoice.Label);
         ThemeBox.SelectedItem = Themes.All.ContainsKey(c.Theme) ? c.Theme : "Fluent";
         OpenAnimationBox.SelectedItem = OpenAnimationChoices.FirstOrDefault(x => x.Value == c.OpenAnimation)
             ?? OpenAnimationChoices[0];
@@ -93,14 +88,14 @@ public partial class SettingsWindow : Window
 
         foreach (var box in new[] { HoverBox, OverflowThresholdBox, IdleBox, GroupShortcutDelayBox, ToastSecondsBox })
             box.TextChanged += (_, _) => QueueValidation();
-        HotkeyBox.TextChanged += OnHotkeyTextChanged;
-        HotkeyBox.PreviewKeyDown += OnHotkeyBoxPreviewKeyDown;
+        HotkeyBox.TextChanged += (_, _) => QueueValidation();
+        HotkeyBox.PreviewKeyDown += OnRecordingKeyDown;
         OrbHotkeyBox.TextChanged += (_, _) => QueueValidation();
-        HotkeyCaptureButton.Click += OnHotkeyCaptureClick;
+        OrbHotkeyBox.PreviewKeyDown += OnRecordingKeyDown;
+        HotkeyCaptureButton.Click += (_, _) => ToggleRecording(HotkeyBox);
+        OrbHotkeyCaptureButton.Click += (_, _) => ToggleRecording(OrbHotkeyBox);
         HotkeyResetButton.Click += OnHotkeyResetClick;
         HotkeyResetButton.ToolTip = $"Restore {AppConfig.DefaultHotkey}.";
-        HotkeyPresetBox.SelectionChanged += OnHotkeyPresetChanged;
-        RefreshHotkeyPreset();
         SectionList.SelectedIndex = 0;
         ValidateAll();
     }
@@ -162,6 +157,7 @@ public partial class SettingsWindow : Window
         AppearanceErrDot.Visibility = idle ? Visibility.Collapsed : Visibility.Visible;
         HotkeyErrDot.Visibility = hotkey && delay && orbHotkey ? Visibility.Collapsed : Visibility.Visible;
         Shell.IsPrimaryEnabled = hover && threshold && idle && delay && hotkey && orbHotkey && toast;
+        BuildHotkeyChips();
     }
 
     /// <summary>A field that must hold a whole number. Empty is allowed and means "keep the current
@@ -180,7 +176,7 @@ public partial class SettingsWindow : Window
     /// must parse and be free right now.</summary>
     private bool ValidateHotkey()
     {
-        if (_recordingHotkey)
+        if (_recordingBox == HotkeyBox)
         {
             SetHotkeyStatus("Recording: press Ctrl, Alt, Shift, or Win plus one key", null);
             return false;
@@ -207,7 +203,7 @@ public partial class SettingsWindow : Window
             _ => Palettes.TextMuted,
         };
         HotkeyBox.BorderBrush = ok == false ? Palettes.Danger
-            : _recordingHotkey ? Palettes.Accent : Palettes.Border;
+            : _recordingBox == HotkeyBox ? Palettes.Accent : Palettes.Border;
         return ok != false;
     }
 
@@ -216,6 +212,12 @@ public partial class SettingsWindow : Window
     /// reads as available since we hold it.</summary>
     private bool ValidateOrbHotkey()
     {
+        if (_recordingBox == OrbHotkeyBox)
+        {
+            SetOrbHotkeyStatus("Recording: press Ctrl, Alt, Shift, or Win plus one key", null);
+            return false;
+        }
+
         var hk = OrbHotkeyBox.Text.Trim();
         if (hk.Length == 0) return SetOrbHotkeyStatus("Off — no second hotkey", null);
         if (!HotkeyService.TryNormalize(hk, out var normalized))
@@ -239,14 +241,9 @@ public partial class SettingsWindow : Window
             false => Palettes.Danger,
             _ => Palettes.TextMuted,
         };
-        OrbHotkeyBox.BorderBrush = ok == false ? Palettes.Danger : Palettes.Border;
+        OrbHotkeyBox.BorderBrush = ok == false ? Palettes.Danger
+            : _recordingBox == OrbHotkeyBox ? Palettes.Accent : Palettes.Border;
         return ok != false;
-    }
-
-    private void OnHotkeyTextChanged(object sender, TextChangedEventArgs e)
-    {
-        RefreshHotkeyPreset();
-        QueueValidation();
     }
 
     private void QueueValidation()
@@ -255,89 +252,129 @@ public partial class SettingsWindow : Window
         _validateTimer.Start();
     }
 
-    private void OnHotkeyCaptureClick(object sender, RoutedEventArgs e) =>
-        SetHotkeyRecording(!_recordingHotkey);
+    private void OnHotkeyResetClick(object sender, RoutedEventArgs e) =>
+        SetHotkeyBoxText(HotkeyBox, AppConfig.DefaultHotkey);
 
-    private void OnHotkeyResetClick(object sender, RoutedEventArgs e)
+    /// <summary>Starts recording into the box, or stops if it is already recording. Only one field
+    /// records at a time, so starting one implicitly stops the other.</summary>
+    private void ToggleRecording(TextBox box)
     {
-        SetHotkeyRecording(false);
-        SetHotkeyText(AppConfig.DefaultHotkey);
+        bool start = _recordingBox != box;
+        StopRecording();
+        if (!start) return;
+        _recordingBox = box;
+        RecordButtonFor(box).Content = "Stop";
+        box.Focus();
+        ValidateAll();
     }
 
-    private void OnHotkeyPresetChanged(object sender, SelectionChangedEventArgs e)
+    private void StopRecording()
     {
-        if (_updatingHotkeyPreset) return;
-        if (HotkeyPresetBox.SelectedItem is HotkeyPresetChoice choice)
-        {
-            SetHotkeyRecording(false);
-            SetHotkeyText(choice.Value);
-        }
+        if (_recordingBox == null) return;
+        RecordButtonFor(_recordingBox).Content = "Record";
+        _recordingBox = null;
+        ValidateAll();
     }
 
-    private void OnHotkeyBoxPreviewKeyDown(object sender, KeyEventArgs e)
+    private Button RecordButtonFor(TextBox box) =>
+        box == HotkeyBox ? HotkeyCaptureButton : OrbHotkeyCaptureButton;
+
+    private void OnRecordingKeyDown(object sender, KeyEventArgs e)
     {
-        if (!_recordingHotkey) return;
+        if (_recordingBox == null || !ReferenceEquals(sender, _recordingBox)) return;
 
         e.Handled = true;
         var key = EffectiveKey(e);
         if (key == Key.Escape)
         {
-            SetHotkeyRecording(false);
+            StopRecording();
             return;
         }
 
         if (HotkeyService.TryFormatCapturedHotkey(key, Keyboard.Modifiers, out var hotkey))
         {
-            HotkeyBox.Text = hotkey;
-            HotkeyBox.CaretIndex = HotkeyBox.Text.Length;
-            SetHotkeyRecording(false);
+            var box = _recordingBox;
+            StopRecording();
+            SetHotkeyBoxText(box, hotkey);
             return;
         }
 
-        SetHotkeyStatus("Press Ctrl, Alt, Shift, or Win plus one key", null);
+        if (_recordingBox == HotkeyBox) SetHotkeyStatus("Press Ctrl, Alt, Shift, or Win plus one key", null);
+        else SetOrbHotkeyStatus("Press Ctrl, Alt, Shift, or Win plus one key", null);
     }
 
-    private void SetHotkeyRecording(bool recording)
+    private void SetHotkeyBoxText(TextBox box, string hotkey)
     {
-        _recordingHotkey = recording;
-        HotkeyBox.IsReadOnly = recording;
-        HotkeyCaptureButton.Content = recording ? "Stop" : "Record";
-        if (recording)
-        {
-            HotkeyBox.Focus();
-            HotkeyBox.SelectAll();
-            SetHotkeyStatus("Recording: press Ctrl, Alt, Shift, or Win plus one key", null);
-            Shell.IsPrimaryEnabled = false;
-            HotkeyErrDot.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            ValidateAll();
-        }
-    }
-
-    private void SetHotkeyText(string hotkey)
-    {
-        HotkeyBox.Text = hotkey;
-        HotkeyBox.CaretIndex = HotkeyBox.Text.Length;
-        RefreshHotkeyPreset();
+        StopRecording();
+        box.Text = hotkey;
         ValidateAll();
     }
 
-    private void RefreshHotkeyPreset()
+    /// <summary>How a suggestion chip relates to the hotkey field it belongs to: picked in it,
+    /// held by the other hotkey field (clicking would just produce a clash), or free to pick.</summary>
+    internal enum HotkeyChipKind { Normal, Selected, Conflicting }
+
+    internal static HotkeyChipKind HotkeyChipState(string combo, string current, string other) =>
+        HotkeyService.IsSameCombination(combo, current) ? HotkeyChipKind.Selected
+        : HotkeyService.IsSameCombination(combo, other) ? HotkeyChipKind.Conflicting
+        : HotkeyChipKind.Normal;
+
+    /// <summary>Rebuilds both suggestion chip rows so the highlight follows the current field values.
+    /// The second hotkey's row starts with an Off chip that clears it.</summary>
+    private void BuildHotkeyChips()
     {
-        if (_updatingHotkeyPreset) return;
-        _updatingHotkeyPreset = true;
-        try
+        FillHotkeyChipRow(HotkeyChips, HotkeyBox, OrbHotkeyBox, withOffChip: false);
+        FillHotkeyChipRow(OrbHotkeyChips, OrbHotkeyBox, HotkeyBox, withOffChip: true);
+    }
+
+    private void FillHotkeyChipRow(WrapPanel row, TextBox target, TextBox other, bool withOffChip)
+    {
+        row.Children.Clear();
+        if (withOffChip)
         {
-            var text = HotkeyBox.Text.Trim();
-            HotkeyPresetBox.SelectedItem = HotkeyPresetChoices
-                .FirstOrDefault(x => HotkeyService.IsSameCombination(x.Value, text));
+            var kind = target.Text.Trim().Length == 0 ? HotkeyChipKind.Selected : HotkeyChipKind.Normal;
+            row.Children.Add(MakeHotkeyChip("Off", kind, () => SetHotkeyBoxText(target, ""),
+                "No second hotkey"));
         }
-        finally
+        foreach (var combo in HotkeyChipCombos)
         {
-            _updatingHotkeyPreset = false;
+            var kind = HotkeyChipState(combo, target.Text.Trim(), other.Text.Trim());
+            row.Children.Add(MakeHotkeyChip(combo, kind, () => SetHotkeyBoxText(target, combo),
+                kind == HotkeyChipKind.Conflicting ? "Used by the other hotkey" : $"Use {combo}"));
         }
+    }
+
+    private static Border MakeHotkeyChip(string label, HotkeyChipKind kind, Action apply, string tooltip)
+    {
+        var text = new TextBlock
+        {
+            Text = label,
+            FontSize = 11,
+            Foreground = kind switch
+            {
+                HotkeyChipKind.Selected => Palettes.Brush(Palettes.Current.AccentText),
+                HotkeyChipKind.Conflicting => Palettes.TextMuted,
+                _ => Palettes.Text,
+            },
+        };
+        if (kind == HotkeyChipKind.Conflicting) text.TextDecorations = TextDecorations.Strikethrough;
+        var chip = new Border
+        {
+            Background = kind == HotkeyChipKind.Selected ? Palettes.Accent : Palettes.Surface,
+            BorderBrush = kind == HotkeyChipKind.Selected ? Palettes.Accent : Palettes.Border,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Margin = new Thickness(0, 0, 5, 5),
+            Padding = new Thickness(9, 2, 9, 2),
+            Child = text,
+            ToolTip = tooltip,
+        };
+        if (kind != HotkeyChipKind.Conflicting)
+        {
+            chip.Cursor = Cursors.Hand;
+            chip.MouseLeftButtonUp += (_, _) => apply();
+        }
+        return chip;
     }
 
     private static string DisplayHotkey(string hotkey) =>
