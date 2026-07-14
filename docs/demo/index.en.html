@@ -165,17 +165,20 @@
         <p>
           A sorter is a folder target with rules (an amber-bordered tile with a ⇅
           badge). A batch dropped on it fans out into subfolders: the first rule
-          whose conditions all match takes the file. Conditions are extension, name
-          (substring or regex), size and age; a rule with no conditions is the
-          catch-all.
+          whose conditions all match takes the file. Conditions are extension, type
+          (image, video, audio, document, archive), name (substring or regex), size,
+          age and created date; any condition can be inverted with a “not” tick. A rule
+          with no conditions is the catch-all, and a whole rule can be switched off
+          without deleting it.
         </p>
         <p>
           A destination can build the subfolder name from tokens. From the file name —
           <code>${name}</code> groups of a regex; plus built-ins that need no setup:
           the drop-time date <code>${date}</code>, the file's own date
           <code>${cyear}\${cmonth}</code>, and <code>${week}</code>,
-          <code>${quarter}</code>, <code>${initial}</code>. So one rule both matches and
-          routes into a dated structure. Each rule has an “applies to” scope —
+          <code>${quarter}</code>, <code>${initial}</code>, plus size buckets
+          <code>${size}</code> (tiny/small/…/huge, thresholds configurable). So one rule
+          both matches and routes into a dated structure. Each rule has an “applies to” scope —
           files, folders, or both — so the sorter can date whole folders too without
           mistaking them for files. The same engine powers “watch folder” — the sorter
           files new files and folders in the background and never re-files the dated
@@ -379,9 +382,10 @@
         <div class="card">
           <h3>Rules: tokens, presets, scope</h3>
           <p>Rules are edited in a master–detail list; there are ready categories
-             (Images, Documents, Archives…), a “Dated folders” section of date-token
-             destinations, a files / folders / both scope, and a “test files” box that
-             shows at once which files land in the selected rule.</p>
+             (Images, Documents, Archives…), “Dated folders” and “By size” preset
+             sections, destination tokens inserted by clicking chips under the field,
+             a files / folders / both scope, and a “test files” box that shows at once
+             which files land in the selected rule.</p>
         </div>
         <div class="card">
           <h3>Launch options</h3>

@@ -193,9 +193,16 @@ an ordered list edited in a master–detail panel — the first rule whose
 conditions all match wins:
 
 - **Extension** — `png jpg webp` (space- or comma-separated, dots optional)
+- **Type** — a media kind (image, video, audio, document, archive) instead of spelling out extensions
 - **Name contains** / **Name regex** — match against the file name
-- **Size (MB)** and **Age (days)** — with `>`, `<`, `≥`, `≤`
+- **Size (MB)**, **Age (days)** (since last change) and **Created (days ago)** — with `>`, `<`, `≥`, `≤`
 - a rule with no conditions is a **catch-all**
+
+Tick **not** on a condition to invert it — the rule then matches everything *except* it, so a
+`not` extension `jpg png` even catches files with no extension at all. A whole rule can be switched
+off with its **Enabled** checkbox without deleting it: a disabled rule is skipped and shown dimmed
+with an `(off)` mark in the list. The **❐** button in a rule's header duplicates it with all its
+conditions, for when two rules differ only by destination.
 
 Each rule sends its matches to a subfolder (relative to the target `Path`) or an
 absolute folder. The **Test files** box previews which sample files land in the
@@ -206,9 +213,9 @@ with `${name}` placeholders. Add a **Name regex** condition with named groups, e
 `(?<ep>ep\d+)_(?<sq>sq\d+)_(?<sh>sh\d+)`, and set the destination to
 `episodes\${ep}\${sq}\${sh}`; a file `ep001_sq001_sh001_playblast_v001.mov` then lands
 in `episodes\ep001\sq001\sh001\`. Tokens fill from the rule's own Name regex groups, so
-one pattern both matches and routes, and the editor lists the tokens a rule can fill
-right under the destination box. A file that matches the rule but leaves a token empty
-goes to the target root rather than into a half-built path.
+one pattern both matches and routes, and the editor shows the tokens a rule can use as clickable
+chips right under the destination box — click one to insert it at the cursor. A file that matches
+the rule but leaves a token empty goes to the target root rather than into a half-built path.
 
 Besides the name groups there are built-in tokens that need no regex. Drop-time date and
 time: `${date}` (ISO `2026-07-13`, so folders sort by date), `${year}`, `${month}`,
@@ -220,8 +227,11 @@ creation date (`${cyear}`, `${cmonth}`…). And three file-name pieces: `${ext}`
 .NET format after a colon on any date token to shape it — `${date:dd-MM-yy}`,
 `${date:yyyy-MM}`, `${month:MMMM}`. So `Downloads\${date}` files everything dropped today
 into a dated folder, and `Archive\${cyear}\${cmonth}` lays files out by the month they were
-created. The **Presets** menu has a **Dated folders** section with these ready to add in one
-click.
+created. One more built-in sorts by size: `${size}` drops a file into a coarse bucket —
+`tiny`/`small`/`medium`/`large`/`huge` by default, or your own with
+`${size: tiny 0.5, small 10, big 100, huge}` (each bucket is a name and its upper bound in MB, the
+last one with no number catching the rest). The **Presets** menu has a **Dated folders** section
+with the date tokens and a **By size** section with the size buckets, ready to add in one click.
 
 **Files, folders, or both** — each rule has an **Applies to** setting: Files (the default),
 Folders, or both. A rule only catches the kinds it is set to, so an existing file rule never
