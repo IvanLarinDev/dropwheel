@@ -24,6 +24,49 @@ public partial class App
         DropDispatch.SortingPaused = _sortingPaused;
     }
 
+    // Segoe MDL2 Assets glyphs for the menu icons. A checked toggle shows the accent check instead
+    // of its own glyph, so the on/off state reads at a glance without the stock check boxes.
+    private const string GlyphCheck = "\uE73E"; // CheckMark
+    private const string GlyphPower = "\uE7E8"; // PowerButton
+    private const string GlyphSend = "\uE724"; // Send
+    private const string GlyphPause = "\uE769"; // Pause
+    private const string GlyphSettings = "\uE713"; // Setting
+    private const string GlyphFolder = "\uE8B7"; // Folder
+    private const string GlyphExport = "\uE898"; // Upload
+    private const string GlyphReload = "\uE72C"; // Refresh
+    private const string GlyphHistory = "\uE81C"; // History
+    private const string GlyphExit = "\uE8BB"; // ChromeClose
+
+    private static readonly Dictionary<(string Glyph, SD.Color Color), SD.Bitmap> GlyphCache = new();
+
+    /// <summary>Small menu icon rendered from a Segoe MDL2 Assets glyph in the given color. Cached
+    /// forever — the set of glyph+color pairs is tiny and the bitmaps are reused on every menu open.</summary>
+    private static SD.Bitmap Glyph(string glyph, SD.Color color)
+    {
+        if (GlyphCache.TryGetValue((glyph, color), out var cached)) return cached;
+        var size = WF.SystemInformation.SmallIconSize;
+        var bmp = new SD.Bitmap(size.Width, size.Height);
+        using (var g = SD.Graphics.FromImage(bmp))
+        using (var font = new SD.Font("Segoe MDL2 Assets", size.Height * 0.62f, SD.GraphicsUnit.Pixel))
+        using (var brush = new SD.SolidBrush(color))
+        using (var format = new SD.StringFormat
+        { Alignment = SD.StringAlignment.Center, LineAlignment = SD.StringAlignment.Center })
+        {
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            g.DrawString(glyph, font, brush, new SD.RectangleF(0, 0, size.Width, size.Height), format);
+        }
+        GlyphCache[(glyph, color)] = bmp;
+        return bmp;
+    }
+
+    /// <summary>A toggle shows the accent check when on and its own muted glyph when off — the state
+    /// lives in the icon slot, replacing the stock check boxes that clash with the dark theme.</summary>
+    private static void SetToggleIcon(WF.ToolStripMenuItem item, string glyph)
+    {
+        var p = Dropwheel.UI.Palettes.Current;
+        item.Image = item.Checked ? Glyph(GlyphCheck, ToSd(p.Accent)) : Glyph(glyph, ToSd(p.TextMuted));
+    }
+
     private void InitTray()
     {
         _tray = new WF.NotifyIcon
@@ -82,6 +125,7 @@ public partial class App
             }
         };
         menu.Items.Add(sendTo);
+        menu.Items.Add(new WF.ToolStripSeparator());
         var pauseAuto = new WF.ToolStripMenuItem("Pause auto-sort (watched folders)")
         {
             Checked = _autoSortPaused,
@@ -118,9 +162,11 @@ public partial class App
                 WF.ToolTipIcon.Info);
         };
         menu.Items.Add(pauseSort);
-        menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
-        menu.Items.Add("Open config folder", null, (_, _) => LaunchService.OpenConfigFolder());
-        menu.Items.Add("Export settings…", null, (_, _) => ExportConfig());
+        menu.Items.Add(new WF.ToolStripSeparator());
+        var settings = (WF.ToolStripMenuItem)menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
+        var configFolder = (WF.ToolStripMenuItem)menu.Items.Add("Open config folder", null,
+            (_, _) => LaunchService.OpenConfigFolder());
+        var export = (WF.ToolStripMenuItem)menu.Items.Add("Export settings…", null, (_, _) => ExportConfig());
         var reload = new WF.ToolStripMenuItem("Reload settings")
         {
             ToolTipText = "Re-read config.json from disk after a manual edit and apply it without "
@@ -128,10 +174,29 @@ public partial class App
         };
         reload.Click += (_, _) => ReloadConfig();
         menu.Items.Add(reload);
+        menu.Items.Add(new WF.ToolStripSeparator());
         var recentDrops = new WF.ToolStripMenuItem("Recent drops");
         menu.Items.Add(recentDrops);
         menu.Items.Add(new WF.ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) => ExitApp());
+        var exit = (WF.ToolStripMenuItem)menu.Items.Add("Exit", null, (_, _) => ExitApp());
+
+        // Re-tinted on every open so a theme change recolors them live; toggles re-read their state.
+        void RefreshTrayIcons()
+        {
+            var muted = ToSd(Dropwheel.UI.Palettes.Current.TextMuted);
+            SetToggleIcon(auto, GlyphPower);
+            SetToggleIcon(sendTo, GlyphSend);
+            SetToggleIcon(pauseAuto, GlyphPause);
+            SetToggleIcon(pauseSort, GlyphPause);
+            settings.Image = Glyph(GlyphSettings, muted);
+            configFolder.Image = Glyph(GlyphFolder, muted);
+            export.Image = Glyph(GlyphExport, muted);
+            reload.Image = Glyph(GlyphReload, muted);
+            recentDrops.Image = Glyph(GlyphHistory, muted);
+            exit.Image = Glyph(GlyphExit, muted);
+        }
+
+        RefreshTrayIcons();
         StyleTrayMenu(menu);
         menu.Opening += (_, _) =>
         {
@@ -139,6 +204,7 @@ public partial class App
             sendTo.Checked = ExplorerBridgeService.IsSendToInstalled();
             PopulateRecentDrops(recentDrops);
             StyleTrayMenu(menu);
+            RefreshTrayIcons();
         };
         _tray.ContextMenuStrip = menu;
         _tray.DoubleClick += (_, _) => _overlay?.ToggleCloud();
@@ -302,22 +368,24 @@ public partial class App
     }
 
     /// <summary>WinForms tray menu ignores the WPF theme, so paint it from the palette by hand.
-    /// Re-applied on each open so a theme change takes effect live: dark themes get the custom
-    /// renderer, light themes fall back to the default one.</summary>
+    /// Re-applied on each open so a theme change takes effect live. Light themes get the same custom
+    /// renderer as dark ones — the stock one would draw its own check boxes over the glyph icons.</summary>
     private static void StyleTrayMenu(WF.ContextMenuStrip menu)
     {
         var p = Dropwheel.UI.Palettes.Current;
-        if (!p.Dark)
-        {
-            menu.RenderMode = WF.ToolStripRenderMode.ManagerRenderMode;
-            menu.BackColor = SD.SystemColors.Menu;
-            menu.ForeColor = SD.SystemColors.MenuText;
-            return;
-        }
         menu.RenderMode = WF.ToolStripRenderMode.Professional;
-        menu.Renderer = new WF.ToolStripProfessionalRenderer(new DarkMenuColors(p)) { RoundedEdges = false };
+        menu.Renderer = new TrayMenuRenderer(new PaletteMenuColors(p));
         menu.BackColor = ToSd(p.Surface);
         menu.ForeColor = ToSd(p.Text);
+    }
+
+    /// <summary>The checked state is already shown by the item's accent check glyph (SetToggleIcon),
+    /// so the stock check box that would be drawn behind it is suppressed entirely.</summary>
+    private sealed class TrayMenuRenderer : WF.ToolStripProfessionalRenderer
+    {
+        public TrayMenuRenderer(WF.ProfessionalColorTable table) : base(table) => RoundedEdges = false;
+
+        protected override void OnRenderItemCheck(WF.ToolStripItemImageRenderEventArgs e) { }
     }
 
     /// <summary>The app version for the tray header, from the assembly's informational version
@@ -340,11 +408,11 @@ public partial class App
             (int)(a.G + (b.G - a.G) * t),
             (int)(a.B + (b.B - a.B) * t));
 
-    private sealed class DarkMenuColors : WF.ProfessionalColorTable
+    private sealed class PaletteMenuColors : WF.ProfessionalColorTable
     {
         private readonly SD.Color _bg, _hover, _line;
 
-        public DarkMenuColors(Dropwheel.UI.Palette p)
+        public PaletteMenuColors(Dropwheel.UI.Palette p)
         {
             _bg = ToSd(p.Surface);
             _hover = Blend(p.Surface, p.Accent, 0.30);
