@@ -1,6 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Shapes;
 using System.Windows.Threading;
 using Dropwheel.Models;
 using Dropwheel.Services;
@@ -60,6 +63,11 @@ public partial class SettingsWindow : Window
         ThemeBox.SelectedItem = Themes.All.ContainsKey(c.Theme) ? c.Theme : "Fluent";
         OpenAnimationBox.SelectedItem = OpenAnimationChoices.FirstOrDefault(x => x.Value == c.OpenAnimation)
             ?? OpenAnimationChoices[0];
+        OpenAnimationBox.SelectionChanged += (_, _) => PlayAnimPreview();
+        AnimPreviewBox.MouseLeftButtonUp += (_, _) => PlayAnimPreview();
+        AnimPreviewBox.Cursor = Cursors.Hand;
+        AnimPreviewBox.ToolTip = "Preview of the open animation — click to replay.";
+        Loaded += (_, _) => PlayAnimPreview();
         foreach (var choice in OverflowLayoutChoices) OverflowLayoutBox.Items.Add(choice);
         OverflowLayoutBox.DisplayMemberPath = nameof(OverflowLayoutChoice.Label);
         OverflowLayoutBox.SelectedItem = OverflowLayoutChoices.FirstOrDefault(x => x.Value == c.OverflowLayout)
@@ -400,10 +408,73 @@ public partial class SettingsWindow : Window
         var th = Themes.Current;
         AnimPreviewBox.Background = new System.Windows.Media.SolidColorBrush(th.Backdrop);
         AnimPreviewBox.BorderBrush = Palettes.Border;
-        var accent = new System.Windows.Media.SolidColorBrush(th.Accent);
+        var accent = new SolidColorBrush(th.Accent);
         foreach (var dot in AnimPreviewDots.Children)
-            if (dot is System.Windows.Shapes.Ellipse e) e.Fill = accent;
+            if (dot is Ellipse e) e.Fill = accent;
     }
+
+    /// <summary>Plays the open animation on the preview dots in the selected style, so the little picture
+    /// next to the dropdown matches what the wheel actually does. The first dot is the hub and stays put;
+    /// the rest slide out from it with the style's timing, easing and (for Magnetic settle) arc.</summary>
+    private void PlayAnimPreview()
+    {
+        if (OpenAnimationBox.SelectedItem is not OpenAnimationChoice choice) return;
+        var dots = AnimPreviewDots.Children.OfType<Ellipse>().ToList();
+        if (dots.Count < 2) return;
+        const double cx = 40.5, cy = 15.5; // preview hub center
+        var (durationMs, delayStep, startScale, ease, arc) = PreviewParams(choice.Value);
+        var dur = TimeSpan.FromMilliseconds(durationMs);
+        for (int i = 1; i < dots.Count; i++) // dot 0 is the hub — it stays put
+        {
+            var dot = dots[i];
+            double startX = cx - (Canvas.GetLeft(dot) + dot.Width / 2);
+            double startY = cy - (Canvas.GetTop(dot) + dot.Height / 2);
+            var sc = new ScaleTransform(startScale, startScale);
+            var tr = new TranslateTransform(startX, startY);
+            dot.RenderTransformOrigin = new Point(0.5, 0.5);
+            dot.RenderTransform = new TransformGroup { Children = { sc, tr } };
+            dot.Opacity = 0;
+            var begin = TimeSpan.FromMilliseconds((i - 1) * delayStep);
+            sc.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(startScale, 1, dur) { BeginTime = begin, EasingFunction = ease });
+            sc.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(startScale, 1, dur) { BeginTime = begin, EasingFunction = ease });
+            if (arc)
+            {
+                double px = -startY, py = startX, len = Math.Sqrt(px * px + py * py);
+                double ax = len > 0 ? px / len * 5 : 0, ay = len > 0 ? py / len * 5 : 0;
+                tr.BeginAnimation(TranslateTransform.XProperty, PreviewArc(startX * 0.5 + ax, dur, ease, begin));
+                tr.BeginAnimation(TranslateTransform.YProperty, PreviewArc(startY * 0.5 + ay, dur, ease, begin));
+            }
+            else
+            {
+                tr.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(startX, 0, dur) { BeginTime = begin, EasingFunction = ease });
+                tr.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(startY, 0, dur) { BeginTime = begin, EasingFunction = ease });
+            }
+            dot.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(120)) { BeginTime = begin });
+        }
+    }
+
+    /// <summary>Per-style preview timing — duration, per-dot delay, start scale, easing, and whether the
+    /// dots arc in (Magnetic settle) — a compact echo of AnimateTile so the preview reads like the real
+    /// open.</summary>
+    private static (int durationMs, int delayStep, double startScale, IEasingFunction ease, bool arc) PreviewParams(OpenAnimation style) => style switch
+    {
+        OpenAnimation.MagneticSettle => (280, 20, 0.5, new ElasticEase { EasingMode = EasingMode.EaseOut, Oscillations = 1, Springiness = 5 }, true),
+        OpenAnimation.RadialBurst => (320, 28, 0.3, new CubicEase { EasingMode = EasingMode.EaseOut }, false),
+        OpenAnimation.ClockSweep => (260, 60, 0.6, new SineEase { EasingMode = EasingMode.EaseOut }, false),
+        _ => (280, 28, 0.5, new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.4 }, false),
+    };
+
+    /// <summary>A two-key-frame arc for the Magnetic settle preview: a sideways mid-point, then a spring
+    /// onto the final spot at 0.</summary>
+    private static DoubleAnimationUsingKeyFrames PreviewArc(double mid, TimeSpan dur, IEasingFunction ease, TimeSpan begin) => new()
+    {
+        BeginTime = begin,
+        KeyFrames =
+        {
+            new EasingDoubleKeyFrame(mid, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(dur.TotalMilliseconds * 0.52))) { EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } },
+            new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(dur)) { EasingFunction = ease },
+        }
+    };
 
     /// <summary>The threshold only applies to the overflow layouts, so it is greyed out for None.</summary>
     private void UpdateThresholdEnabled()

@@ -40,7 +40,7 @@
                 <ListBoxItem Content="System"/>
             </ListBox>
 
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="0,0,16,0">
                 <Grid>
                     <StackPanel x:Name="WheelPanel">
                         <TextBlock Text="Default drop action"/>
