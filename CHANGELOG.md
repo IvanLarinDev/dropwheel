@@ -1,6 +1,12 @@
 # Changelog
 
 - - -
+## [v0.23.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.22.0..v0.23.0) - 2026-07-15
+#### Features
+- (**ui**) ползунок Wheel size в настройках — масштаб колеса 0.8–1.5 - ([d385672](https://github.com/IvanLarinDev/dropwheel/commit/d385672b74758070dc5c1c39770ffcb9b2d02534)) - Ivan Larin
+- (**ui**) обвязка масштаба колеса — WheelScale и ScaleTransform (при 1.0 без изменений) - ([4462e23](https://github.com/IvanLarinDev/dropwheel/commit/4462e230d04011e9d953384ed9d0f5d048ad6156)) - Ivan Larin
+
+- - -
 ## [v0.22.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.21.1..v0.22.0) - 2026-07-15
 #### Features
 - (**ui**) анимация Magnetic settle — заход по дуге и упругая защёлка - ([a4ef2c8](https://github.com/IvanLarinDev/dropwheel/commit/a4ef2c8ca8ecb815392bd0e6e28f55e5f4b7a050)) - Ivan Larin
