@@ -349,7 +349,7 @@ public partial class OverlayWindow
         var durationMs = ScaleTiming(animation switch
         {
             OpenAnimation.ClockSweep => 190,
-            OpenAnimation.MagneticSettle => 170,
+            OpenAnimation.MagneticSettle => 210,
             OpenAnimation.RadialBurst => 240,
             _ => 220,
         }, speed);
@@ -357,14 +357,14 @@ public partial class OverlayWindow
         {
             OpenAnimation.RadialBurst => 0.46,
             OpenAnimation.ClockSweep => 0.68,
-            OpenAnimation.MagneticSettle => 0.86,
+            OpenAnimation.MagneticSettle => 0.82,
             _ => 0.72,
         };
         var (startX, startY) = animation switch
         {
             OpenAnimation.RadialBurst => (-radius * 0.82 * Math.Cos(angle), -radius * 0.82 * Math.Sin(angle)),
             OpenAnimation.ClockSweep => (-18 * Math.Sin(angle), 18 * Math.Cos(angle)),
-            OpenAnimation.MagneticSettle => (-10 * Math.Cos(angle), -10 * Math.Sin(angle)),
+            OpenAnimation.MagneticSettle => (-20 * Math.Cos(angle), -20 * Math.Sin(angle)),
             _ => (-24 * Math.Cos(angle), -24 * Math.Sin(angle)),
         };
 
@@ -375,7 +375,7 @@ public partial class OverlayWindow
         var d = TimeSpan.FromMilliseconds(delayMs);
         IEasingFunction ease = animation switch
         {
-            OpenAnimation.MagneticSettle => new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.28 },
+            OpenAnimation.MagneticSettle => new ElasticEase { EasingMode = EasingMode.EaseOut, Oscillations = 1, Springiness = 5 },
             OpenAnimation.RadialBurst => new CubicEase { EasingMode = EasingMode.EaseOut },
             OpenAnimation.ClockSweep => new SineEase { EasingMode = EasingMode.EaseOut },
             _ => new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.36 },
@@ -383,13 +383,28 @@ public partial class OverlayWindow
         var duration = TimeSpan.FromMilliseconds(durationMs);
         var growX = new DoubleAnimation(startScale, 1, duration) { BeginTime = d, EasingFunction = ease };
         var growY = new DoubleAnimation(startScale, 1, duration) { BeginTime = d, EasingFunction = ease };
-        var moveX = new DoubleAnimation(startX, 0, duration) { BeginTime = d, EasingFunction = ease };
-        var moveY = new DoubleAnimation(startY, 0, duration) { BeginTime = d, EasingFunction = ease };
-
         sc.BeginAnimation(ScaleTransform.ScaleXProperty, growX);
         sc.BeginAnimation(ScaleTransform.ScaleYProperty, growY);
-        tr.BeginAnimation(TranslateTransform.XProperty, moveX);
-        tr.BeginAnimation(TranslateTransform.YProperty, moveY);
+
+        if (animation == OpenAnimation.MagneticSettle)
+        {
+            // A curved "magnetic" approach: the tile arcs in sideways to its slot (a mid-point offset
+            // perpendicular to its spoke) and springs onto the spot, unlike Pop's straight hub-out pop.
+            double perpX = -Math.Sin(angle), perpY = Math.Cos(angle);
+            const double arc = 22;
+            var arcX = ArcAnimation(startX * 0.5 + perpX * arc, 0, duration, ease);
+            var arcY = ArcAnimation(startY * 0.5 + perpY * arc, 0, duration, ease);
+            arcX.BeginTime = arcY.BeginTime = d;
+            tr.BeginAnimation(TranslateTransform.XProperty, arcX);
+            tr.BeginAnimation(TranslateTransform.YProperty, arcY);
+        }
+        else
+        {
+            var moveX = new DoubleAnimation(startX, 0, duration) { BeginTime = d, EasingFunction = ease };
+            var moveY = new DoubleAnimation(startY, 0, duration) { BeginTime = d, EasingFunction = ease };
+            tr.BeginAnimation(TranslateTransform.XProperty, moveX);
+            tr.BeginAnimation(TranslateTransform.YProperty, moveY);
+        }
         var opacityMs = ScaleTiming(animation == OpenAnimation.ClockSweep ? 120 : 140, speed);
         el.BeginAnimation(OpacityProperty,
             new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(opacityMs))
