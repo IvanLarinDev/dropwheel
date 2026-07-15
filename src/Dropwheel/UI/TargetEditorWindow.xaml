@@ -90,11 +90,11 @@
             </StackPanel>
 
             <StackPanel x:Name="MasterPanel" Grid.Column="1" Width="200" Margin="16,0,0,0"
-                        Visibility="Collapsed">
+                        VerticalAlignment="Top" Visibility="Collapsed">
                 <TextBlock Text="Routing rules" FontWeight="SemiBold"/>
                 <TextBlock Text="first match wins" FontSize="11" Foreground="{DynamicResource DwTextMuted}" Margin="0,1,0,6"/>
                 <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="MasterHost"/>
+                    <StackPanel x:Name="MasterHost" Margin="0,0,14,0"/>
                 </ScrollViewer>
                 <DockPanel Margin="0,8,0,0">
                     <Button Content="Presets ▾" Click="OnPresetsClick" DockPanel.Dock="Right" Padding="8,2"/>
@@ -106,10 +106,10 @@
             </StackPanel>
 
             <Border x:Name="DetailPanel" Grid.Column="2" Width="430" Margin="16,0,0,0"
-                    Visibility="Collapsed" BorderBrush="{DynamicResource DwBorder}" BorderThickness="1"
-                    CornerRadius="6" Padding="10">
+                    VerticalAlignment="Top" Visibility="Collapsed" BorderBrush="{DynamicResource DwBorder}"
+                    BorderThickness="1" CornerRadius="6" Padding="10">
                 <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="DetailHost"/>
+                    <StackPanel x:Name="DetailHost" Margin="0,0,14,0"/>
                 </ScrollViewer>
             </Border>
         </Grid>
@@ -134,7 +134,7 @@
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="Preview" FontWeight="SemiBold" Margin="0,0,0,4"/>
                     <ScrollViewer MaxHeight="130" VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="MatchesHost"/>
+                        <StackPanel x:Name="MatchesHost" Margin="0,0,14,0"/>
                     </ScrollViewer>
                 </StackPanel>
             </Grid>
