@@ -1,6 +1,14 @@
 # Changelog
 
 - - -
+## [v0.22.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.21.1..v0.22.0) - 2026-07-15
+#### Features
+- (**ui**) анимация Magnetic settle — заход по дуге и упругая защёлка - ([a4ef2c8](https://github.com/IvanLarinDev/dropwheel/commit/a4ef2c8ca8ecb815392bd0e6e28f55e5f4b7a050)) - Ivan Larin
+- (**ui**) справочник токенов Destination и форматы ${stem:N} и паддинг групп - ([0c96f3a](https://github.com/IvanLarinDev/dropwheel/commit/0c96f3a849e1280998899bed70f0033cc8b83379)) - Ivan Larin
+#### Bug Fixes
+- (**ui**) редактор цели — убран зазор над панелью правила и перекрытие скроллбаром - ([969783f](https://github.com/IvanLarinDev/dropwheel/commit/969783f0e0b09c85d15feb4f9fe70a0320771cd0)) - Ivan Larin
+
+- - -
 ## [v0.21.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.21.0..v0.21.1) - 2026-07-14
 #### Bug Fixes
 - (**ui**) чип наведения выходит за сетку плитки, а не режется по ней - ([69871ef](https://github.com/IvanLarinDev/dropwheel/commit/69871effbe2e54f4dcf8e1051b224e9f16bdae93)) - Ivan Larin
