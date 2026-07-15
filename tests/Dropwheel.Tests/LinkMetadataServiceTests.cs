@@ -27,7 +27,7 @@ public sealed class LinkMetadataServiceTests
         finally
         {
             TargetStore.DirOverride = null;
-            try { Directory.Delete(root, true); } catch (DirectoryNotFoundException) { }
+            TempDir.Delete(root);
         }
     }
 

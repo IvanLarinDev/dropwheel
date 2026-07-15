@@ -20,7 +20,7 @@ public sealed class TargetStoreReloadTests : IDisposable
     public void Dispose()
     {
         TargetStore.DirOverride = null;
-        try { Directory.Delete(_root, true); } catch (DirectoryNotFoundException) { }
+        TempDir.Delete(_root);
     }
 
     [Fact]
