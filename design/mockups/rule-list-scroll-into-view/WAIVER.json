@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "rule-list-scroll-into-view",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Logic-only fix in the target editor's rules list. After a programmatic select (add, duplicate or move a rule) the newly selected row could land below the scroll fold of the fixed-height list; RebuildMaster now calls BringIntoView on the selected row, deferred to the Loaded dispatcher priority so it sees final layout. No visual language, layout, styling or palette change — the list looks identical, it just no longer leaves the selected row hidden.",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-15"
+}

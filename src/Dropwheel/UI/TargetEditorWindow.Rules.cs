@@ -43,6 +43,7 @@ public partial class TargetEditorWindow
     private void ShowRulesEditor()
     {
         _rulesMode = true;
+        EnableResizableLayout();
         MasterPanel.Visibility = Visibility.Visible;
         DetailPanel.Visibility = Visibility.Visible;
         DetailPanel.Background = Palettes.Surface;
@@ -56,6 +57,36 @@ public partial class TargetEditorWindow
         if (_selected < 0 && _rules.Count > 0) _selected = 0;
         RebuildMaster();
         RebuildDetail();
+    }
+
+    /// <summary>Switches the editor from the compact single-column form (a simple target) to the
+    /// resizable multi-pane sorter layout: a resizable window with star-sized columns, the two column
+    /// splitters and the preview splitter, and a growable preview row. The simple-target view keeps the
+    /// window sized to its content, so the extra panes never leave empty gaps there.</summary>
+    private void EnableResizableLayout()
+    {
+        SizeToContent = SizeToContent.Manual;
+        ResizeMode = ResizeMode.CanResize;
+        MinWidth = 900;
+        MinHeight = 600;
+        if (double.IsNaN(Width) || Width < 1040) Width = 1040;
+        if (double.IsNaN(Height) || Height < 720) Height = 720;
+
+        FieldsScroll.ClearValue(WidthProperty); // let the star column drive the field panel width
+        FieldsCol.Width = new GridLength(2, GridUnitType.Star);
+        FieldsCol.MinWidth = 260;
+        RulesCol.Width = new GridLength(1.4, GridUnitType.Star);
+        RulesCol.MinWidth = 180;
+        DetailCol.Width = new GridLength(3, GridUnitType.Star);
+        DetailCol.MinWidth = 360;
+        Splitter1.Visibility = Visibility.Visible;
+        Splitter2.Visibility = Visibility.Visible;
+
+        MainRow.Height = new GridLength(1, GridUnitType.Star);
+        MainRow.MinHeight = 220;
+        PreviewSplitter.Visibility = Visibility.Visible;
+        PreviewRow.Height = new GridLength(170);
+        PreviewRow.MinHeight = 80;
     }
 
     private void OnConvertToRules(object sender, RoutedEventArgs e)
@@ -78,8 +109,18 @@ public partial class TargetEditorWindow
     private void RebuildMaster()
     {
         MasterHost.Children.Clear();
+        FrameworkElement? selectedRow = null;
         for (int i = 0; i < _rules.Count; i++)
-            MasterHost.Children.Add(BuildMasterRow(_rules[i], i));
+        {
+            var row = BuildMasterRow(_rules[i], i);
+            MasterHost.Children.Add(row);
+            if (i == _selected) selectedRow = row;
+        }
+        // After a programmatic select (add, duplicate or move) the chosen row can land outside the
+        // scrolled list; bring it into view once layout settles so BringIntoView sees final positions.
+        if (selectedRow != null)
+            Dispatcher.BeginInvoke(new Action(() => selectedRow.BringIntoView()),
+                System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private FrameworkElement BuildMasterRow(SortRule rule, int index)

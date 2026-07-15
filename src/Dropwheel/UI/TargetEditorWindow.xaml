@@ -7,138 +7,159 @@
     <ui:DialogShell x:Name="Shell" PrimaryText="Save" DangerText="Delete target">
     <Grid Margin="0,4,0,0">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition x:Name="MainRow" Height="Auto"/>
+            <RowDefinition x:Name="PreviewSplitterRow" Height="Auto"/>
+            <RowDefinition x:Name="PreviewRow" Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition x:Name="FieldsCol" Width="Auto"/>
+                <ColumnDefinition x:Name="Splitter1Col" Width="Auto"/>
+                <ColumnDefinition x:Name="RulesCol" Width="Auto"/>
+                <ColumnDefinition x:Name="Splitter2Col" Width="Auto"/>
+                <ColumnDefinition x:Name="DetailCol" Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" Width="280">
-                <TextBlock Text="Name"/>
-                <TextBox x:Name="NameBox" Margin="0,4,0,10"/>
-                <TextBlock Text="Emoji (optional)"/>
-                <TextBox x:Name="EmojiBox" Margin="0,4,0,10" MaxLength="8"
-                         ToolTip="Optional emoji shown on the tile instead of the file icon, e.g. 📷. Empty uses the normal icon."/>
-                <TextBlock Text="Tile colour"/>
-                <WrapPanel x:Name="ColorSwatches" Margin="0,4,0,10"/>
-                <TextBlock x:Name="GroupShortcutLabel" Text="Group shortcut (1–2 digits)"/>
-                <TextBox x:Name="GroupShortcutBox" Margin="0,4,0,10" MaxLength="2"
-                         ToolTip="One or two digits. Leave empty to disable."/>
-                <TextBlock Text="Path (folder or .exe)"/>
-                <DockPanel Margin="0,4,0,10">
-                    <Button Content="…" Width="28" DockPanel.Dock="Right" Margin="6,0,0,0" Click="OnBrowse"/>
-                    <TextBox x:Name="PathBox" TextChanged="OnLaunchEditChanged"/>
-                </DockPanel>
-                <TextBlock Text="Action on file drop"/>
-                <ComboBox x:Name="ActionBox" Margin="0,4,0,10">
-                    <ComboBoxItem Content="Default (global setting)"/>
-                    <ComboBoxItem Content="Always copy"/>
-                    <ComboBoxItem Content="Always move"/>
-                </ComboBox>
-                <TextBlock Text="Rename dropped files (optional)"/>
-                <TextBox x:Name="NameTemplateBox" Margin="0,4,0,2"
-                         ToolTip="Optional ${name} template to rename files copied or moved here — the same tokens as sorter destinations, e.g. archive-${date}-${stem}. The original extension is kept. Empty keeps the file names."/>
-                <TextBlock Text="e.g. archive-${date}-${stem} · ${slug} ${year} ${month} ${ext}" FontSize="11"
-                           Opacity="0.7" Margin="0,0,0,10"/>
-                <TextBlock Text="On name conflict"/>
-                <ComboBox x:Name="ConflictBox" Margin="0,4,0,10">
-                    <ComboBoxItem Content="Ask (system dialog)"/>
-                    <ComboBoxItem Content="Keep both (add a number)"/>
-                    <ComboBoxItem Content="Overwrite"/>
-                    <ComboBoxItem Content="Skip"/>
-                </ComboBox>
-                <Expander x:Name="LaunchPanel" Header="Launch options for this target"
-                          Margin="0,0,0,10" Visibility="Collapsed">
-                    <StackPanel Margin="0,8,0,0">
-                        <ComboBox x:Name="LaunchModeBox" Margin="0,0,0,8"
-                                  SelectionChanged="OnLaunchModeChanged">
-                            <ComboBoxItem Content="Default launch"/>
-                            <ComboBoxItem Content="Custom launch"/>
-                        </ComboBox>
-                        <TextBlock Text="Program" FontSize="11"/>
-                        <TextBox x:Name="LaunchProgramBox" Margin="0,3,0,8"
-                                 TextChanged="OnLaunchEditChanged"/>
-                        <TextBlock Text="Arguments" FontSize="11"/>
-                        <TextBox x:Name="LaunchArgsBox" Margin="0,3,0,8"
-                                 TextChanged="OnLaunchEditChanged"/>
-                        <TextBlock Text="Working directory" FontSize="11"/>
-                        <TextBox x:Name="LaunchWorkDirBox" Margin="0,3,0,8"
-                                 TextChanged="OnLaunchEditChanged"/>
-                        <TextBlock Text="{}{target}   {targetDir}   {files}"
-                                   FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource DwTextMuted}"
-                                   Margin="0,0,0,8"/>
-                        <Border x:Name="LaunchPreviewPanel" BorderBrush="{DynamicResource DwBorder}"
-                                BorderThickness="1" CornerRadius="5" Padding="8">
-                            <TextBlock x:Name="LaunchPreviewText" FontFamily="Consolas"
-                                       FontSize="11" TextWrapping="Wrap"/>
-                        </Border>
-                        <TextBlock x:Name="LaunchStatusText" FontSize="11" Foreground="{DynamicResource DwTextMuted}"
-                                   TextWrapping="Wrap" Margin="0,6,0,0"/>
-                    </StackPanel>
-                </Expander>
-                <TextBlock x:Name="GroupLabel" Text="Group"/>
-                <ComboBox x:Name="GroupCombo" Margin="0,4,0,10"/>
-                <CheckBox x:Name="PinBox" Content="Pin closer to center" Margin="0,0,0,10"/>
-                <Button x:Name="ConvertBtn" Content="Convert to routing rules" Click="OnConvertToRules"
-                        Padding="8,4" HorizontalAlignment="Left"/>
-            </StackPanel>
+            <ScrollViewer x:Name="FieldsScroll" Grid.Column="0" Width="280"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,14,0">
+                    <TextBlock Text="Name"/>
+                    <TextBox x:Name="NameBox" Margin="0,4,0,10"/>
+                    <TextBlock Text="Emoji (optional)"/>
+                    <TextBox x:Name="EmojiBox" Margin="0,4,0,10" MaxLength="8"
+                             ToolTip="Optional emoji shown on the tile instead of the file icon, e.g. 📷. Empty uses the normal icon."/>
+                    <TextBlock Text="Tile colour"/>
+                    <WrapPanel x:Name="ColorSwatches" Margin="0,4,0,10"/>
+                    <TextBlock x:Name="GroupShortcutLabel" Text="Group shortcut (1–2 digits)"/>
+                    <TextBox x:Name="GroupShortcutBox" Margin="0,4,0,10" MaxLength="2"
+                             ToolTip="One or two digits. Leave empty to disable."/>
+                    <TextBlock Text="Path (folder or .exe)"/>
+                    <DockPanel Margin="0,4,0,10">
+                        <Button Content="…" Width="28" DockPanel.Dock="Right" Margin="6,0,0,0" Click="OnBrowse"/>
+                        <TextBox x:Name="PathBox" TextChanged="OnLaunchEditChanged"/>
+                    </DockPanel>
+                    <TextBlock Text="Action on file drop"/>
+                    <ComboBox x:Name="ActionBox" Margin="0,4,0,10">
+                        <ComboBoxItem Content="Default (global setting)"/>
+                        <ComboBoxItem Content="Always copy"/>
+                        <ComboBoxItem Content="Always move"/>
+                    </ComboBox>
+                    <TextBlock Text="Rename dropped files (optional)"/>
+                    <TextBox x:Name="NameTemplateBox" Margin="0,4,0,2"
+                             ToolTip="Optional ${name} template to rename files copied or moved here — the same tokens as sorter destinations, e.g. archive-${date}-${stem}. The original extension is kept. Empty keeps the file names."/>
+                    <TextBlock Text="e.g. archive-${date}-${stem} · ${slug} ${year} ${month} ${ext}" FontSize="11"
+                               Opacity="0.7" Margin="0,0,0,10"/>
+                    <TextBlock Text="On name conflict"/>
+                    <ComboBox x:Name="ConflictBox" Margin="0,4,0,10">
+                        <ComboBoxItem Content="Ask (system dialog)"/>
+                        <ComboBoxItem Content="Keep both (add a number)"/>
+                        <ComboBoxItem Content="Overwrite"/>
+                        <ComboBoxItem Content="Skip"/>
+                    </ComboBox>
+                    <Expander x:Name="LaunchPanel" Header="Launch options for this target"
+                              Margin="0,0,0,10" Visibility="Collapsed">
+                        <StackPanel Margin="0,8,0,0">
+                            <ComboBox x:Name="LaunchModeBox" Margin="0,0,0,8"
+                                      SelectionChanged="OnLaunchModeChanged">
+                                <ComboBoxItem Content="Default launch"/>
+                                <ComboBoxItem Content="Custom launch"/>
+                            </ComboBox>
+                            <TextBlock Text="Program" FontSize="11"/>
+                            <TextBox x:Name="LaunchProgramBox" Margin="0,3,0,8"
+                                     TextChanged="OnLaunchEditChanged"/>
+                            <TextBlock Text="Arguments" FontSize="11"/>
+                            <TextBox x:Name="LaunchArgsBox" Margin="0,3,0,8"
+                                     TextChanged="OnLaunchEditChanged"/>
+                            <TextBlock Text="Working directory" FontSize="11"/>
+                            <TextBox x:Name="LaunchWorkDirBox" Margin="0,3,0,8"
+                                     TextChanged="OnLaunchEditChanged"/>
+                            <TextBlock Text="{}{target}   {targetDir}   {files}"
+                                       FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource DwTextMuted}"
+                                       Margin="0,0,0,8"/>
+                            <Border x:Name="LaunchPreviewPanel" BorderBrush="{DynamicResource DwBorder}"
+                                    BorderThickness="1" CornerRadius="5" Padding="8">
+                                <TextBlock x:Name="LaunchPreviewText" FontFamily="Consolas"
+                                           FontSize="11" TextWrapping="Wrap"/>
+                            </Border>
+                            <TextBlock x:Name="LaunchStatusText" FontSize="11" Foreground="{DynamicResource DwTextMuted}"
+                                       TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Expander>
+                    <TextBlock x:Name="GroupLabel" Text="Group"/>
+                    <ComboBox x:Name="GroupCombo" Margin="0,4,0,10"/>
+                    <CheckBox x:Name="PinBox" Content="Pin closer to center" Margin="0,0,0,10"/>
+                    <Button x:Name="ConvertBtn" Content="Convert to routing rules" Click="OnConvertToRules"
+                            Padding="8,4" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </ScrollViewer>
 
-            <StackPanel x:Name="MasterPanel" Grid.Column="1" Width="200" Margin="16,0,0,0"
-                        VerticalAlignment="Top" Visibility="Collapsed">
-                <TextBlock Text="Routing rules" FontWeight="SemiBold"/>
-                <TextBlock Text="first match wins" FontSize="11" Foreground="{DynamicResource DwTextMuted}" Margin="0,1,0,6"/>
-                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="MasterHost" Margin="0,0,14,0"/>
-                </ScrollViewer>
-                <DockPanel Margin="0,8,0,0">
+            <GridSplitter x:Name="Splitter1" Grid.Column="1" Width="4" Visibility="Collapsed"
+                          HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Background="{DynamicResource DwBorder}"/>
+
+            <DockPanel x:Name="MasterPanel" Grid.Column="2" Margin="8,0,0,0" Visibility="Collapsed">
+                <TextBlock DockPanel.Dock="Top" Text="Routing rules" FontWeight="SemiBold"/>
+                <TextBlock DockPanel.Dock="Top" Text="first match wins" FontSize="11"
+                           Foreground="{DynamicResource DwTextMuted}" Margin="0,1,0,6"/>
+                <CheckBox x:Name="WatchBox" DockPanel.Dock="Bottom" Content="Watch folder, auto-sort new files"
+                          Margin="0,14,0,0" TextBlock.LineHeight="16"
+                          ToolTip="A background watcher moves files that appear in this folder into subfolders by these rules. Auto-sort is not tracked by Undo — revert it from Explorer if needed."/>
+                <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                     <Button Content="Presets ▾" Click="OnPresetsClick" DockPanel.Dock="Right" Padding="8,2"/>
                     <Button Content="+ Rule" Click="OnAddRule" Padding="8,2" HorizontalAlignment="Left"/>
                 </DockPanel>
-                <CheckBox x:Name="WatchBox" Content="Watch folder, auto-sort new files"
-                          Margin="0,14,0,0" TextBlock.LineHeight="16"
-                          ToolTip="A background watcher moves files that appear in this folder into subfolders by these rules. Auto-sort is not tracked by Undo — revert it from Explorer if needed."/>
-            </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="MasterHost" Margin="0,0,14,0"/>
+                </ScrollViewer>
+            </DockPanel>
 
-            <Border x:Name="DetailPanel" Grid.Column="2" Width="430" Margin="16,0,0,0"
-                    VerticalAlignment="Top" Visibility="Collapsed" BorderBrush="{DynamicResource DwBorder}"
-                    BorderThickness="1" CornerRadius="6" Padding="10">
-                <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
+            <GridSplitter x:Name="Splitter2" Grid.Column="3" Width="4" Visibility="Collapsed"
+                          HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Background="{DynamicResource DwBorder}"/>
+
+            <Border x:Name="DetailPanel" Grid.Column="4" Margin="8,0,0,0"
+                    Visibility="Collapsed" BorderBrush="{DynamicResource DwBorder}" BorderThickness="1"
+                    CornerRadius="6" Padding="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="DetailHost" Margin="0,0,14,0"/>
                 </ScrollViewer>
             </Border>
         </Grid>
 
-        <TextBlock x:Name="EditorError" Grid.Row="2" Foreground="{DynamicResource DwDanger}"
-                   TextWrapping="Wrap" Visibility="Collapsed" Margin="0,10,0,0"/>
+        <GridSplitter x:Name="PreviewSplitter" Grid.Row="1" Height="4" Visibility="Collapsed"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                      ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
+                      Background="{DynamicResource DwBorder}" Margin="0,4,0,0"/>
 
-        <Border x:Name="PreviewPanel" Grid.Row="1" Margin="0,16,0,0" Visibility="Collapsed"
+        <Border x:Name="PreviewPanel" Grid.Row="2" Margin="0,4,0,0" Visibility="Collapsed"
                 BorderBrush="{DynamicResource DwBorder}" BorderThickness="1" CornerRadius="6" Padding="10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="320"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Margin="0,0,14,0">
-                    <TextBlock Text="Test files (drag files here or one path per line)" Margin="0,0,0,4"/>
-                    <TextBox x:Name="PreviewInput" AcceptsReturn="True" Height="96"
+                <DockPanel Grid.Column="0" Margin="0,0,14,0">
+                    <TextBlock DockPanel.Dock="Top" Text="Test files (drag files here or one path per line)" Margin="0,0,0,4"/>
+                    <TextBox x:Name="PreviewInput" AcceptsReturn="True" MinHeight="96"
                              VerticalScrollBarVisibility="Auto" TextChanged="OnPreviewChanged"
                              AllowDrop="True" PreviewDragOver="OnPreviewFilesDragOver"
                              PreviewDrop="OnPreviewFilesDrop"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1">
-                    <TextBlock Text="Preview" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                    <ScrollViewer MaxHeight="130" VerticalScrollBarVisibility="Auto">
+                </DockPanel>
+                <DockPanel Grid.Column="1">
+                    <TextBlock DockPanel.Dock="Top" Text="Preview" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel x:Name="MatchesHost" Margin="0,0,14,0"/>
                     </ScrollViewer>
-                </StackPanel>
+                </DockPanel>
             </Grid>
         </Border>
+
+        <TextBlock x:Name="EditorError" Grid.Row="3" Foreground="{DynamicResource DwDanger}"
+                   TextWrapping="Wrap" Visibility="Collapsed" Margin="0,10,0,0"/>
 
     </Grid>
     </ui:DialogShell>
