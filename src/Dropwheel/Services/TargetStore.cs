@@ -147,9 +147,11 @@ public static class TargetStore
     }
 
     /// <summary>The atomic rename over config.json occasionally hits a transient "access denied":
-    /// an antivirus or indexer briefly holds the destination right after it was written. A few short
-    /// retries ride that out — without them a save (or even startup, where Load may save) would fail
-    /// on a moment's lock held by someone else.</summary>
+    /// an antivirus or indexer briefly holds the destination right after it was written. A widening
+    /// back-off (up to ~1.7s in total) rides that out — without it a save (or even startup, where Load
+    /// may save) would fail on a moment's lock held by someone else. The window is generous because the
+    /// hold can outlast a short one on a heavily loaded machine (a slow CI runner, a mid-scan antivirus);
+    /// the successful path still returns on the first attempt with no delay.</summary>
     private static void MoveWithRetry(string tmp, string destination)
     {
         for (int attempt = 1; ; attempt++)
@@ -159,9 +161,9 @@ public static class TargetStore
                 File.Move(tmp, destination, overwrite: true);
                 return;
             }
-            catch (Exception ex) when (attempt < 4 && ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (attempt < 10 && ex is IOException or UnauthorizedAccessException)
             {
-                Thread.Sleep(40 * attempt);
+                Thread.Sleep(Math.Min(50 * attempt, 250));
             }
         }
     }
