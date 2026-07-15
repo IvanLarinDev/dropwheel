@@ -9,7 +9,7 @@ public partial class OverlayWindow
     private readonly MouseHook _mouseHook = new();
     private bool _proximityOpened, _movingOrb;
     private bool _prevLeftDown, _suppressProximity;
-    private double _orbSX, _orbSY, _openR2, _closeR2;
+    private double _orbSX, _orbSY, _closeR, _openR2, _closeR2;
 
     private void InitProximity()
     {
@@ -27,9 +27,10 @@ public partial class OverlayWindow
         double m = ct.TransformToDevice.M11;
         double s = WheelLayout.ClampScale(TargetStore.Config.WheelScale); // zones track the scaled wheel
         _openR = 150 * m * s;
-        _outerR = 300 * m * s;             // outer edge of the anticipation zone
-        _openR2 = _openR * _openR;         // open radius
-        _closeR2 = 340 * m * s * 340 * m * s;  // close radius
+        _outerR = 300 * m * s;   // outer edge of the anticipation zone
+        _closeR = 340 * m * s;   // the wheel stays open until the cursor leaves this radius
+        _openR2 = _openR * _openR;
+        _closeR2 = _closeR * _closeR;
     }
 
     /// <summary>Held LMB with the cursor near the orb means a likely drag →

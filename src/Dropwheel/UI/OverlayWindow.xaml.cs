@@ -51,11 +51,8 @@ public partial class OverlayWindow : Window
         Orb.Drop += OnOrbDrop; // dropping on the orb adds a target
 
         var orbMenu = new System.Windows.Controls.ContextMenu();
-        var newGroup = new System.Windows.Controls.MenuItem { Header = "New group…" };
-        newGroup.Click += (_, _) => CreateGroup();
         var settings = new System.Windows.Controls.MenuItem { Header = "Settings…" };
         settings.Click += (_, _) => OpenSettings();
-        orbMenu.Items.Add(newGroup);
         orbMenu.Items.Add(settings);
         Themes.ApplyMenu(orbMenu);
         Orb.ContextMenu = orbMenu;

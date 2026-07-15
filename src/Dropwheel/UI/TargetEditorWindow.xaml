@@ -25,6 +25,16 @@
             <ScrollViewer x:Name="FieldsScroll" Grid.Column="0" Width="280"
                           VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0,0,14,0">
+                    <Border x:Name="KindPanel" CornerRadius="6" BorderThickness="1" Padding="2"
+                            BorderBrush="{DynamicResource DwBorder}" Background="{DynamicResource DwSurface}"
+                            HorizontalAlignment="Left" Margin="0,0,0,12" Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="KindTarget" GroupName="Kind" Content="Target"
+                                         IsChecked="True" Style="{StaticResource PillSegment}"/>
+                            <RadioButton x:Name="KindGroup" GroupName="Kind" Content="Group"
+                                         Style="{StaticResource PillSegment}"/>
+                        </StackPanel>
+                    </Border>
                     <TextBlock Text="Name"/>
                     <TextBox x:Name="NameBox" Margin="0,4,0,10"/>
                     <TextBlock Text="Emoji (optional)"/>
@@ -35,6 +45,7 @@
                     <TextBlock x:Name="GroupShortcutLabel" Text="Group shortcut (1–2 digits)"/>
                     <TextBox x:Name="GroupShortcutBox" Margin="0,4,0,10" MaxLength="2"
                              ToolTip="One or two digits. Leave empty to disable."/>
+                    <StackPanel x:Name="TargetFields">
                     <TextBlock Text="Path (folder or .exe)"/>
                     <DockPanel Margin="0,4,0,10">
                         <Button Content="…" Width="28" DockPanel.Dock="Right" Margin="6,0,0,0" Click="OnBrowse"/>
@@ -89,9 +100,10 @@
                     </Expander>
                     <TextBlock x:Name="GroupLabel" Text="Group"/>
                     <ComboBox x:Name="GroupCombo" Margin="0,4,0,10"/>
-                    <CheckBox x:Name="PinBox" Content="Pin closer to center" Margin="0,0,0,10"/>
                     <Button x:Name="ConvertBtn" Content="Convert to routing rules" Click="OnConvertToRules"
                             Padding="8,4" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                    <CheckBox x:Name="PinBox" Content="Pin closer to center" Margin="0,10,0,10"/>
                 </StackPanel>
             </ScrollViewer>
 

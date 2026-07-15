@@ -65,6 +65,9 @@ public partial class TargetEditorWindow
     /// window sized to its content, so the extra panes never leave empty gaps there.</summary>
     private void EnableResizableLayout()
     {
+        double prevW = ActualWidth, prevH = ActualHeight;
+        bool wasShown = IsLoaded;
+
         SizeToContent = SizeToContent.Manual;
         ResizeMode = ResizeMode.CanResize;
         MinWidth = 900;
@@ -87,6 +90,23 @@ public partial class TargetEditorWindow
         PreviewSplitter.Visibility = Visibility.Visible;
         PreviewRow.Height = new GridLength(170);
         PreviewRow.MinHeight = 80;
+
+        // When Convert grows an already-shown window, WindowStartupLocation no longer fires, so the window
+        // would extend down-right from its compact top-left and can run off-screen. Re-center it on its
+        // former middle and clamp it back onto the work area.
+        if (wasShown) KeepOnScreenAfterGrow(prevW, prevH);
+    }
+
+    /// <summary>Keeps a just-enlarged window centered on its previous middle and fully inside the work
+    /// area — used when the editor grows from the compact form to the resizable sorter layout after it is
+    /// already shown (the Convert button), where WindowStartupLocation does not re-run.</summary>
+    private void KeepOnScreenAfterGrow(double prevW, double prevH)
+    {
+        Left -= (Width - prevW) / 2;
+        Top -= (Height - prevH) / 2;
+        var wa = SystemParameters.WorkArea;
+        Left = Math.Max(wa.Left, Math.Min(Left, wa.Right - Width));
+        Top = Math.Max(wa.Top, Math.Min(Top, wa.Bottom - Height));
     }
 
     private void OnConvertToRules(object sender, RoutedEventArgs e)

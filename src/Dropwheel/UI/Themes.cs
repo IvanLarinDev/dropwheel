@@ -88,6 +88,10 @@ public static class Themes
         w.Resources["DwTextMuted"] = Palettes.Brush(p.TextMuted);
         w.Resources["DwBorder"] = Palettes.Brush(p.Border);
         w.Resources["DwDanger"] = Palettes.Brush(p.Danger);
+        w.Resources["DwAccent"] = Palettes.Brush(p.Accent);
+        w.Resources["DwAccentText"] = Palettes.Brush(p.AccentText);
+        w.Resources["DwSelection"] = Palettes.Brush(p.Selection);
+        w.Resources["DwSurface"] = Palettes.Brush(p.Surface);
     }
 
     /// <summary>Repoints the Fluent theme's accent brushes at the theme accent so stock controls

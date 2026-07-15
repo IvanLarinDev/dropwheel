@@ -12,13 +12,14 @@ public partial class TargetEditorWindow : Window
 {
     private readonly TargetItem _target;
     private readonly TargetItem? _preselect;
+    private readonly bool _isNew;
     private readonly List<TargetItem?> _groupChoices = new() { null };
     private string? _tileColor;
 
     private static readonly string?[] TileColorChoices =
         { null, "#E23B3B", "#F59E0B", "#EAB308", "#22C55E", "#4C8BF5", "#A855F7", "#EC4899" };
 
-    public TargetEditorWindow(TargetItem t, TargetItem? preselectGroup = null)
+    public TargetEditorWindow(TargetItem t, TargetItem? preselectGroup = null, bool isNew = false)
     {
         InitializeComponent();
         Themes.ApplyWindow(this);
@@ -26,6 +27,7 @@ public partial class TargetEditorWindow : Window
         Shell.DangerClick += OnDelete;
         _target = t;
         _preselect = preselectGroup;
+        _isNew = isNew;
         NameBox.Text = t.Name;
         EmojiBox.Text = t.Emoji ?? "";
         _tileColor = t.TileColor;
@@ -38,36 +40,59 @@ public partial class TargetEditorWindow : Window
         PinBox.IsChecked = t.Pinned;
         LoadLaunchOptions(t.Launch);
 
-        if (t.IsGroup)
+        GroupCombo.Items.Add("— (root)");
+        foreach (var g in TargetStore.Groups)
+        { _groupChoices.Add(g); GroupCombo.Items.Add(g.Name); }
+        GroupCombo.SelectedIndex = Math.Max(0,
+            _groupChoices.IndexOf(TargetStore.FindParentGroup(_target) ?? _preselect));
+
+        if (isNew)
         {
-            // a group has no path/action/parent — hide the irrelevant fields
-            GroupLabel.Visibility = GroupCombo.Visibility = Visibility.Collapsed;
-            PathBox.IsEnabled = false;
-            ActionBox.IsEnabled = false;
+            // A brand-new item: pick Target or Group up front, and there is nothing to delete yet.
+            Shell.DangerText = null;
             ConvertBtn.Visibility = Visibility.Collapsed;
+            KindPanel.Visibility = Visibility.Visible;
+            KindTarget.Checked += (_, _) => ApplyKind(isGroup: false);
+            KindGroup.Checked += (_, _) => ApplyKind(isGroup: true);
+            ApplyKind(isGroup: false);
+        }
+        else if (t.IsGroup)
+        {
+            ApplyKind(isGroup: true);
         }
         else
         {
-            GroupShortcutLabel.Visibility = GroupShortcutBox.Visibility = Visibility.Collapsed;
-            GroupCombo.Items.Add("— (root)");
-            foreach (var g in TargetStore.Groups)
-            { _groupChoices.Add(g); GroupCombo.Items.Add(g.Name); }
-            GroupCombo.SelectedIndex = Math.Max(0,
-                _groupChoices.IndexOf(TargetStore.FindParentGroup(_target) ?? _preselect));
-
-            SortMigration.Migrate(_target);
-            if (_target.Rules is { Count: > 0 })
-            {
-                _rules.AddRange(_target.Rules.Select(r => r.Clone()));
-                ShowRulesEditor();
-            }
-            else
-            {
-                // Routing rules distribute files into subfolders, so they only apply to a
-                // folder target — not to an executable, a file, or a missing path.
-                ConvertBtn.Visibility = _target.IsFolder ? Visibility.Visible : Visibility.Collapsed;
-            }
+            ApplyKind(isGroup: false);
+            InitializeExistingTargetFields();
         }
+    }
+
+    /// <summary>Sets up the editor for an existing plain target: migrates any legacy sort rules, opens the
+    /// rules editor when the target already routes, and otherwise offers Convert only for a folder —
+    /// routing rules distribute files into subfolders, so they never apply to an executable, a file, or a
+    /// missing path.</summary>
+    private void InitializeExistingTargetFields()
+    {
+        SortMigration.Migrate(_target);
+        if (_target.Rules is { Count: > 0 })
+        {
+            _rules.AddRange(_target.Rules.Select(r => r.Clone()));
+            ShowRulesEditor();
+        }
+        else
+        {
+            ConvertBtn.Visibility = _target.IsFolder ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>Shows the fields for the chosen kind: a target shows path, action, rename, conflict,
+    /// parent group, launch options and Convert; a group shows only the group-shortcut field. Name,
+    /// emoji, colour and pin stay visible for both.</summary>
+    private void ApplyKind(bool isGroup)
+    {
+        TargetFields.Visibility = isGroup ? Visibility.Collapsed : Visibility.Visible;
+        GroupShortcutLabel.Visibility = GroupShortcutBox.Visibility =
+            isGroup ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnBrowse(object sender, RoutedEventArgs e)
@@ -125,38 +150,59 @@ public partial class TargetEditorWindow : Window
     {
         EditorError.Visibility = Visibility.Collapsed;
         if (_rulesMode && !TryValidateRules(out var error)) { ShowEditorError(error); return; }
-        if (_target.IsGroup)
-        {
-            var code = GroupShortcutBox.Text.Trim();
-            if (code.Length > 0 && !GroupShortcutSequence.IsValidCode(code))
-            { ShowEditorError("Use one or two digits for the shortcut, or leave it empty."); return; }
-            if (code.Length > 0 && TargetStore.Groups.Any(group =>
-                    !ReferenceEquals(group, _target) && group.GroupCode == code))
-            { ShowEditorError($"Shortcut {code} is already assigned to another group."); return; }
-            _target.GroupCode = code.Length == 0 ? null : code;
-        }
+        bool makeGroup = _isNew ? KindGroup.IsChecked == true : _target.IsGroup;
+
+        // Validate and write the kind-specific fields first, so a rejected save leaves the target untouched
+        // and stops before the shared fields below.
+        if (makeGroup ? !SaveGroupFields() : !SaveTargetFields()) return;
+
         _target.Name = NameBox.Text.Trim();
         var emoji = EmojiBox.Text.Trim();
         _target.Emoji = emoji.Length == 0 ? null : emoji;
         _target.TileColor = string.IsNullOrEmpty(_tileColor) ? null : _tileColor;
-        if (!_target.IsGroup)
-        {
-            _target.Path = PathBox.Text.Trim();
-            _target.Override = (DropAction)ActionBox.SelectedIndex;
-            var nameTemplate = NameTemplateBox.Text.Trim();
-            _target.NameTemplate = nameTemplate.Length == 0 ? null : nameTemplate;
-            _target.ConflictPolicy = (ConflictPolicy)Math.Max(0, ConflictBox.SelectedIndex);
-            if (!TrySaveLaunchOptions()) return;
-            TargetStore.MoveToGroup(_target, _groupChoices[Math.Max(0, GroupCombo.SelectedIndex)]);
-            if (_rulesMode)
-            {
-                _target.Rules = _rules.Count > 0 ? _rules.Select(r => r.Clone()).ToList() : null;
-                _target.SortRules = null;
-                _target.Watch = WatchBox.IsChecked == true && _target.Rules != null;
-            }
-        }
         _target.Pinned = PinBox.IsChecked == true;
         Close();
+    }
+
+    /// <summary>Validates and writes the group-only fields: the group shortcut (checked for a valid code
+    /// and for a clash with another group), and for a new group registers it at the wheel root. Returns
+    /// false, having shown an inline error, when the shortcut is invalid or already taken.</summary>
+    private bool SaveGroupFields()
+    {
+        var code = GroupShortcutBox.Text.Trim();
+        if (code.Length > 0 && !GroupShortcutSequence.IsValidCode(code))
+        { ShowEditorError("Use one or two digits for the shortcut, or leave it empty."); return false; }
+        if (code.Length > 0 && TargetStore.Groups.Any(group =>
+                !ReferenceEquals(group, _target) && group.GroupCode == code))
+        { ShowEditorError($"Shortcut {code} is already assigned to another group."); return false; }
+        _target.Children ??= new(); // become (or stay) a group
+        _target.GroupCode = code.Length == 0
+            ? (_isNew ? TargetStore.NextAvailableGroupCode() : null)
+            : code;
+        if (_isNew) TargetStore.MoveToGroup(_target, null); // register the new group at the wheel root
+        return true;
+    }
+
+    /// <summary>Writes the target-only fields (path, drop action, rename template, conflict policy, launch
+    /// options), moves the target into its chosen parent group, and captures the routing rules when the
+    /// rules editor is open. Returns false, having shown an inline error, when the launch options are
+    /// invalid.</summary>
+    private bool SaveTargetFields()
+    {
+        _target.Path = PathBox.Text.Trim();
+        _target.Override = (DropAction)ActionBox.SelectedIndex;
+        var nameTemplate = NameTemplateBox.Text.Trim();
+        _target.NameTemplate = nameTemplate.Length == 0 ? null : nameTemplate;
+        _target.ConflictPolicy = (ConflictPolicy)Math.Max(0, ConflictBox.SelectedIndex);
+        if (!TrySaveLaunchOptions()) return false;
+        TargetStore.MoveToGroup(_target, _groupChoices[Math.Max(0, GroupCombo.SelectedIndex)]);
+        if (_rulesMode)
+        {
+            _target.Rules = _rules.Count > 0 ? _rules.Select(r => r.Clone()).ToList() : null;
+            _target.SortRules = null;
+            _target.Watch = WatchBox.IsChecked == true && _target.Rules != null;
+        }
+        return true;
     }
 
     /// <summary>Set when a plain target (or an empty group) was deleted, so the overlay can offer an

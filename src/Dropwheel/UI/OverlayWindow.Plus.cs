@@ -53,7 +53,7 @@ public partial class OverlayWindow
                 e.Handled = true;
                 return;
             }
-            OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup);
+            OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup, isNew: true);
             e.Handled = true;
         };
         panel.DragOver += (_, e) =>
@@ -98,7 +98,7 @@ public partial class OverlayWindow
             () =>
             {
                 if (!TryAddExplorerBridgeTargets())
-                    OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup);
+                    OpenEditor(new TargetItem { Name = "New target", Path = "" }, _currentGroup, isNew: true);
             },
             hasExplorerSelection
                 ? "Add selected Explorer item. Press Enter to add it as a target."
