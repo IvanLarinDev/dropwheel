@@ -1,6 +1,12 @@
 # Changelog
 
 - - -
+## [v0.24.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.23.0..v0.24.0) - 2026-07-15
+#### Features
+- (**ui**) создание группы через тайл Add с переключателем Target/Group - ([9c4b04a](https://github.com/IvanLarinDev/dropwheel/commit/9c4b04ad395cabf51a81e6f25a0f76027557b4c8)) - Ivan Larin
+- (**ui**) редактор цели — изменяемый размер и сплиттеры в виде сортировщика - ([12f0bdc](https://github.com/IvanLarinDev/dropwheel/commit/12f0bdca9e27a852cdf748ad83755b252f957689)) - Ivan Larin
+
+- - -
 ## [v0.23.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.22.0..v0.23.0) - 2026-07-15
 #### Features
 - (**ui**) ползунок Wheel size в настройках — масштаб колеса 0.8–1.5 - ([d385672](https://github.com/IvanLarinDev/dropwheel/commit/d385672b74758070dc5c1c39770ffcb9b2d02534)) - Ivan Larin
