@@ -171,4 +171,17 @@ public sealed class WheelLayoutTests
             Assert.Equal(expected, cells[i].Radius, 3);
         }
     }
+
+    [Theory]
+    [InlineData(1.0, 1.0)]
+    [InlineData(1.2, 1.2)]
+    [InlineData(0.8, 0.8)]
+    [InlineData(1.5, 1.5)]
+    [InlineData(0.3, WheelLayout.MinScale)]
+    [InlineData(5.0, WheelLayout.MaxScale)]
+    [InlineData(double.NaN, 1.0)]
+    public void ClampScale_bounds_the_multiplier_and_maps_nan_to_one(double input, double expected)
+    {
+        Assert.Equal(expected, WheelLayout.ClampScale(input), 6);
+    }
 }

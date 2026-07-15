@@ -45,6 +45,8 @@ public static class TargetStore
                 if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); needsSave = true; }
                 var clampedThreshold = WheelLayout.ClampThreshold(Config.OverflowThreshold);
                 if (clampedThreshold != Config.OverflowThreshold) { Config.OverflowThreshold = clampedThreshold; needsSave = true; }
+                var clampedScale = WheelLayout.ClampScale(Config.WheelScale);
+                if (clampedScale != Config.WheelScale) { Config.WheelScale = clampedScale; needsSave = true; }
                 if (InitializeGroupShortcuts()) needsSave = true;
                 if (needsSave) Save();
                 return;
@@ -89,6 +91,7 @@ public static class TargetStore
         Config = loaded;
         Config.Presets ??= PresetService.Defaults();
         Config.OverflowThreshold = WheelLayout.ClampThreshold(Config.OverflowThreshold);
+        Config.WheelScale = WheelLayout.ClampScale(Config.WheelScale);
         InitializeGroupShortcuts();
         try
         {

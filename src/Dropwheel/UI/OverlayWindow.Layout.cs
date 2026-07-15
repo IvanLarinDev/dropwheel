@@ -18,15 +18,27 @@ public partial class OverlayWindow
     /// Called at startup and when settings change (both with the wheel closed).</summary>
     private void ApplyModeWindow()
     {
-        double size = WheelLayout.MaxWindowSize(TargetStore.Config.OverflowLayout);
+        double size = WheelLayout.MaxWindowSize(TargetStore.Config.OverflowLayout)
+                    * WheelLayout.ClampScale(TargetStore.Config.WheelScale);
         if (Math.Abs(Width - size) > 0.5)
         {
             Width = size;
             Height = size;
         }
         _wheelSize = size;
+        ApplyWheelScale();
         RecenterOrb();
         PlaceWindow(); // re-anchor the orb (window center) on its saved spot after any size change
+    }
+
+    /// <summary>Applies the wheel size multiplier as a ScaleTransform on the whole wheel layer, centered
+    /// on the wheel center, so the ring, tiles, orb and labels scale together without touching the base
+    /// geometry (WheelLayout radii, slot offsets, spoke). At 1.0 it is the identity transform, so the
+    /// wheel is pixel-identical to the classic size.</summary>
+    private void ApplyWheelScale()
+    {
+        double s = WheelLayout.ClampScale(TargetStore.Config.WheelScale);
+        Root.RenderTransform = new ScaleTransform(s, s, HalfSize, HalfSize);
     }
 
     /// <summary>Snaps a DIP window edge onto a whole device pixel. A transparent overlay placed on a

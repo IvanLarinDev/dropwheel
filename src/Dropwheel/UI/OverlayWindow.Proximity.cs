@@ -22,13 +22,14 @@ public partial class OverlayWindow
     private void UpdateOrbScreenPos()
     {
         if (PresentationSource.FromVisual(this) is not { CompositionTarget: { } ct }) return;
-        var p = Orb.PointToScreen(new Point(23, 23)); // orb center, device px
+        var p = Orb.PointToScreen(new Point(Orb.Width / 2, Orb.Height / 2)); // orb center, device px
         _orbSX = p.X; _orbSY = p.Y;
         double m = ct.TransformToDevice.M11;
-        _openR = 150 * m;
-        _outerR = 300 * m;             // outer edge of the anticipation zone
-        _openR2 = _openR * _openR;     // open radius
-        _closeR2 = 340 * m * 340 * m;  // close radius
+        double s = WheelLayout.ClampScale(TargetStore.Config.WheelScale); // zones track the scaled wheel
+        _openR = 150 * m * s;
+        _outerR = 300 * m * s;             // outer edge of the anticipation zone
+        _openR2 = _openR * _openR;         // open radius
+        _closeR2 = 340 * m * s * 340 * m * s;  // close radius
     }
 
     /// <summary>Held LMB with the cursor near the orb means a likely drag →

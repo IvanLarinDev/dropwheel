@@ -51,6 +51,10 @@ public class AppConfig
     /// <summary>Multiplier for wheel open animation speed. 1.0 = normal.</summary>
     public double OpenAnimationSpeed { get; set; } = 1.0;
 
+    /// <summary>Overall wheel size multiplier: scales the ring, tiles, orb and labels together. 1.0 =
+    /// the classic size. Clamped to a sane range on load.</summary>
+    public double WheelScale { get; set; } = 1.0;
+
     public List<TargetItem> Targets { get; set; } = new();
 
     /// <summary>File-type presets for the rules editor. Seeded with built-in defaults on first

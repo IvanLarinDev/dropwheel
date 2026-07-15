@@ -34,6 +34,15 @@ public static class WheelLayout
     /// <summary>Clamps a user-entered threshold into the supported range.</summary>
     public static int ClampThreshold(int threshold) => Math.Clamp(threshold, MinThreshold, MaxThreshold);
 
+    /// <summary>Bounds the overall wheel size multiplier is clamped to.</summary>
+    public const double MinScale = 0.8;
+    public const double MaxScale = 1.5;
+
+    /// <summary>Clamps the wheel size multiplier into the supported range, mapping NaN (a broken config
+    /// value) back to the neutral 1.0 so a bad number never shrinks the wheel to nothing.</summary>
+    public static double ClampScale(double scale) =>
+        double.IsNaN(scale) ? 1.0 : Math.Clamp(scale, MinScale, MaxScale);
+
     /// <summary>Clamps one axis of the window origin so at least <see cref="Margin"/> DIP of the window
     /// stays on the virtual screen. Given the desired window center and the window's half-size, returns
     /// the pre-snap edge (Left or Top). Pure so the clamp is unit-tested; pixel snapping stays in the UI

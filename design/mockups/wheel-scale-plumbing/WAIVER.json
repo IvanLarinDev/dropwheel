@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "feature": "wheel-scale-plumbing",
+  "uiPaths": [
+    "src/Dropwheel/UI/**"
+  ],
+  "reason": "Invisible groundwork for a configurable wheel size. Adds a WheelScale config value (default 1.0), a ScaleTransform on the wheel layer centered on the wheel center, scales the fixed overlay window and the orb proximity zones by it, and reads the orb center from its actual size instead of a hardcoded point. At the default 1.0 the transform is the identity, so the wheel is pixel-identical to the classic size. The only behavioural change at 1.0 is the proximity zone centering on the true orb center (28,28) instead of the long-standing (23,23) — a ~5px correction, no visual difference. No new screen or visual language is introduced. The visible size slider and the actual non-1.0 scaling ship separately with their own mockup set (wheel-size-setting).",
+  "approvedBy": "Ivan Larin",
+  "date": "2026-07-15"
+}
