@@ -204,7 +204,7 @@ public partial class TargetEditorWindow
 
         DetailHost.Children.Add(new TextBlock { Text = "Destination (subfolder or absolute)", FontSize = 11 });
         var destRow = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
-        var browse = new Button { Content = "…", Width = 26, Margin = new Thickness(6, 0, 0, 0) };
+        var browse = new Button { Content = "…", Width = 28, Margin = new Thickness(6, 0, 0, 0) };
         DockPanel.SetDock(browse, Dock.Right);
         browse.Click += (_, _) => BrowseDest(rule);
         var destBox = new TextBox
@@ -424,8 +424,8 @@ public partial class TargetEditorWindow
         else if (badFormats.Length > 0)
         {
             _tokenHint.Foreground = Palettes.Danger;
-            _tokenHint.Text = "Bad date format: " + string.Join(", ", badFormats)
-                + " — use a .NET format like dd-MM-yy or yyyy-MM.";
+            _tokenHint.Text = "Bad token format: " + string.Join(", ", badFormats)
+                + " — dates take a .NET format (dd-MM-yy), ${stem:N} a number, ${size:…} a bucket spec.";
             _tokenHint.Visibility = Visibility.Visible;
         }
         else
@@ -445,6 +445,26 @@ public partial class TargetEditorWindow
             _tokenChips.Children.Add(TokenChip(g, isGroup: true));
         foreach (var b in BuiltinChipTokens)
             _tokenChips.Children.Add(TokenChip(b, isGroup: false));
+        _tokenChips.Children.Add(HelpChip());
+    }
+
+    /// <summary>A trailing chip that opens the read-only token reference, so every token — including the
+    /// f-/c- date twins kept off the chip row — and its format and limits are one click away.</summary>
+    private Border HelpChip()
+    {
+        var chip = new Border
+        {
+            BorderBrush = Palettes.Accent,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3),
+            Margin = new Thickness(0, 0, 4, 4),
+            Padding = new Thickness(6, 1, 6, 1),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            Child = new TextBlock { Text = "? tokens", FontSize = 11, Foreground = Palettes.Accent },
+            ToolTip = "Open the destination token reference",
+        };
+        chip.MouseLeftButtonUp += (_, _) => new TokenHelpWindow { Owner = this }.ShowDialog();
+        return chip;
     }
 
     private Border TokenChip(string name, bool isGroup)

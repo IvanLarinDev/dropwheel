@@ -181,7 +181,7 @@ public static class SortService
             var format = m.Groups[2].Success ? m.Groups[2].Value : null;
             string? value = BuiltinTokens.Contains(name)
                 ? ResolveBuiltin(name, format, filePath, now)
-                : groups.TryGetValue(name, out var raw) ? raw : null;
+                : groups.TryGetValue(name, out var raw) ? PadGroup(raw, format) : null;
             if (value != null)
             {
                 var clean = SanitizeSegment(value);
@@ -207,7 +207,7 @@ public static class SortService
         switch (name)
         {
             case "ext": return Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
-            case "stem": return Path.GetFileNameWithoutExtension(filePath);
+            case "stem": return Truncate(Path.GetFileNameWithoutExtension(filePath), format);
             case "initial": return Initial(Path.GetFileName(filePath));
             case "size": return SizeBucket(filePath, format);
             case "slug": return FileSlug(filePath);
@@ -280,6 +280,26 @@ public static class SortService
         }
         return "#";
     }
+
+    /// <summary>A token's :count argument — a positive integer used as the length cap for ${stem:N} or the
+    /// zero-pad width for a numeric ${group:N}. Null when the format is absent or not a positive integer, so
+    /// the caller leaves the value untouched.</summary>
+    private static int? ParseCount(string? format) =>
+        !string.IsNullOrEmpty(format)
+        && int.TryParse(format, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && n > 0
+            ? n : null;
+
+    /// <summary>Caps a value to the first N characters for ${stem:N}. An absent or invalid count leaves the
+    /// value whole, matching the router's habit of ignoring a format it cannot apply.</summary>
+    private static string Truncate(string value, string? format) =>
+        ParseCount(format) is { } max && value.Length > max ? value[..max] : value;
+
+    /// <summary>Zero-pads a captured group to width N for ${group:N}: a purely numeric value is left-padded
+    /// with zeros (a longer value is kept as is). A non-numeric value, or an absent/invalid width, leaves the
+    /// capture untouched, so a padding format never mangles a text group.</summary>
+    private static string PadGroup(string raw, string? format) =>
+        ParseCount(format) is { } width && raw.Length > 0 && raw.All(char.IsAsciiDigit)
+            ? raw.PadLeft(width, '0') : raw;
 
     /// <summary>Default buckets a bare ${size} token uses: tiny below 1 MB, small below 10, medium below
     /// 100, large below 1000, huge for the rest. A ${size:spec} overrides them.</summary>
@@ -492,7 +512,8 @@ public static class SortService
     /// <summary>Whether a built-in token carries a :format / :spec the editor should validate: the plain
     /// date/time tokens (a .NET format) and size (a bucket spec). week, quarter, ext, stem and initial
     /// ignore any format.</summary>
-    public static bool TokenTakesFormat(string name) => DateTokenFormat.ContainsKey(name) || name == "size";
+    public static bool TokenTakesFormat(string name) =>
+        DateTokenFormat.ContainsKey(name) || name == "size" || name == "stem";
 
     /// <summary>True when a token's format/spec is one the router can apply: a valid .NET date format for
     /// a date token, or a well-formed bucket spec for size. Tokens that ignore format are always valid.
@@ -501,6 +522,7 @@ public static class SortService
     {
         if (name == "size") return string.IsNullOrEmpty(format) || ParseSizeSpec(format) is not null;
         if (DateTokenFormat.ContainsKey(name)) return IsValidDateFormat(format);
+        if (name == "stem") return string.IsNullOrEmpty(format) || ParseCount(format) is not null;
         return true;
     }
 
@@ -511,6 +533,70 @@ public static class SortService
         if (string.IsNullOrEmpty(format)) return true;
         try { _ = new DateTime(2001, 2, 3, 4, 5, 6).ToString(format, CultureInfo.InvariantCulture); return true; }
         catch (FormatException) { return false; }
+    }
+
+    /// <summary>How the in-app token reference groups tokens for display.</summary>
+    public enum TokenGroup { DropDate, FileDate, FileName, Size }
+
+    /// <summary>One reference entry for a built-in token: its group, a one-line summary, an example of
+    /// what it expands to, and whether it accepts a :format / :spec.</summary>
+    public sealed record TokenDoc(string Name, TokenGroup Group, string Summary, string Example, bool TakesFormat);
+
+    /// <summary>A fixed sample moment the reference renders date examples against, so shown values come
+    /// from the real format strings rather than hand-written text.</summary>
+    private static readonly DateTime SampleTime = new(2026, 3, 14, 15, 9, 26);
+
+    /// <summary>Reference metadata per token, in display order: group, summary, and — for the non-date
+    /// tokens whose value is not a clock reading — a literal example. Date tokens leave Example null and
+    /// get a value rendered from their own format at SampleTime.</summary>
+    private static readonly (string Name, TokenGroup Group, string Summary, string? Example)[] TokenInfo =
+    {
+        ("date", TokenGroup.DropDate, "Drop date, ISO so folders sort by time.", null),
+        ("year", TokenGroup.DropDate, "Drop year.", null),
+        ("month", TokenGroup.DropDate, "Drop month, two digits.", null),
+        ("day", TokenGroup.DropDate, "Drop day of month, two digits.", null),
+        ("time", TokenGroup.DropDate, "Drop time of day.", null),
+        ("week", TokenGroup.DropDate, "ISO week number of the drop.", null),
+        ("quarter", TokenGroup.DropDate, "Calendar quarter of the drop.", null),
+        ("fdate", TokenGroup.FileDate, "File's modified date (f- prefix on any date token).", null),
+        ("fyear", TokenGroup.FileDate, "File's modified year.", null),
+        ("fmonth", TokenGroup.FileDate, "File's modified month.", null),
+        ("fday", TokenGroup.FileDate, "File's modified day.", null),
+        ("fweek", TokenGroup.FileDate, "File's modified ISO week.", null),
+        ("fquarter", TokenGroup.FileDate, "File's modified quarter.", null),
+        ("cdate", TokenGroup.FileDate, "File's created date (c- prefix on any date token).", null),
+        ("cyear", TokenGroup.FileDate, "File's created year.", null),
+        ("cmonth", TokenGroup.FileDate, "File's created month.", null),
+        ("cday", TokenGroup.FileDate, "File's created day.", null),
+        ("cweek", TokenGroup.FileDate, "File's created ISO week.", null),
+        ("cquarter", TokenGroup.FileDate, "File's created quarter.", null),
+        ("ext", TokenGroup.FileName, "File extension, lower-case, no dot.", "jpg"),
+        ("stem", TokenGroup.FileName, "File name without the extension; a :N caps it to N characters.", "Holiday Photo"),
+        ("initial", TokenGroup.FileName, "First letter of the name, upper-case; '#' when not a letter.", "H"),
+        ("slug", TokenGroup.FileName, "Slug of a text file's first non-blank line.", "meeting-notes"),
+        ("size", TokenGroup.Size, "Coarse size bucket; a :spec names the buckets.", "large"),
+    };
+
+    /// <summary>The full token reference — one entry per built-in token, in display order — for the
+    /// in-app help. Built from the same BuiltinTokens / DateTokenFormat / TokenTakesFormat tables the
+    /// router uses; a test keeps this list and BuiltinTokens in step, so a new engine token cannot ship
+    /// without a reference entry. Date examples are rendered from each token's own format at a fixed
+    /// sample time, never drifting from what the router produces.</summary>
+    public static IReadOnlyList<TokenDoc> TokenDocs() =>
+        TokenInfo.Select(t => new TokenDoc(
+            t.Name, t.Group, t.Summary, t.Example ?? DateExample(t.Name), TokenTakesFormat(t.Name))).ToList();
+
+    /// <summary>The example value a date token shows in the reference, rendered from its default format at
+    /// the fixed sample time (week and quarter are computed the way the router computes them).</summary>
+    private static string DateExample(string name)
+    {
+        var kind = name[0] is 'f' or 'c' ? name[1..] : name;
+        return kind switch
+        {
+            "week" => ISOWeek.GetWeekOfYear(SampleTime).ToString("D2", CultureInfo.InvariantCulture),
+            "quarter" => "Q" + ((SampleTime.Month - 1) / 3 + 1),
+            _ => Render(SampleTime, DateTokenFormat[name]) ?? "",
+        };
     }
 
     /// <summary>The named groups a rule's NameRegex conditions expose for token substitution. Used by

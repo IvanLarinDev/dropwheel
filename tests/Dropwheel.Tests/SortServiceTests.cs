@@ -407,6 +407,62 @@ public sealed class SortServiceTests : IDisposable
     }
 
     [Fact]
+    public void ExpandTemplate_caps_stem_length_with_a_count_format()
+    {
+        var rule = new SortRule { Dest = "${stem:4}" };
+        var result = SortService.ExpandTemplate(rule, "abcdefghij.txt", out bool ok);
+        Assert.True(ok);
+        Assert.Equal("abcd", result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_leaves_a_short_stem_whole()
+    {
+        var rule = new SortRule { Dest = "${stem:20}" };
+        var result = SortService.ExpandTemplate(rule, "short.txt", out bool ok);
+        Assert.True(ok);
+        Assert.Equal("short", result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_ignores_an_invalid_stem_count()
+    {
+        // A malformed :N never crops or breaks the drop — the stem stays whole.
+        var rule = new SortRule { Dest = "${stem:foo}" };
+        var result = SortService.ExpandTemplate(rule, "abcdefghij.txt", out bool ok);
+        Assert.True(ok);
+        Assert.Equal("abcdefghij", result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_zero_pads_a_numeric_group()
+    {
+        var rule = Rule("${n:3}", ConditionField.NameRegex, CompareOp.Matches, @"(?<n>\d+)");
+        var result = SortService.ExpandTemplate(rule, "7.mov", out bool ok);
+        Assert.True(ok);
+        Assert.Equal("007", result);
+    }
+
+    [Fact]
+    public void ExpandTemplate_does_not_pad_a_non_numeric_group()
+    {
+        var rule = Rule("${x:3}", ConditionField.NameRegex, CompareOp.Matches, @"(?<x>[a-z]+)");
+        var result = SortService.ExpandTemplate(rule, "ab.mov", out bool ok);
+        Assert.True(ok);
+        Assert.Equal("ab", result);
+    }
+
+    [Fact]
+    public void IsValidTokenFormat_accepts_a_stem_count_and_rejects_garbage()
+    {
+        Assert.True(SortService.IsValidTokenFormat("stem", "8"));
+        Assert.True(SortService.IsValidTokenFormat("stem", null));
+        Assert.False(SortService.IsValidTokenFormat("stem", "foo"));
+        Assert.False(SortService.IsValidTokenFormat("stem", "0"));
+        Assert.False(SortService.IsValidTokenFormat("stem", "-3"));
+    }
+
+    [Fact]
     public void AvailableTokens_lists_named_groups_and_TokensIn_lists_used_placeholders()
     {
         var rule = Rule("${ep}\\${sq}", ConditionField.NameRegex, CompareOp.Matches,
@@ -795,5 +851,54 @@ public sealed class SortServiceTests : IDisposable
         Assert.False(SortService.ScopeIncludes(RuleScope.Folders, isDirectory: false));
         Assert.True(SortService.ScopeIncludes(RuleScope.Both, isDirectory: true));
         Assert.True(SortService.ScopeIncludes(RuleScope.Both, isDirectory: false));
+    }
+
+    [Fact]
+    public void TokenDocs_covers_exactly_the_builtin_tokens()
+    {
+        var documented = SortService.TokenDocs().Select(d => d.Name).ToHashSet();
+        Assert.Equal(SortService.BuiltinTokens.ToHashSet(), documented);
+    }
+
+    [Fact]
+    public void TokenDocs_entries_are_filled_in()
+    {
+        foreach (var d in SortService.TokenDocs())
+        {
+            Assert.False(string.IsNullOrWhiteSpace(d.Summary), d.Name);
+            Assert.False(string.IsNullOrWhiteSpace(d.Example), d.Name);
+        }
+    }
+
+    [Fact]
+    public void TokenDocs_marks_which_tokens_take_a_format()
+    {
+        var byName = SortService.TokenDocs().ToDictionary(d => d.Name);
+        Assert.True(byName["date"].TakesFormat);
+        Assert.True(byName["fdate"].TakesFormat);
+        Assert.True(byName["size"].TakesFormat);
+        Assert.True(byName["stem"].TakesFormat);
+        Assert.False(byName["week"].TakesFormat);
+        Assert.False(byName["quarter"].TakesFormat);
+        Assert.False(byName["ext"].TakesFormat);
+        Assert.False(byName["initial"].TakesFormat);
+        Assert.False(byName["slug"].TakesFormat);
+    }
+
+    [Fact]
+    public void TokenDocs_date_examples_come_from_the_real_formats()
+    {
+        var byName = SortService.TokenDocs().ToDictionary(d => d.Name);
+        Assert.Equal("2026-03-14", byName["date"].Example);
+        Assert.Equal("2026", byName["year"].Example);
+        Assert.Equal("03", byName["month"].Example);
+        Assert.Equal("14", byName["day"].Example);
+        Assert.Equal("15-09-26", byName["time"].Example);
+        Assert.Equal("Q1", byName["quarter"].Example);
+        Assert.Equal("2026-03-14", byName["fdate"].Example);
+        // The f-/c- twins take the week/quarter branch (prefix stripped before any format lookup),
+        // so they must render the same component as their drop-time counterpart.
+        Assert.Equal(byName["week"].Example, byName["fweek"].Example);
+        Assert.Equal("Q1", byName["cquarter"].Example);
     }
 }

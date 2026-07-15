@@ -24,8 +24,12 @@
   - `Bubble` — лицо плитки: эмодзи (если задан) поверх иконки, свой цвет `TileColor`
     красит рамку и текстовые эмодзи (полноцветные эмодзи цвет игнорируют).
 - `SettingsWindow.xaml(.cs)`, `TargetEditorWindow.xaml(.cs)` + `TargetEditorWindow.Rules.cs`,
-  `PromptWindow.xaml(.cs)`, `GroupDeleteWindow.xaml(.cs)` — прочие окна. Все они кладут своё
-  содержимое внутрь `DialogShell` (общий каркас: заголовок+подзаголовок, разделитель, футер).
+  `PromptWindow.xaml(.cs)`, `GroupDeleteWindow.xaml(.cs)`, `TokenHelpWindow.xaml(.cs)` — прочие
+  окна. Все они кладут своё содержимое внутрь `DialogShell` (общий каркас:
+  заголовок+подзаголовок, разделитель, футер).
+- `TokenHelpWindow` — справочник токенов Destination (открывается чипом «? tokens» в редакторе
+  правил). Категории слева, детали справа; строки токенов берутся из `SortService.TokenDocs`,
+  так что справка не расходится с движком. Раскладку выбирал пользователь (вариант «две колонки»).
 - `DialogShell.cs` + `DialogShell.xaml` — каркас диалогов. Футер всегда одинаков: справа
   Primary-глагол (Enter), слева от него Cancel (Esc), опционально деструктив тихой кнопкой
   слева (`DangerText`). Окно подписывает `PrimaryClick`/`DangerClick`; Cancel и Esc сами

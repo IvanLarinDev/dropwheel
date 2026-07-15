@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Destination token reference — варианты компоновки</title>
+<style>
+  body { background:#12161c; color:#c9d2de; font-family:Segoe UI, sans-serif; margin:0; padding:24px; }
+  h1 { font-size:18px; font-weight:500; margin:0 0 4px; }
+  .sub { color:#8a96a8; font-size:13px; margin:0 0 20px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+  .card { background:#1a1f27; border-radius:12px; padding:12px; }
+  .cap { font-size:12px; color:#8a96a8; margin-bottom:8px; }
+  .win { background:#222933; border:1px solid #3a424e; border-radius:10px; overflow:hidden; }
+  .hd { padding:10px 12px; border-bottom:1px solid #3a424e; font-weight:500; }
+  .bd { padding:12px; min-height:150px; }
+  .ft { padding:10px 12px; border-top:1px solid #3a424e; text-align:right; }
+  .btn { font-size:12px; border:1px solid #55606e; border-radius:6px; padding:4px 12px; }
+  .mono { font-family:Consolas, monospace; }
+  .acc { color:#6fa8ff; }
+  .mut { color:#8a96a8; }
+  table { width:100%; font-size:12px; border-collapse:collapse; }
+  td { padding:3px 0; }
+  .note { font-size:12px; color:#8a96a8; margin-top:8px; line-height:1.5; }
+  .row { display:flex; }
+  .catsel { padding:5px 8px; border-radius:6px; background:rgba(111,168,255,.18); color:#6fa8ff; margin-bottom:4px; }
+  .cat { padding:5px 8px; color:#8a96a8; }
+  .pick { outline:2px solid #6fa8ff; outline-offset:2px; border-radius:12px; }
+</style>
+</head>
+<body>
+<h1>Destination token reference — варианты компоновки окна</h1>
+<p class="sub">Четыре варианта справочника по токенам Destination. Выбран вариант B (см. CHOICE.md).</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="cap">Вариант A · длинный скролл</div>
+    <div class="win">
+      <div class="hd">Destination tokens</div>
+      <div class="bd">
+        <div class="acc" style="font-size:12px;margin-bottom:6px;">Все токены</div>
+        <table>
+          <tr><td class="mono">${date}</td><td class="mut" style="text-align:right;">2026-03-14</td></tr>
+          <tr><td class="mono">${fdate}</td><td class="mut" style="text-align:right;">дата файла</td></tr>
+          <tr><td class="mono">${ext}</td><td class="mut" style="text-align:right;">pdf</td></tr>
+        </table>
+        <div class="acc" style="font-size:12px;margin:10px 0 6px;">Формат / Ограничения ниже</div>
+      </div>
+      <div class="ft"><span class="btn">Close</span></div>
+    </div>
+    <div class="note">Всё одной колонкой сверху вниз. Проще всего, но длинная прокрутка.</div>
+  </div>
+
+  <div class="card pick">
+    <div class="cap">Вариант B · две колонки — ВЫБРАН</div>
+    <div class="win">
+      <div class="hd">Destination tokens</div>
+      <div class="row" style="min-height:150px;">
+        <div style="width:38%;border-right:1px solid #3a424e;padding:10px;font-size:12px;">
+          <div class="catsel">Дата дропа</div>
+          <div class="cat">Дата файла</div>
+          <div class="cat">Имя файла</div>
+          <div class="cat">Размер</div>
+          <div class="cat">Форматы</div>
+          <div class="cat">Ограничения</div>
+        </div>
+        <div style="flex:1;padding:12px;">
+          <table>
+            <tr><td class="mono">${date}</td><td class="mut" style="text-align:right;">2026-03-14</td></tr>
+            <tr><td class="mono">${year}</td><td class="mut" style="text-align:right;">2026</td></tr>
+            <tr><td class="mono">${week}</td><td class="mut" style="text-align:right;">11</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="ft"><span class="btn">Close</span></div>
+    </div>
+    <div class="note">Категории слева, детали справа. Удобно листать по темам.</div>
+  </div>
+
+  <div class="card">
+    <div class="cap">Вариант C · таблица-центрик</div>
+    <div class="win">
+      <div class="hd">Destination tokens</div>
+      <div class="bd">
+        <table>
+          <tr class="mut"><td>токен</td><td>пример</td><td style="text-align:right;">":"</td></tr>
+          <tr><td class="mono">${date}</td><td class="mut">2026-03-14</td><td class="acc" style="text-align:right;">да</td></tr>
+          <tr><td class="mono">${stem}</td><td class="mut">отчёт</td><td class="mut" style="text-align:right;">—</td></tr>
+          <tr><td class="mono">${size}</td><td class="mut">large</td><td class="acc" style="text-align:right;">да</td></tr>
+        </table>
+        <div class="note" style="border-top:1px solid #3a424e;padding-top:8px;">Форматы и ограничения свёрнуты внизу</div>
+      </div>
+      <div class="ft"><span class="btn">Close</span></div>
+    </div>
+    <div class="note">Одна плотная таблица со столбцом «принимает формат».</div>
+  </div>
+
+  <div class="card">
+    <div class="cap">Вариант D · группы-аккордеон</div>
+    <div class="win">
+      <div class="hd">Destination tokens</div>
+      <div class="bd">
+        <div style="border:1px solid #3a424e;border-radius:8px;margin-bottom:6px;padding:7px 10px;font-size:12px;display:flex;justify-content:space-between;"><span>Дата дропа</span><span class="mut">▾</span></div>
+        <div style="border:1px solid #3a424e;border-radius:8px;margin-bottom:6px;padding:7px 10px;font-size:12px;display:flex;justify-content:space-between;"><span class="mut">Дата файла (f / c)</span><span class="mut">▸</span></div>
+        <div style="border:1px solid #3a424e;border-radius:8px;padding:7px 10px;font-size:12px;display:flex;justify-content:space-between;"><span class="mut">Имя и размер</span><span class="mut">▸</span></div>
+      </div>
+      <div class="ft"><span class="btn">Close</span></div>
+    </div>
+    <div class="note">Сворачиваемые группы. Компактно, но требует кликать.</div>
+  </div>
+
+</div>
+</body>
+</html>
