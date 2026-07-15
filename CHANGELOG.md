@@ -1,6 +1,11 @@
 # Changelog
 
 - - -
+## [v0.24.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.24.0..v0.24.1) - 2026-07-15
+#### Bug Fixes
+- (**test**) устойчивое удаление temp-папки тестов против флака error.log - ([7cafa5e](https://github.com/IvanLarinDev/dropwheel/commit/7cafa5eb5cf25b2d7c856f0ca06ca06f8e9cc63b)) - Ivan Larin
+
+- - -
 ## [v0.24.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.23.0..v0.24.0) - 2026-07-15
 #### Features
 - (**ui**) создание группы через тайл Add с переключателем Target/Group - ([9c4b04a](https://github.com/IvanLarinDev/dropwheel/commit/9c4b04ad395cabf51a81e6f25a0f76027557b4c8)) - Ivan Larin
