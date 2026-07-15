@@ -1,6 +1,11 @@
 # Changelog
 
 - - -
+## [v0.25.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.24.1..v0.25.0) - 2026-07-15
+#### Features
+- (**ui**) живой предпросмотр анимации открытия в настройках - ([b8583bf](https://github.com/IvanLarinDev/dropwheel/commit/b8583bfe2e084304987c85b33a606efa90a7db30)) - Ivan Larin
+
+- - -
 ## [v0.24.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.24.0..v0.24.1) - 2026-07-15
 #### Bug Fixes
 - (**test**) устойчивое удаление temp-папки тестов против флака error.log - ([7cafa5e](https://github.com/IvanLarinDev/dropwheel/commit/7cafa5eb5cf25b2d7c856f0ca06ca06f8e9cc63b)) - Ivan Larin
