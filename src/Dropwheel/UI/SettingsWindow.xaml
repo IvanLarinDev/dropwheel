@@ -98,6 +98,18 @@
                             <TextBlock x:Name="OpenAnimationSpeedText" Grid.Column="1" VerticalAlignment="Center"
                                        TextAlignment="Right"/>
                         </Grid>
+                        <TextBlock Text="Wheel size"/>
+                        <Grid Margin="0,4,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="48"/>
+                            </Grid.ColumnDefinitions>
+                            <Slider x:Name="WheelScaleSlider" Grid.Column="0" Minimum="0.8" Maximum="1.5"
+                                    TickFrequency="0.05" IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                                    Margin="0,0,10,0"/>
+                            <TextBlock x:Name="WheelScaleText" Grid.Column="1" VerticalAlignment="Center"
+                                       TextAlignment="Right"/>
+                        </Grid>
                         <TextBlock Text="Orb opacity"/>
                         <Slider x:Name="OpacitySlider" Minimum="0.3" Maximum="1"
                                 TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,4,0,10"/>

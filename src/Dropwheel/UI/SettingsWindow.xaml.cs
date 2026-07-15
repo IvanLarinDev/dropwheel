@@ -71,6 +71,10 @@ public partial class SettingsWindow : Window
         OpenAnimationSpeedText.Text = $"{OpenAnimationSpeedSlider.Value:0.##}x";
         OpenAnimationSpeedSlider.ValueChanged += (_, _) =>
             OpenAnimationSpeedText.Text = $"{OpenAnimationSpeedSlider.Value:0.##}x";
+        WheelScaleSlider.Value = WheelLayout.ClampScale(c.WheelScale);
+        WheelScaleText.Text = $"{WheelScaleSlider.Value:0.##}x";
+        WheelScaleSlider.ValueChanged += (_, _) =>
+            WheelScaleText.Text = $"{WheelScaleSlider.Value:0.##}x";
         ActionBox.SelectedIndex = c.GlobalAction == DropAction.Move ? 1 : 0;
         HoverBox.Text = c.HoverDelayMs.ToString();
         OpacitySlider.Value = c.OrbOpacity;
@@ -420,6 +424,7 @@ public partial class SettingsWindow : Window
         if (int.TryParse(OverflowThresholdBox.Text, out int threshold))
             c.OverflowThreshold = WheelLayout.ClampThreshold(threshold);
         c.OpenAnimationSpeed = Math.Round(Math.Clamp(OpenAnimationSpeedSlider.Value, 0.5, 2.0), 2);
+        c.WheelScale = WheelLayout.ClampScale(Math.Round(WheelScaleSlider.Value, 2));
         c.GlobalAction = ActionBox.SelectedIndex == 1 ? DropAction.Move : DropAction.Copy;
         if (int.TryParse(HoverBox.Text, out int hover)) c.HoverDelayMs = Math.Clamp(hover, 50, 2000);
         c.OrbOpacity = Math.Round(OpacitySlider.Value, 2);
