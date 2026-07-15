@@ -400,9 +400,9 @@ propose changes, [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community
 expectations, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities
 privately. Bug reports and feature requests use the issue templates.
 
-Note: the per-folder `README.md`/`LLM.md` files inside `src/` and `docs/demo/`
-are written in Russian, the maintainer's working language; code and comments
-are English.
+Note: the per-folder `README.md` files inside `src/` and `docs/demo/` are
+written in Russian, the maintainer's working language; code and comments are
+English.
 
 ## License
 

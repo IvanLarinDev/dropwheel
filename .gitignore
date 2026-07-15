@@ -5,6 +5,10 @@ obj/
 .vs/
 dist/
 
+# local-only maintainer kitchen: agent notes and design-gate packages stay on disk, not in git
+LLM.md
+design/
+
 .claude
 .codex
 
