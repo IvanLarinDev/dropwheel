@@ -4,6 +4,7 @@ obj/
 *.LLM
 .vs/
 dist/
+artifacts/
 
 # local-only maintainer kitchen: agent notes and design-gate packages stay on disk, not in git
 LLM.md

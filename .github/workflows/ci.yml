@@ -1,8 +1,7 @@
 name: CI
 
-# Build + full xUnit suite on every PR and on pushes to main.
-# Actions are pinned to full commit SHAs; the trailing comment keeps Dependabot's
-# github-actions updater able to identify the source action and desired major.
+# Build + unit tests + Windows integration smoke + publish on every PR and push to main.
+# Actions are pinned to full commit SHAs; trailing comments document the corresponding tags.
 
 on:
   push:
@@ -14,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  test-and-smoke:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
@@ -23,5 +22,32 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Test
-        run: dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --nologo
+      - name: Restore
+        run: dotnet restore Dropwheel.slnx --nologo
+
+      - name: Unit tests
+        run: >-
+          dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj
+          --nologo --configuration Release --no-restore -warnaserror
+          --filter "Category!=WindowsIntegration"
+
+      - name: Windows integration smoke
+        run: >-
+          dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj
+          --nologo --configuration Release --no-build -warnaserror
+          --filter "Category=WindowsIntegration"
+
+      - name: Publish framework-dependent executable
+        run: >-
+          dotnet publish src/Dropwheel/Dropwheel.csproj
+          --nologo --configuration Release --runtime win-x64
+          --self-contained false -warnaserror
+          -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false
+          --output artifacts/smoke
+
+      - name: Verify published executable
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "artifacts/smoke/Dropwheel.exe")) {
+            throw "Framework-dependent publish did not produce Dropwheel.exe"
+          }

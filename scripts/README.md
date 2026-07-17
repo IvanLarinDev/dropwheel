@@ -8,6 +8,8 @@
 
 Из корня репозитория, в Windows PowerShell (на этой машине нет `pwsh`):
 
+Нужны `git`, .NET 10 SDK и авторизованный GitHub CLI (`gh auth status`).
+
     ./scripts/release.ps1 -Bump minor -DryRun   # сначала репетиция
     ./scripts/release.ps1 -Bump minor           # затем по-настоящему
 
@@ -24,6 +26,9 @@
 и две публикации (обычную и самодостаточную), пушит релизный коммит, ждёт зелёный CI,
 ставит тег `vX.Y.Z`, дожидается сборки релиза на GitHub, проверяет его артефакты и
 подтягивает локальный `main` к релизному коммиту.
+
+GitHub-релиз содержит два portable ZIP — framework-dependent и self-contained —
+и файл `Dropwheel-vX.Y.Z-SHA256SUMS.txt`; installer и code signing пока не входят в pipeline.
 
 ## Если релиз оборвался
 

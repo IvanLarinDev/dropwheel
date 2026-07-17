@@ -6,35 +6,33 @@ labels: ["bug"]
 assignees: []
 ---
 
-## Describe the bug
-
-A clear and concise description of what the bug is.
-
 ## Steps to reproduce
 
-1. Go to '...'
-2. Click on '...'
-3. Scroll down to '...'
-4. See error
+1. ...
+2. ...
+3. ...
 
 ## Expected behavior
 
-A clear and concise description of what you expected to happen.
+What did you expect to happen?
 
 ## Actual behavior
 
-What actually happened. Include error messages or logs if available.
-
-## Screenshots
-
-If applicable, add screenshots to help explain your problem.
+What happened instead? Include the exact error message if one was shown.
 
 ## Environment
 
-- OS: [e.g. Windows 11, macOS 14]
-- Browser / runtime: [e.g. Chrome 126, Node 20]
-- Dropwheel version / commit: [e.g. v1.0.0 or commit hash]
+- Windows version and build: [e.g. Windows 11 24H2, build 26100]
+- Dropwheel version or commit: [e.g. v0.25.0]
+- Package: [self-contained ZIP / framework-dependent ZIP / built from source]
+- Relevant setup: [display scaling and monitors; drag source; target/action;
+  administrator status]
 
-## Additional context
+## Logs
 
-Add any other context about the problem here.
+If it exists, attach `%AppData%\Dropwheel\error.log`. Remove personal paths or
+other sensitive information before uploading it.
+
+## Screenshots or recording
+
+Add screenshots or a short recording if they help reproduce the problem.

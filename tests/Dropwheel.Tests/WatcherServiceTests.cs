@@ -17,6 +17,52 @@ public sealed class WatcherServiceTests : IDisposable
     public void Dispose() { try { Directory.Delete(_root, true); } catch (DirectoryNotFoundException) { } }
 
     [Fact]
+    public void Sort_snapshot_is_detached_from_later_rule_edits()
+    {
+        var file = Path.Combine(_root, "a.jpg");
+        File.WriteAllText(file, "image");
+        var target = new TargetItem
+        {
+            Path = _root,
+            Rules = new()
+            {
+                new SortRule
+                {
+                    Dest = "Images",
+                    All = { new RuleCondition
+                        { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } },
+                },
+            },
+        };
+
+        var snapshot = WatcherService.CreateSortSnapshot(target);
+        target.Path = Path.Combine(_root, "changed-root");
+        target.Rules[0].Dest = "Changed";
+        target.Rules[0].All[0].Value = "png";
+
+        var group = Assert.Single(SortService.MovePlan(snapshot, new[] { file }));
+        Assert.Equal(Path.Combine(_root, "Images"), group.Key);
+    }
+
+    [Fact]
+    public void Sort_snapshot_is_detached_from_later_legacy_rule_edits()
+    {
+        var file = Path.Combine(_root, "a.jpg");
+        File.WriteAllText(file, "image");
+        var target = new TargetItem
+        {
+            Path = _root,
+            SortRules = new() { ["jpg"] = "Images" },
+        };
+
+        var snapshot = WatcherService.CreateSortSnapshot(target);
+        target.SortRules["jpg"] = "Changed";
+
+        var group = Assert.Single(SortService.MovePlan(snapshot, new[] { file }));
+        Assert.Equal(Path.Combine(_root, "Images"), group.Key);
+    }
+
+    [Fact]
     public void SameFolder_true_when_destination_is_the_files_own_folder()
     {
         var file = Path.Combine(_root, "a.mov");
@@ -93,6 +139,35 @@ public sealed class WatcherServiceTests : IDisposable
     }
 
     [Fact]
+    public void Auto_sort_uses_the_entry_snapshot_when_live_rules_change()
+    {
+        var file = Path.Combine(_root, "a.jpg");
+        File.WriteAllText(file, "source");
+        var target = new TargetItem
+        {
+            Path = _root,
+            Rules = new()
+            {
+                new SortRule
+                {
+                    Dest = "Images",
+                    All = { new RuleCondition
+                        { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } },
+                },
+            },
+        };
+        var entry = CreateEntry(target);
+
+        target.Rules[0].Dest = "Changed";
+
+        var service = new WatcherService(Dispatcher.CurrentDispatcher, _ => { });
+        InvokeSortOne(service, entry, file);
+
+        Assert.Equal("source", File.ReadAllText(Path.Combine(_root, "Images", "a.jpg")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "Changed")));
+    }
+
+    [Fact]
     public async Task Wait_until_ready_returns_false_when_cancelled_before_file_is_ready()
     {
         var file = Path.Combine(_root, "locked.mov");
@@ -131,13 +206,20 @@ public sealed class WatcherServiceTests : IDisposable
     }
 
     private static void InvokeSortOne(WatcherService service, TargetItem target, string file)
+        => InvokeSortOne(service, CreateEntry(target), file);
+
+    private static object CreateEntry(TargetItem target)
     {
         var entryType = typeof(WatcherService).GetNestedType("Entry", BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("WatcherService.Entry not found.");
         var entry = Activator.CreateInstance(entryType, nonPublic: true)
             ?? throw new InvalidOperationException("WatcherService.Entry could not be created.");
         entryType.GetProperty("Target", BindingFlags.Instance | BindingFlags.Public)?.SetValue(entry, target);
+        return entry;
+    }
 
+    private static void InvokeSortOne(WatcherService service, object entry, string file)
+    {
         var sortOne = typeof(WatcherService).GetMethod("SortOne", BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("WatcherService.SortOne not found.");
         sortOne.Invoke(service, new[] { entry, file, CancellationToken.None });
