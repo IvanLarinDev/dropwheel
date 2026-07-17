@@ -22,7 +22,12 @@ public sealed class WatcherService
     {
         public required FileSystemWatcher Watcher { get; init; }
         public required CancellationTokenSource Lifetime { get; init; }
-        public TargetItem Target { get; set; } = null!;
+        private TargetItem _target = null!;
+        public TargetItem Target
+        {
+            get => Volatile.Read(ref _target);
+            set => Volatile.Write(ref _target, CreateSortSnapshot(value));
+        }
 
         private readonly object _gate = new();
         private int _queuedWork;
@@ -300,25 +305,42 @@ public sealed class WatcherService
                 // to a non-existent path treats the last segment as a new file name, not a folder.
                 cancellationToken.ThrowIfCancellationRequested();
                 Directory.CreateDirectory(folder);
-                var conflicts = FileOps.DestinationConflicts(files, folder);
-                if (conflicts.Length > 0)
+                int moved = 0;
+                foreach (var source in files)
                 {
-                    ErrorLog.Write($"Auto-sort skipped '{file}' because destination already exists: '{conflicts[0]}'");
-                    continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (FileOps.MoveWithoutOverwrite(source, folder))
+                    {
+                        moved++;
+                        continue;
+                    }
+
+                    var destination = Path.Combine(
+                        folder,
+                        Path.GetFileName(Path.TrimEndingDirectorySeparator(source)));
+                    if (File.Exists(destination) || Directory.Exists(destination))
+                        ErrorLog.Write($"Auto-sort skipped '{source}' because destination already exists: '{destination}'");
+                    else
+                        ErrorLog.Write($"Failed to move '{source}' to '{folder}'");
                 }
-                cancellationToken.ThrowIfCancellationRequested();
-                if (FileOps.Execute(files, folder, DropAction.Move, silent: true))
-                {
-                    if (!cancellationToken.IsCancellationRequested)
-                        _ui.InvokeAsync(() => QueueToast(files.Length)); // coalesce the toast on the UI thread
-                }
-                else
-                    ErrorLog.Write($"Failed to move '{file}' to '{folder}'");
+
+                if (moved > 0 && !cancellationToken.IsCancellationRequested)
+                    _ui.InvokeAsync(() => QueueToast(moved)); // coalesce the toast on the UI thread
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception ex) { ErrorLog.Write($"Auto-sort of '{file}' failed", ex); }
     }
+
+    /// <summary>Captures only the state used by the routing engine. Rebuild publishes this detached
+    /// snapshot atomically, so a background event sees either the complete old rules or the complete
+    /// new rules while the editor updates the live target on the UI thread.</summary>
+    internal static TargetItem CreateSortSnapshot(TargetItem target) => new()
+    {
+        Path = target.Path,
+        SortRules = target.SortRules?.ToDictionary(pair => pair.Key, pair => pair.Value),
+        Rules = target.Rules?.Select(rule => rule.Clone()).ToList(),
+    };
 
     /// <summary>The destination folder is the file's own folder. Then there is nothing to move and,
     /// more importantly, moving into the same folder could make the watcher loop.</summary>

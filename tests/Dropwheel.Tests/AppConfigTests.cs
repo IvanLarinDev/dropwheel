@@ -328,17 +328,20 @@ public sealed class AppConfigTests : IDisposable
     }
 
     [Fact]
-    public void Save_rides_out_a_transient_lock_on_the_config_file()
+    public async Task Save_rides_out_a_transient_lock_on_the_config_file()
     {
         TargetStore.Load();
         TargetStore.Config.HoverDelayMs = 321;
-        Task.Run(() => { }).Wait();
         var hold = new FileStream(TargetStore.FilePath, FileMode.Open, FileAccess.Read, FileShare.None);
-        var release = Task.Run(() => { Thread.Sleep(50); hold.Dispose(); });
+        var release = Task.Run(async () =>
+        {
+            await Task.Delay(50);
+            hold.Dispose();
+        });
 
         TargetStore.Save();
 
-        release.Wait();
+        await release;
         Assert.Contains("321", File.ReadAllText(TargetStore.FilePath));
     }
 

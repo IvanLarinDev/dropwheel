@@ -32,8 +32,20 @@ text to a file. The demo source lives in [`docs/demo/`](docs/demo/).
 
 ## Install
 
-Grab `Dropwheel.exe` from the [latest release](https://github.com/IvanLarinDev/dropwheel/releases/latest)
-and run it — a single file that needs the .NET 10 Desktop Runtime installed.
+Dropwheel is a portable app for Windows 10/11 x64 (no installer).
+
+From the [latest release](https://github.com/IvanLarinDev/dropwheel/releases/latest),
+download and extract one archive:
+
+- `*-win-x64-self-contained.zip` — recommended; no separate .NET installation
+  is required.
+- `*-win-x64.zip` — smaller; requires the
+  [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+Run `Dropwheel.exe`. The app is currently unsigned, so Windows SmartScreen may
+show a warning. Use the `*-SHA256SUMS.txt` release asset to verify download
+integrity.
+
 Config lives in `%AppData%\Dropwheel\config.json`.
 
 ## Build from source

@@ -38,6 +38,32 @@ public static class FileOps
             .ToArray();
     }
 
+    /// <summary>Moves one file or directory without ever replacing or auto-renaming an existing
+    /// destination. Files may move across volumes; directories use the filesystem's atomic rename
+    /// and fail safely when the destination is on another volume.</summary>
+    internal static bool MoveWithoutOverwrite(string source, string destFolder)
+    {
+        var trimmedSource = Path.TrimEndingDirectorySeparator(source);
+        var name = Path.GetFileName(trimmedSource);
+        if (string.IsNullOrEmpty(name)) return false;
+        var destination = Path.Combine(destFolder, name);
+
+        try
+        {
+            if (File.Exists(trimmedSource))
+                Microsoft.VisualBasic.FileIO.FileSystem.MoveFile(trimmedSource, destination, overwrite: false);
+            else if (Directory.Exists(trimmedSource))
+                Directory.Move(trimmedSource, destination);
+            else
+                return false;
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Copy or move files into destFolder. When silent (used by the folder watcher for
     /// auto-sort) the shell shows no progress window, no error UI and no conflict prompt. Callers
     /// that need no-overwrite behavior must preflight with DestinationConflicts first.</summary>

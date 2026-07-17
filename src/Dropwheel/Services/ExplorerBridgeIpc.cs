@@ -9,14 +9,20 @@ public static class ExplorerBridgeIpc
     private const string PipeName = "Dropwheel_ExplorerBridge";
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromMilliseconds(1200);
 
-    public static bool TrySendFiles(IReadOnlyList<string> paths)
+    public static bool TrySendFiles(IReadOnlyList<string> paths) =>
+        TrySendFiles(paths, PipeName, ConnectTimeout);
+
+    internal static bool TrySendFiles(
+        IReadOnlyList<string> paths,
+        string pipeName,
+        TimeSpan connectTimeout)
     {
         if (paths.Count == 0) return false;
 
         try
         {
-            using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
-            pipe.Connect((int)ConnectTimeout.TotalMilliseconds);
+            using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.Out);
+            pipe.Connect((int)connectTimeout.TotalMilliseconds);
             using var writer = new StreamWriter(pipe) { AutoFlush = true };
             writer.WriteLine(JsonSerializer.Serialize(paths));
             return true;
@@ -29,6 +35,12 @@ public static class ExplorerBridgeIpc
     }
 
     public static Task RunServerAsync(Action<string[]> onFiles, CancellationToken token) =>
+        RunServerAsync(onFiles, PipeName, token);
+
+    internal static Task RunServerAsync(
+        Action<string[]> onFiles,
+        string pipeName,
+        CancellationToken token) =>
         Task.Run(async () =>
         {
             while (!token.IsCancellationRequested)
@@ -36,7 +48,7 @@ public static class ExplorerBridgeIpc
                 try
                 {
                     using var pipe = new NamedPipeServerStream(
-                        PipeName,
+                        pipeName,
                         PipeDirection.In,
                         maxNumberOfServerInstances: 1,
                         PipeTransmissionMode.Byte,

@@ -18,23 +18,53 @@ By participating in this project you agree to abide by our
 For anything larger than a small fix, please open an issue first to discuss the
 approach. This avoids duplicate work and makes review faster.
 
+Development requires Windows 10/11 and the .NET 10 SDK. Dropwheel targets
+`net10.0-windows` and uses WPF, WinForms, and Windows shell APIs, so other
+platforms are not supported build hosts.
+
 ## Development workflow
 
 1. **Fork** the repository and clone your fork.
 2. **Create a branch** from `main` with a descriptive name, e.g.
    `feature/smart-routing` or `fix/shelf-overflow`.
 3. **Make your changes** in focused, logically separated commits.
-4. **Test** your changes locally and make sure existing behavior still works.
+4. **Build and test** from the repository root:
+
+   ```powershell
+   dotnet restore Dropwheel.slnx
+   dotnet build Dropwheel.slnx --configuration Release --no-restore
+   dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-build
+   ```
+
+   For changes to startup, packaging, or Windows integration, also exercise both
+   release publish variants:
+
+   ```powershell
+   dotnet publish src/Dropwheel --configuration Release --output "$env:TEMP\dropwheel-fd"
+   dotnet publish src/Dropwheel --configuration Release -r win-x64 --self-contained true -p:IncludeNativeLibrariesForSelfExtract=true --output "$env:TEMP\dropwheel-sc"
+   ```
+
+   Exercise the affected Windows behavior manually when it cannot be covered by
+   the xUnit suite, and describe those checks in the pull request.
 5. **Push** the branch to your fork.
 6. **Open a pull request** against `main` and fill in the PR template.
 
+## Project conventions
+
+- Keep code, comments, and log messages in English.
+- Keep data in `Models`, non-UI logic in `Services`, and WPF code in `UI`.
+- For UI changes, include before/after screenshots and describe manual
+  verification. Keep `docs/demo/` aligned when wheel geometry, timing, colours,
+  or behavior changes.
+
 ## Commit messages
 
-Write clear, imperative commit messages, for example:
+Use Conventional Commits with a short imperative description, for example:
 
 ```
-Add smart routing fallback for empty shelf
-Fix off-by-one in wheel index calculation
+feat(sort): add fallback for unmatched files
+fix(layout): correct wheel index calculation
+docs(readme): clarify portable ZIP installation
 ```
 
 Reference related issues where relevant (e.g. `Fixes #123`).
@@ -55,7 +85,7 @@ Please do **not** report security vulnerabilities through public issues. See our
 ## Questions
 
 If anything is unclear, open a
-[GitHub Discussion or issue](https://github.com/IvanLarinDev/dropwheel/issues)
-and we'll help you get started.
+[GitHub Discussion](https://github.com/IvanLarinDev/dropwheel/discussions) and
+we'll help you get started.
 
 Thank you for helping make Dropwheel better!

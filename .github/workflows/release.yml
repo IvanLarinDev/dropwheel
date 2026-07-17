@@ -1,6 +1,6 @@
 name: Release
 
-# An annotated vX.Y.Z tag is the release boundary. workflow_dispatch allows a
+# An existing stable vX.Y.Z tag is the release boundary. workflow_dispatch allows a
 # failed or missed tag run to be repaired without moving or recreating the tag.
 on:
   push:
@@ -93,7 +93,7 @@ jobs:
             Set-Content -Encoding utf8NoBOM $checksums
 
       - name: Create or repair GitHub Release
-        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           files: |
@@ -105,8 +105,13 @@ jobs:
           generate_release_notes: true
           make_latest: true
           body: |
-            Dropwheel — overlay launcher & drag-and-drop wheel for Windows 10/11.
-            Unzip and run Dropwheel.exe. Config: %AppData%\Dropwheel\config.json
+            Dropwheel — portable overlay launcher for Windows 10/11 x64 (no installer).
+            Download one archive, extract it, and run `Dropwheel.exe`.
 
-            - `win-x64.zip` — small, requires .NET 10 Desktop Runtime
-            - `win-x64-self-contained.zip` — larger, no runtime needed
+            - `Dropwheel-${{ env.RELEASE_TAG }}-win-x64-self-contained.zip` — recommended; no separate .NET installation required
+            - `Dropwheel-${{ env.RELEASE_TAG }}-win-x64.zip` — smaller; requires the .NET 10 Desktop Runtime (x64)
+
+            The app is currently unsigned, so Windows SmartScreen may show a warning.
+            Use `Dropwheel-${{ env.RELEASE_TAG }}-SHA256SUMS.txt` to verify download integrity.
+
+            Config: `%AppData%\Dropwheel\config.json`

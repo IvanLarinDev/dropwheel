@@ -64,6 +64,57 @@ public sealed class FileOpsTests
     }
 
     [Fact]
+    public void MoveWithoutOverwrite_leaves_source_and_existing_destination_unchanged_on_conflict()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dw_no_overwrite_" + Guid.NewGuid().ToString("N"));
+        var sourceDir = Path.Combine(root, "source");
+        var destDir = Path.Combine(root, "dest");
+        Directory.CreateDirectory(sourceDir);
+        Directory.CreateDirectory(destDir);
+        var source = Path.Combine(sourceDir, "report.txt");
+        var destination = Path.Combine(destDir, "report.txt");
+        File.WriteAllText(source, "source");
+        File.WriteAllText(destination, "existing");
+        try
+        {
+            Assert.False(FileOps.MoveWithoutOverwrite(source, destDir));
+            Assert.Equal("source", File.ReadAllText(source));
+            Assert.Equal("existing", File.ReadAllText(destination));
+            Assert.Equal(new[] { "report.txt" }, Directory.GetFiles(destDir).Select(Path.GetFileName));
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch (DirectoryNotFoundException) { }
+        }
+    }
+
+    [Fact]
+    public void MoveWithoutOverwrite_does_not_merge_an_existing_destination_directory()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dw_no_merge_" + Guid.NewGuid().ToString("N"));
+        var sourceDir = Path.Combine(root, "source", "batch");
+        var destDir = Path.Combine(root, "dest");
+        var destination = Path.Combine(destDir, "batch");
+        Directory.CreateDirectory(sourceDir);
+        Directory.CreateDirectory(destination);
+        var sourceOnly = Path.Combine(sourceDir, "source-only.txt");
+        var existing = Path.Combine(destination, "existing.txt");
+        File.WriteAllText(sourceOnly, "source");
+        File.WriteAllText(existing, "existing");
+        try
+        {
+            Assert.False(FileOps.MoveWithoutOverwrite(sourceDir, destDir));
+            Assert.Equal("source", File.ReadAllText(sourceOnly));
+            Assert.Equal("existing", File.ReadAllText(existing));
+            Assert.False(File.Exists(Path.Combine(destination, "source-only.txt")));
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch (DirectoryNotFoundException) { }
+        }
+    }
+
+    [Fact]
     public void DestinationConflicts_reports_existing_destination_names()
     {
         var root = Path.Combine(Path.GetTempPath(), "dw_fileops_" + Guid.NewGuid().ToString("N"));
