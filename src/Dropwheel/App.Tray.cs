@@ -213,7 +213,10 @@ public partial class App
         {
             fsStatus.Visible = Dropwheel.Services.FullscreenDetector.IsFullscreenActive();
             if (maintainSystemIntegrations)
+            {
+                auto.Checked = StartupService.IsEnabled;
                 sendTo.Checked = ExplorerBridgeService.IsSendToInstalled();
+            }
             PopulateRecentDrops(recentDrops);
             StyleTrayMenu(menu);
             RefreshTrayIcons();
