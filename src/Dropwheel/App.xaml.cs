@@ -102,6 +102,9 @@ public partial class App : Application
 
             _watcher = new WatcherService(Dispatcher, ShowSortedToast);
             _watcher.Start();
+
+            if (OnboardingState.ShouldShow(TargetStore.Config, _exitAfterExplorerDelivery))
+                Dispatcher.BeginInvoke(ShowOnboarding);
         }
         catch (Exception ex)
         {
@@ -110,6 +113,40 @@ public partial class App : Application
                 "Dropwheel couldn't start.\n\n" + ex.Message + "\n\nSee error.log for details.",
                 "Dropwheel", MessageBoxButton.OK, MessageBoxImage.Error);
             _ = RequestShutdownAsync();
+        }
+    }
+
+    private void ShowOnboarding()
+    {
+        try
+        {
+            bool hadExplorerSendTo = ExplorerBridgeService.IsSendToInstalled();
+            bool hadStartup = StartupService.IsEnabled;
+            var setup = new OnboardingSetup(
+                TargetStore.Config,
+                () =>
+                {
+                    if (!hadExplorerSendTo) ExplorerBridgeService.InstallSendTo(CurrentAppPath());
+                },
+                () =>
+                {
+                    if (!hadStartup) StartupService.SetEnabled(true);
+                },
+                TargetStore.Save,
+                rollbackExplorerSendTo: () =>
+                {
+                    if (!hadExplorerSendTo) ExplorerBridgeService.UninstallSendTo();
+                },
+                rollbackStartup: () =>
+                {
+                    if (!hadStartup) StartupService.SetEnabled(false);
+                });
+            var window = new OnboardingWindow(setup, () => _overlay?.ToggleCloud());
+            window.Show();
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Could not show onboarding", ex);
         }
     }
 

@@ -3,6 +3,11 @@ namespace Dropwheel.Models;
 public class AppConfig
 {
     public const string DefaultHotkey = "Ctrl+Alt+Space";
+    public const int CurrentOnboardingVersion = 1;
+
+    /// <summary>Completed onboarding revision. New profiles override this to zero, while configs
+    /// written before onboarding existed retain the current value and are not interrupted on upgrade.</summary>
+    public int OnboardingVersion { get; set; } = CurrentOnboardingVersion;
 
     public DropAction GlobalAction { get; set; } = DropAction.Copy;
 
