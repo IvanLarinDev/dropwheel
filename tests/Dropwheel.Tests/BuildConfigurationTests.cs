@@ -46,6 +46,63 @@ public sealed class BuildConfigurationTests
     }
 
     [Fact]
+    public void Runtime_baseline_verifies_ipc_delivery_and_graceful_shutdown()
+    {
+        var root = RepositoryRoot();
+        var verifier = File.ReadAllText(Path.Combine(root, "scripts", "verify-runtime-baseline.ps1"));
+
+        Assert.Contains("--smoke-test", verifier, StringComparison.Ordinal);
+        Assert.Contains("--smoke-send", verifier, StringComparison.Ordinal);
+        Assert.Contains("@(\"--smoke-test\", $profile, $probe)", verifier, StringComparison.Ordinal);
+        Assert.Contains("@(\"--smoke-send\", $profile, $probe)", verifier, StringComparison.Ordinal);
+        Assert.Contains("Join-Path $profile \"smoke-ack\"", verifier, StringComparison.Ordinal);
+        Assert.Contains("Join-Path $profile \"config.json\"", verifier, StringComparison.Ordinal);
+        Assert.Contains("Join-Path $profile \"error.log\"", verifier, StringComparison.Ordinal);
+        Assert.Contains("[string]::IsNullOrWhiteSpace($errors)", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("$errors -match", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("$env:APPDATA", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("$env:LOCALAPPDATA", verifier, StringComparison.Ordinal);
+        Assert.Contains("dropwheel runtime ", verifier, StringComparison.Ordinal);
+        Assert.Contains("Start-NativeProcess", verifier, StringComparison.Ordinal);
+        Assert.Contains("Stop-ProcessBounded", verifier, StringComparison.Ordinal);
+        Assert.Contains("$smokeFailure", verifier, StringComparison.Ordinal);
+        Assert.Contains("AggregateException", verifier, StringComparison.Ordinal);
+        Assert.Contains("$sender.WaitForExit(5000)", verifier, StringComparison.Ordinal);
+        Assert.Contains("WaitForExit(15000)", verifier, StringComparison.Ordinal);
+        Assert.Contains("LIFECYCLE_SMOKE_OK", verifier, StringComparison.Ordinal);
+        Assert.Contains("profile=isolated", verifier, StringComparison.Ordinal);
+        Assert.Contains("probe=matched", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("Write-Output \"LIFECYCLE_SMOKE_OK", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("Write-Output \"RUNTIME_BASELINE_OK", verifier, StringComparison.Ordinal);
+        Assert.Contains("$verificationFailure", verifier, StringComparison.Ordinal);
+        Assert.Contains("$outputCleanupFailure", verifier, StringComparison.Ordinal);
+        var outputCleanup = verifier.LastIndexOf("Remove-Item -Recurse -Force $output", StringComparison.Ordinal);
+        var successEmission = verifier.LastIndexOf("Complete-Verification $verificationFailure $outputCleanupFailure $successOutput", StringComparison.Ordinal);
+        Assert.Contains("function Complete-Verification", verifier, StringComparison.Ordinal);
+        Assert.True(outputCleanup >= 0, "Runtime verifier must remove its temporary output.");
+        Assert.True(successEmission > outputCleanup, "Success markers must be emitted only after output cleanup succeeds.");
+
+        var app = File.ReadAllText(Path.Combine(root, "src", "Dropwheel", "App.xaml.cs"));
+        var profileOverride = app.IndexOf("TargetStore.DirOverride = command.SmokeProfileRoot", StringComparison.Ordinal);
+        var configLoad = app.IndexOf("TargetStore.Load()", StringComparison.Ordinal);
+        Assert.True(profileOverride >= 0, "Smoke mode must set an explicit TargetStore root.");
+        Assert.True(configLoad > profileOverride, "The smoke profile must be set before config is loaded.");
+        Assert.Contains("_smokeProbePath", app, StringComparison.Ordinal);
+        Assert.Contains("ExplorerBridgeCommandKind.SmokeSendFiles", app, StringComparison.Ordinal);
+        Assert.Contains("Shutdown(ExplorerBridgeIpc.TrySendFiles(command.Paths) ? 0 : 3)", app, StringComparison.Ordinal);
+        Assert.Contains("SmokeTestProtocol.IsExpectedProbe", app, StringComparison.Ordinal);
+        Assert.DoesNotContain("paths.Contains(_smokeProbePath", app, StringComparison.Ordinal);
+        Assert.Contains("SmokeTestProtocol.WriteAcknowledgement", app, StringComparison.Ordinal);
+        Assert.Contains("SmokeTestProtocol.WriteDeliveryMarker", app, StringComparison.Ordinal);
+        Assert.Contains("if (!_exitAfterExplorerDelivery)", app, StringComparison.Ordinal);
+        Assert.Contains("InitTray(maintainSystemIntegrations: !_exitAfterExplorerDelivery)", app, StringComparison.Ordinal);
+
+        var tray = File.ReadAllText(Path.Combine(root, "src", "Dropwheel", "App.Tray.cs"));
+        Assert.Contains("InitTray(bool maintainSystemIntegrations)", tray, StringComparison.Ordinal);
+        Assert.Contains("if (maintainSystemIntegrations)", tray, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Nuget_dependencies_are_pinned_locked_and_audited()
     {
         var root = RepositoryRoot();

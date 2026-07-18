@@ -7,42 +7,82 @@ using SD = System.Drawing;
 namespace Dropwheel;
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
-    Justification = "Process-lifetime singleton: the tray icon, its icon handle and the bridge CTS are released in ExitApp; a WPF Application is not idiomatically IDisposable.")]
+    Justification = "Process-lifetime singleton: owned resources are released by the one-shot shutdown coordinator; a WPF Application is not idiomatically IDisposable.")]
 public partial class App : Application
 {
+    private static readonly TimeSpan ExplorerBridgeShutdownTimeout = TimeSpan.FromSeconds(2);
     private static Mutex? _mutex;
+    private readonly ShutdownCoordinator _shutdownCoordinator = new();
+    private bool _ownsMutex;
+    private bool _exitAfterExplorerDelivery;
+    private string? _smokeProbePath;
     private WF.NotifyIcon? _tray;
     private OverlayWindow? _overlay;
     private WatcherService? _watcher;
     private CancellationTokenSource? _explorerBridgeCts;
+    private Task? _explorerBridgeTask;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         var command = ExplorerBridgeCommand.Parse(e.Args);
+        if (command.Kind == ExplorerBridgeCommandKind.Invalid)
+        {
+            Shutdown(2);
+            return;
+        }
+        if (command.Kind is ExplorerBridgeCommandKind.SmokeTest or ExplorerBridgeCommandKind.SmokeSendFiles)
+        {
+            TargetStore.DirOverride = command.SmokeProfileRoot
+                ?? throw new InvalidOperationException("Smoke profile root is required.");
+            _smokeProbePath = command.SmokeProbePath
+                ?? throw new InvalidOperationException("Smoke probe path is required.");
+        }
+        _exitAfterExplorerDelivery = command.Kind == ExplorerBridgeCommandKind.SmokeTest;
+        if (command.Kind == ExplorerBridgeCommandKind.SmokeSendFiles)
+        {
+            Shutdown(ExplorerBridgeIpc.TrySendFiles(command.Paths) ? 0 : 3);
+            return;
+        }
         if (HandleExplorerBridgeUtilityCommand(command))
         {
             Shutdown();
             return;
         }
 
-        _mutex = new Mutex(true, "Dropwheel_SingleInstance", out bool isNew);
+        var mutex = new Mutex(true, "Dropwheel_SingleInstance", out bool isNew);
+        _mutex = mutex;
         if (!isNew)
         {
+            _mutex = null;
+            mutex.Dispose();
             if (command.Kind == ExplorerBridgeCommandKind.SendToFiles)
                 ExplorerBridgeIpc.TrySendFiles(command.Paths);
             Shutdown();
             return;
         }
+        _ownsMutex = true;
         base.OnStartup(e);
 
-        // Safety net: the app lives in the tray, and a crash in a drop/click/timer handler must
-        // not take down the whole process. Log the error instead of swallowing it, and show a
-        // short toast.
         DispatcherUnhandledException += (_, args) =>
         {
             ErrorLog.Write("Unhandled exception", args.Exception);
-            _overlay?.NotifyError("Something went wrong — see error.log for details");
-            args.Handled = true;
+            if (AppFailurePolicy.MustTerminate(args.Exception))
+            {
+                args.Handled = true;
+                try
+                {
+                    MessageBox.Show(
+                        "Dropwheel encountered an unexpected error and will close.\n\nSee error.log for details.",
+                        "Dropwheel",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+                catch (Exception notificationError)
+                {
+                    ErrorLog.Write("Could not show the fatal error message", notificationError);
+                }
+                _ = RequestShutdownAsync();
+            }
         };
 
         // A failure here happens before the overlay and theme exist, so there is no toast or themed
@@ -50,11 +90,12 @@ public partial class App : Application
         // silent crash on, say, an unreadable config.
         try
         {
-            StartupService.RefreshPath();
+            if (!_exitAfterExplorerDelivery)
+                StartupService.RefreshPath();
             TargetStore.Load();
             _overlay = new OverlayWindow();
             _overlay.Show();
-            InitTray();
+            InitTray(maintainSystemIntegrations: !_exitAfterExplorerDelivery);
             StartExplorerBridgeServer();
             if (command.Kind == ExplorerBridgeCommandKind.SendToFiles)
                 Dispatcher.BeginInvoke(() => _overlay.OpenFromExplorerFiles(command.Paths));
@@ -68,7 +109,7 @@ public partial class App : Application
             MessageBox.Show(
                 "Dropwheel couldn't start.\n\n" + ex.Message + "\n\nSee error.log for details.",
                 "Dropwheel", MessageBoxButton.OK, MessageBoxImage.Error);
-            Shutdown();
+            _ = RequestShutdownAsync();
         }
     }
 
@@ -126,8 +167,78 @@ public partial class App : Application
     {
         if (_overlay == null) return;
         _explorerBridgeCts = new CancellationTokenSource();
-        _ = ExplorerBridgeIpc.RunServerAsync(
-            paths => Dispatcher.BeginInvoke(() => _overlay.OpenFromExplorerFiles(paths)),
+        _explorerBridgeTask = ExplorerBridgeIpc.RunServerAsync(
+            paths => Dispatcher.BeginInvoke(() =>
+            {
+                if (_exitAfterExplorerDelivery)
+                {
+                    var isExpectedProbe = SmokeTestProtocol.IsExpectedProbe(paths, _smokeProbePath!);
+                    if (isExpectedProbe)
+                    {
+                        SmokeTestProtocol.WriteAcknowledgement(TargetStore.Dir, _smokeProbePath!);
+                    }
+                    SmokeTestProtocol.WriteDeliveryMarker(TargetStore.Dir);
+                    if (isExpectedProbe)
+                    {
+                        _ = RequestShutdownAsync();
+                    }
+                }
+                else
+                    _overlay.OpenFromExplorerFiles(paths);
+            }),
             _explorerBridgeCts.Token);
+    }
+
+    private Task RequestShutdownAsync() =>
+        _shutdownCoordinator.RequestAsync(ShutdownCoreAsync);
+
+    private async Task ShutdownCoreAsync()
+    {
+        var watcher = Interlocked.Exchange(ref _watcher, null);
+        TryCleanup("Could not stop the folder watcher", () => watcher?.Stop());
+
+        var cancellation = Interlocked.Exchange(ref _explorerBridgeCts, null);
+        var bridgeTask = Interlocked.Exchange(ref _explorerBridgeTask, null);
+        await BackgroundTaskShutdown.CancelAndWaitAsync(
+            cancellation,
+            bridgeTask,
+            ExplorerBridgeShutdownTimeout,
+            error => ErrorLog.Write(
+                error is TimeoutException
+                    ? "Explorer bridge server did not stop within two seconds"
+                    : "Explorer bridge server stopped with an error",
+                error));
+        TryCleanup("Could not dispose the Explorer bridge cancellation source", () => cancellation?.Dispose());
+
+        var tray = Interlocked.Exchange(ref _tray, null);
+        TryCleanup("Could not dispose the tray icon", () =>
+        {
+            if (tray is null) return;
+            tray.Visible = false;
+            tray.Dispose();
+        });
+        var appIcon = Interlocked.Exchange(ref _appIcon, null);
+        TryCleanup("Could not dispose the application icon", () => appIcon?.Dispose());
+
+        var mutex = Interlocked.Exchange(ref _mutex, null);
+        if (_ownsMutex)
+        {
+            _ownsMutex = false;
+            TryCleanup("Could not release the single-instance mutex", () => mutex?.ReleaseMutex());
+        }
+        TryCleanup("Could not dispose the single-instance mutex", () => mutex?.Dispose());
+        TryCleanup("Could not shut down the application", Shutdown);
+    }
+
+    private static void TryCleanup(string context, Action cleanup)
+    {
+        try
+        {
+            cleanup();
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write(context, ex);
+        }
     }
 }
