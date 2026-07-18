@@ -19,18 +19,28 @@ echo Dropwheel stopped.
 exit /b 0
 
 :build
-dotnet build "%PROJ%" -c Release -v q
+call :restore
+if errorlevel 1 exit /b 1
+dotnet build "%PROJ%" -c Release -v q --no-restore
 exit /b %errorlevel%
 
 :run
 taskkill /im Dropwheel.exe /f >nul 2>&1
-dotnet build "%PROJ%" -c Release -v q || exit /b 1
+call :restore
+if errorlevel 1 exit /b 1
+dotnet build "%PROJ%" -c Release -v q --no-restore || exit /b 1
 start "" "%EXE%"
 echo Dropwheel started.
 exit /b 0
 
 :publish
-dotnet publish "%PROJ%" -c Release -o "%~dp0dist"
+call :restore
+if errorlevel 1 exit /b 1
+dotnet publish "%PROJ%" -c Release -o "%~dp0dist" --no-restore
 if errorlevel 1 exit /b 1
 echo Published to %~dp0dist
 exit /b 0
+
+:restore
+dotnet restore "%~dp0Dropwheel.slnx" --locked-mode -v q
+exit /b %errorlevel%

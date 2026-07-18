@@ -17,8 +17,14 @@
 
 ## Как собрать и запустить
 
-Из корня репозитория: `dotnet build Dropwheel.slnx` и `dotnet run --project src/Dropwheel`
-(нужен .NET 10 SDK, Windows). Тесты — `dotnet test Dropwheel.slnx`.
+Из корня репозитория (нужен .NET 10 SDK, Windows):
+
+```powershell
+dotnet restore Dropwheel.slnx --locked-mode
+dotnet build Dropwheel.slnx --configuration Release --no-restore
+dotnet run --project src/Dropwheel/Dropwheel.csproj --configuration Release --no-restore
+dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-restore
+```
 
 ## Что соблюдать при добавлении нового
 
