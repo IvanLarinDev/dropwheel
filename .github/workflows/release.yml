@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - name: Validate tag format
         shell: pwsh
@@ -66,18 +66,33 @@ jobs:
 
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Dropwheel.slnx --nologo --locked-mode
+
+      - name: Verify runtime baseline
+        shell: pwsh
+        run: ./scripts/verify-runtime-baseline.ps1
 
       - name: Test
-        run: dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --nologo -c Release
+        run: >-
+          dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj
+          --nologo --configuration Release --no-restore -warnaserror
 
       - name: Publish (framework-dependent, single file)
-        run: dotnet publish src/Dropwheel -c Release -o dist-fd
+        run: >-
+          dotnet publish src/Dropwheel/Dropwheel.csproj
+          --nologo --configuration Release --runtime win-x64
+          --self-contained false --no-restore -warnaserror
+          --output dist-fd
 
       - name: Publish (self-contained, single file)
-        run: >
-          dotnet publish src/Dropwheel -c Release -r win-x64 --self-contained true
-          -p:IncludeNativeLibrariesForSelfExtract=true -o dist-sc
+        run: >-
+          dotnet publish src/Dropwheel/Dropwheel.csproj
+          --nologo --configuration Release --runtime win-x64
+          --self-contained true --no-restore -warnaserror
+          -p:IncludeNativeLibrariesForSelfExtract=true --output dist-sc
 
       - name: Package and checksum
         shell: pwsh
@@ -109,7 +124,7 @@ jobs:
             Download one archive, extract it, and run `Dropwheel.exe`.
 
             - `Dropwheel-${{ env.RELEASE_TAG }}-win-x64-self-contained.zip` — recommended; no separate .NET installation required
-            - `Dropwheel-${{ env.RELEASE_TAG }}-win-x64.zip` — smaller; requires the .NET 10 Desktop Runtime (x64)
+            - `Dropwheel-${{ env.RELEASE_TAG }}-win-x64.zip` — smaller; requires the .NET 10.0.10 Desktop Runtime (x64) or later
 
             The app is currently unsigned, so Windows SmartScreen may show a warning.
             Use `Dropwheel-${{ env.RELEASE_TAG }}-SHA256SUMS.txt` to verify download integrity.

@@ -8,7 +8,9 @@
 
 Из корня репозитория, в Windows PowerShell (на этой машине нет `pwsh`):
 
-Нужны `git`, .NET 10 SDK и авторизованный GitHub CLI (`gh auth status`).
+Нужны `git`, SDK из `global.json` (сейчас .NET SDK 10.0.302) и авторизованный
+GitHub CLI (`gh auth status`). NuGet graph восстанавливается только по tracked
+lock files; runtime baseline отдельно проверяет `verify-runtime-baseline.ps1`.
 
     ./scripts/release.ps1 -Bump minor -DryRun   # сначала репетиция
     ./scripts/release.ps1 -Bump minor           # затем по-настоящему

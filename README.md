@@ -40,7 +40,8 @@ download and extract one archive:
 - `*-win-x64-self-contained.zip` — recommended; no separate .NET installation
   is required.
 - `*-win-x64.zip` — smaller; requires the
-  [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0).
+  [.NET 10.0.10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0)
+  or a newer servicing update.
 
 Run `Dropwheel.exe`. The app is currently unsigned, so Windows SmartScreen may
 show a warning. Use the `*-SHA256SUMS.txt` release asset to verify download
@@ -50,12 +51,16 @@ Config lives in `%AppData%\Dropwheel\config.json`.
 
 ## Build from source
 
-    cd src/Dropwheel
-    dotnet run
+```powershell
+dotnet restore Dropwheel.slnx --locked-mode
+dotnet run --project src/Dropwheel/Dropwheel.csproj --configuration Release --no-restore
+```
 
-Requires the .NET 10 SDK (Windows). `run.cmd` at the repo root wraps the
-common loops: `run.cmd [run|build|publish|stop]`. Run the tests with
-`dotnet test` (xUnit, in `tests/Dropwheel.Tests`).
+Requires the .NET SDK selected by `global.json` (currently 10.0.302) on
+Windows. `run.cmd` at the repo root wraps the common loops with locked NuGet
+restore: `run.cmd [run|build|publish|stop]`. After the locked restore above, run
+`dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-restore`
+for the xUnit suite.
 
 ## Controls
 

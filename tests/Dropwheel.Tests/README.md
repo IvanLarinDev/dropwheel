@@ -8,7 +8,10 @@
 
 Из корня репозитория:
 
-    dotnet test
+```powershell
+dotnet restore Dropwheel.slnx --locked-mode
+dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-restore
+```
 
 Весь набор проходит за секунды. Перед тем как сказать «готово» по любой задаче,
 набор гоняется целиком — частичный прогон не считается.

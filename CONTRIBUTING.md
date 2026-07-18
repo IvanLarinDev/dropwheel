@@ -18,9 +18,10 @@ By participating in this project you agree to abide by our
 For anything larger than a small fix, please open an issue first to discuss the
 approach. This avoids duplicate work and makes review faster.
 
-Development requires Windows 10/11 and the .NET 10 SDK. Dropwheel targets
-`net10.0-windows` and uses WPF, WinForms, and Windows shell APIs, so other
-platforms are not supported build hosts.
+Development requires Windows 10/11 and the .NET SDK selected by `global.json`
+(currently 10.0.302). Dropwheel targets `net10.0-windows` and uses WPF,
+WinForms, and Windows shell APIs, so other platforms are not supported build
+hosts.
 
 ## Development workflow
 
@@ -31,17 +32,19 @@ platforms are not supported build hosts.
 4. **Build and test** from the repository root:
 
    ```powershell
-   dotnet restore Dropwheel.slnx
-   dotnet build Dropwheel.slnx --configuration Release --no-restore
-   dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-build
+   dotnet restore Dropwheel.slnx --locked-mode
+   dotnet build Dropwheel.slnx --configuration Release --no-restore -warnaserror
+   dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-build --filter "Category!=WindowsIntegration"
+   dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-build --filter "Category=WindowsIntegration"
+   ./scripts/verify-runtime-baseline.ps1
    ```
 
    For changes to startup, packaging, or Windows integration, also exercise both
    release publish variants:
 
    ```powershell
-   dotnet publish src/Dropwheel --configuration Release --output "$env:TEMP\dropwheel-fd"
-   dotnet publish src/Dropwheel --configuration Release -r win-x64 --self-contained true -p:IncludeNativeLibrariesForSelfExtract=true --output "$env:TEMP\dropwheel-sc"
+   dotnet publish src/Dropwheel/Dropwheel.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output "$env:TEMP\dropwheel-fd"
+   dotnet publish src/Dropwheel/Dropwheel.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:IncludeNativeLibrariesForSelfExtract=true --output "$env:TEMP\dropwheel-sc"
    ```
 
    Exercise the affected Windows behavior manually when it cannot be covered by

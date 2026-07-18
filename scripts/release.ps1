@@ -627,11 +627,15 @@ try {
             throw "Temporary publish path already exists: $publishPath"
         }
         [void] (New-Item -ItemType Directory -Path $publishPath)
-        Invoke-Native dotnet @('test', 'tests/Dropwheel.Tests/Dropwheel.Tests.csproj', '--nologo', '-c', 'Release')
-        Invoke-Native dotnet @('publish', 'src/Dropwheel', '-c', 'Release', '-o', (Join-Path $publishPath 'fd'))
+        Invoke-Native dotnet @('restore', 'Dropwheel.slnx', '--nologo', '--locked-mode')
+        Invoke-Native dotnet @('test', 'tests/Dropwheel.Tests/Dropwheel.Tests.csproj', '--nologo', '-c', 'Release', '--no-restore')
         Invoke-Native dotnet @(
-            'publish', 'src/Dropwheel', '-c', 'Release', '-r', 'win-x64',
-            '--self-contained', 'true', '-p:IncludeNativeLibrariesForSelfExtract=true',
+            'publish', 'src/Dropwheel/Dropwheel.csproj', '--nologo', '-c', 'Release', '-r', 'win-x64',
+            '--self-contained', 'false', '--no-restore', '-o', (Join-Path $publishPath 'fd')
+        )
+        Invoke-Native dotnet @(
+            'publish', 'src/Dropwheel/Dropwheel.csproj', '--nologo', '-c', 'Release', '-r', 'win-x64',
+            '--self-contained', 'true', '--no-restore', '-p:IncludeNativeLibrariesForSelfExtract=true',
             '-o', (Join-Path $publishPath 'sc')
         )
         foreach ($expectedExe in @(
