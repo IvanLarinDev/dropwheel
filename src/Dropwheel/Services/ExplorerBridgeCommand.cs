@@ -2,12 +2,14 @@ using System.IO;
 
 namespace Dropwheel.Services;
 
-public enum ExplorerBridgeCommandKind { None, SendToFiles, InstallSendTo, UninstallSendTo }
+public enum ExplorerBridgeCommandKind { None, Invalid, SendToFiles, InstallSendTo, UninstallSendTo, SmokeTest, SmokeSendFiles }
 
 public sealed record ExplorerBridgeCommand(
     ExplorerBridgeCommandKind Kind,
     string[] Paths,
-    string? AppPath = null)
+    string? AppPath = null,
+    string? SmokeProfileRoot = null,
+    string? SmokeProbePath = null)
 {
     public static ExplorerBridgeCommand Parse(IReadOnlyList<string> args)
     {
@@ -28,7 +30,34 @@ public sealed record ExplorerBridgeCommand(
         if (IsSwitch(first, "uninstall-sendto"))
             return new ExplorerBridgeCommand(ExplorerBridgeCommandKind.UninstallSendTo, []);
 
+        if (IsSwitch(first, "smoke-test"))
+            return ParseSmokeCommand(ExplorerBridgeCommandKind.SmokeTest, args);
+
+        if (IsSwitch(first, "smoke-send"))
+            return ParseSmokeCommand(ExplorerBridgeCommandKind.SmokeSendFiles, args);
+
         return new ExplorerBridgeCommand(ExplorerBridgeCommandKind.None, []);
+    }
+
+    private static ExplorerBridgeCommand ParseSmokeCommand(
+        ExplorerBridgeCommandKind kind,
+        IReadOnlyList<string> args)
+    {
+        var smokePaths = args.Skip(1).ToArray();
+        if (smokePaths.Length != 2
+            || !Path.IsPathFullyQualified(smokePaths[0])
+            || !Path.IsPathFullyQualified(smokePaths[1])
+            || !Directory.Exists(smokePaths[0])
+            || !File.Exists(smokePaths[1]))
+            return new ExplorerBridgeCommand(ExplorerBridgeCommandKind.Invalid, []);
+
+        var profile = Path.GetFullPath(smokePaths[0]);
+        var probe = Path.GetFullPath(smokePaths[1]);
+        return new ExplorerBridgeCommand(
+            kind,
+            kind == ExplorerBridgeCommandKind.SmokeSendFiles ? [probe] : [],
+            SmokeProfileRoot: profile,
+            SmokeProbePath: probe);
     }
 
     private static bool IsSwitch(string arg, string name) =>

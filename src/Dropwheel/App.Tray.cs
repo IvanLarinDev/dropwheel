@@ -67,7 +67,7 @@ public partial class App
         item.Image = item.Checked ? Glyph(GlyphCheck, ToSd(p.Accent)) : Glyph(glyph, ToSd(p.TextMuted));
     }
 
-    private void InitTray()
+    private void InitTray(bool maintainSystemIntegrations)
     {
         _tray = new WF.NotifyIcon
         {
@@ -85,7 +85,11 @@ public partial class App
         menu.Items.Add(header);
         menu.Items.Add(new WF.ToolStripSeparator());
         var auto = new WF.ToolStripMenuItem("Start with Windows")
-        { Checked = StartupService.IsEnabled, CheckOnClick = true };
+        {
+            Checked = maintainSystemIntegrations && StartupService.IsEnabled,
+            CheckOnClick = true,
+            Enabled = maintainSystemIntegrations,
+        };
         auto.Click += (_, _) =>
         {
             try { StartupService.SetEnabled(auto.Checked); }
@@ -98,17 +102,24 @@ public partial class App
             }
         };
         menu.Items.Add(auto);
-        try
+        if (maintainSystemIntegrations)
         {
-            if (ExplorerBridgeService.NeedsSendToUpgrade())
-                ExplorerBridgeService.InstallSendTo(CurrentAppPath());
-        }
-        catch (Exception ex)
-        {
-            ErrorLog.Write("Could not upgrade the Explorer SendTo shortcut", ex);
+            try
+            {
+                if (ExplorerBridgeService.NeedsSendToUpgrade())
+                    ExplorerBridgeService.InstallSendTo(CurrentAppPath());
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write("Could not upgrade the Explorer SendTo shortcut", ex);
+            }
         }
         var sendTo = new WF.ToolStripMenuItem("Explorer SendTo shortcut")
-        { Checked = ExplorerBridgeService.IsSendToInstalled(), CheckOnClick = true };
+        {
+            Checked = maintainSystemIntegrations && ExplorerBridgeService.IsSendToInstalled(),
+            CheckOnClick = true,
+            Enabled = maintainSystemIntegrations,
+        };
         sendTo.Click += (_, _) =>
         {
             try
@@ -201,7 +212,8 @@ public partial class App
         menu.Opening += (_, _) =>
         {
             fsStatus.Visible = Dropwheel.Services.FullscreenDetector.IsFullscreenActive();
-            sendTo.Checked = ExplorerBridgeService.IsSendToInstalled();
+            if (maintainSystemIntegrations)
+                sendTo.Checked = ExplorerBridgeService.IsSendToInstalled();
             PopulateRecentDrops(recentDrops);
             StyleTrayMenu(menu);
             RefreshTrayIcons();
@@ -483,11 +495,6 @@ public partial class App
         // No Save() here on purpose: config is written on every change,
         // and saving on exit let a stale instance overwrite edits made
         // on disk or by another instance.
-        _watcher?.Stop();
-        _explorerBridgeCts?.Cancel();
-        _explorerBridgeCts?.Dispose();
-        if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
-        _appIcon?.Dispose(); // NotifyIcon.Dispose does not free the icon handed to it
-        Shutdown();
+        _ = RequestShutdownAsync();
     }
 }
