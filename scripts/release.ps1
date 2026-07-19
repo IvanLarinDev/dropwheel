@@ -63,19 +63,29 @@ function Invoke-Native {
     param(
         [Parameter(Mandatory)][string] $FilePath,
         [Parameter(Mandatory)][string[]] $ArgumentList,
-        [switch] $Capture
+        [switch] $Capture,
+        [switch] $Utf8Output
     )
 
     if ($Capture) {
         $previousErrorActionPreference = $ErrorActionPreference
+        $previousConsoleOutputEncoding = [Console]::OutputEncoding
         try {
             # Windows PowerShell 5 turns redirected native stderr into error
             # records. Keep it non-terminating so the native exit code remains
             # the source of truth, as it is in PowerShell 7.
             $ErrorActionPreference = 'Continue'
+            if ($Utf8Output) {
+                # Windows PowerShell 5 otherwise decodes native stdout with the
+                # active OEM code page, while Git emits log text as UTF-8.
+                [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+            }
             $output = @(& $FilePath @ArgumentList 2>&1)
             $exitCode = $LASTEXITCODE
         } finally {
+            if ($Utf8Output) {
+                [Console]::OutputEncoding = $previousConsoleOutputEncoding
+            }
             $ErrorActionPreference = $previousErrorActionPreference
         }
         $text = ($output | ForEach-Object { $_.ToString() }) -join "`n"
@@ -266,9 +276,10 @@ function New-ChangelogSection {
     )
 
     $rawLog = Invoke-Native git @(
+        '-c', 'i18n.logOutputEncoding=UTF-8',
         'log', "$PreviousTag..$BaseSha", '--no-merges',
         '--pretty=format:%H%x09%an%x09%s'
-    ) -Capture
+    ) -Capture -Utf8Output
     $commits = @($rawLog -split "`n" | Where-Object { $_ })
     if ($commits.Count -eq 0) {
         throw "There are no commits between $PreviousTag and $BaseSha."
@@ -508,7 +519,9 @@ function Assert-GitHubRelease {
         [Runtime.ExceptionServices.ExceptionDispatchInfo]::Capture($cleanupFailure.Exception).Throw()
         return
     }
-    $verificationOutput | Write-Output
+    if ($null -ne $verificationOutput) {
+        Write-Host ($verificationOutput -join [Environment]::NewLine)
+    }
     return $release
 }
 
