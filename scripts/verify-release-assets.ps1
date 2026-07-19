@@ -16,6 +16,21 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Get-Sha256 {
+    param([Parameter(Mandatory)][string] $Path)
+
+    $stream = $null
+    $sha256 = $null
+    try {
+        $stream = [IO.File]::OpenRead($Path)
+        $sha256 = [Security.Cryptography.SHA256]::Create()
+        return ($sha256.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) -join ''
+    } finally {
+        if ($null -ne $sha256) { $sha256.Dispose() }
+        if ($null -ne $stream) { $stream.Dispose() }
+    }
+}
+
 $contentAssets = @(
     "Dropwheel-$Tag-win-x64.zip",
     "Dropwheel-$Tag-win-x64-self-contained.zip",
@@ -63,7 +78,7 @@ foreach ($name in $contentAssets) {
     if (-not $expectedHashes.ContainsKey($name)) {
         throw "Checksum is missing asset '$name'."
     }
-    $actualHash = (Get-FileHash -LiteralPath (Join-Path $Directory $name) -Algorithm SHA256).Hash.ToLowerInvariant()
+    $actualHash = Get-Sha256 -Path (Join-Path $Directory $name)
     if (-not [string]::Equals($expectedHashes[$name], $actualHash, [StringComparison]::Ordinal)) {
         throw "Checksum mismatch for '$name'."
     }

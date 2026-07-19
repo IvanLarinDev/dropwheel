@@ -47,6 +47,17 @@ public sealed class ReleaseAssetVerificationTests : IDisposable
         Assert.NotEqual(0, RunVerifier().ExitCode);
     }
 
+    [Fact]
+    public void Verifier_does_not_depend_on_GetFileHash_cmdlet()
+    {
+        Directory.CreateDirectory(_root);
+        WriteValidFixture();
+
+        var result = RunVerifier(simulateMissingGetFileHash: true);
+
+        Assert.True(result.ExitCode == 0, result.Diagnostics);
+    }
+
     public void Dispose() => TempDir.Delete(_root);
 
     private void WriteValidFixture()
@@ -94,7 +105,7 @@ public sealed class ReleaseAssetVerificationTests : IDisposable
         File.WriteAllLines(checksumPath, lines);
     }
 
-    private VerifierResult RunVerifier()
+    private VerifierResult RunVerifier(bool simulateMissingGetFileHash = false)
     {
         var script = Path.Combine(RepositoryRoot(), "scripts", "verify-release-assets.ps1");
         var startInfo = new ProcessStartInfo("powershell.exe")
@@ -104,14 +115,25 @@ public sealed class ReleaseAssetVerificationTests : IDisposable
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
-        foreach (var argument in new[]
-                 {
-                     "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script,
-                     "-Directory", _root, "-Tag", Tag, "-ExpectedCommit", Commit,
-                 })
+        var arguments = simulateMissingGetFileHash
+            ? new[]
+            {
+                "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+                "function Get-FileHash { throw [System.Management.Automation.CommandNotFoundException]::new('Get-FileHash is unavailable.') }; & $env:DW_VERIFIER -Directory $env:DW_DIRECTORY -Tag $env:DW_TAG -ExpectedCommit $env:DW_COMMIT",
+            }
+            : new[]
+            {
+                "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script,
+                "-Directory", _root, "-Tag", Tag, "-ExpectedCommit", Commit,
+            };
+        foreach (var argument in arguments)
         {
             startInfo.ArgumentList.Add(argument);
         }
+        startInfo.Environment["DW_VERIFIER"] = script;
+        startInfo.Environment["DW_DIRECTORY"] = _root;
+        startInfo.Environment["DW_TAG"] = Tag;
+        startInfo.Environment["DW_COMMIT"] = Commit;
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start the release asset verifier.");
