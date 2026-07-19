@@ -1,6 +1,11 @@
 # Changelog
 
 - - -
+## [v0.26.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.26.0..v0.26.1) - 2026-07-19
+#### Bug Fixes
+- (**release**) preserve pipeline and UTF-8 changelog (#39) - ([b36ec8c](https://github.com/IvanLarinDev/dropwheel/commit/b36ec8c166c100ab8bc1f847d6dce8bc200c50eb)) - Ivan Larin
+
+- - -
 ## [v0.26.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.25.0..v0.26.0) - 2026-07-19
 #### Miscellaneous Chores
 - integrate milestones for v0.26.0 (#37) - ([6428e47](https://github.com/IvanLarinDev/dropwheel/commit/6428e475c33ad24e5821b638babac934e4c2b59f)) - Ivan Larin
