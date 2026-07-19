@@ -13,29 +13,43 @@ public static class ExplorerBridgeService
         "Windows",
         "SendTo");
 
-    public static string SendToLauncherPath => Path.Combine(SendToFolder, ShortcutName);
+    public static string SendToLauncherPath => ShortcutPath(SendToFolder);
 
-    internal static string LegacySendToLauncherPath => Path.Combine(SendToFolder, LegacyLauncherName);
+    internal static string LegacySendToLauncherPath => LegacyShortcutPath(SendToFolder);
 
-    public static bool IsSendToInstalled() =>
-        File.Exists(SendToLauncherPath) || File.Exists(LegacySendToLauncherPath);
+    public static bool IsSendToInstalled() => IsSendToInstalled(SendToFolder);
 
-    public static bool NeedsSendToUpgrade() => File.Exists(LegacySendToLauncherPath);
+    internal static bool IsSendToInstalled(string sendToFolder) =>
+        File.Exists(ShortcutPath(sendToFolder)) || File.Exists(LegacyShortcutPath(sendToFolder));
 
-    public static void InstallSendTo(string appPath)
+    public static bool NeedsSendToUpgrade() => NeedsSendToUpgrade(SendToFolder);
+
+    internal static bool NeedsSendToUpgrade(string sendToFolder) =>
+        File.Exists(LegacyShortcutPath(sendToFolder));
+
+    public static void InstallSendTo(string appPath) => InstallSendTo(appPath, SendToFolder);
+
+    internal static void InstallSendTo(string appPath, string sendToFolder)
     {
         if (string.IsNullOrWhiteSpace(appPath))
             throw new ArgumentException("Application path is required.", nameof(appPath));
+        if (string.IsNullOrWhiteSpace(sendToFolder))
+            throw new ArgumentException("SendTo folder is required.", nameof(sendToFolder));
 
-        Directory.CreateDirectory(SendToFolder);
-        CreateShortcut(SendToLauncherPath, ShortcutSpec.For(appPath));
-        DeleteIfExists(LegacySendToLauncherPath);
+        Directory.CreateDirectory(sendToFolder);
+        CreateShortcut(ShortcutPath(sendToFolder), ShortcutSpec.For(appPath));
+        DeleteIfExists(LegacyShortcutPath(sendToFolder));
     }
 
-    public static void UninstallSendTo()
+    public static void UninstallSendTo() => UninstallSendTo(SendToFolder);
+
+    internal static void UninstallSendTo(string sendToFolder)
     {
-        DeleteIfExists(SendToLauncherPath);
-        DeleteIfExists(LegacySendToLauncherPath);
+        if (string.IsNullOrWhiteSpace(sendToFolder))
+            throw new ArgumentException("SendTo folder is required.", nameof(sendToFolder));
+
+        DeleteIfExists(ShortcutPath(sendToFolder));
+        DeleteIfExists(LegacyShortcutPath(sendToFolder));
     }
 
     internal static ShortcutSpec BuildShortcutSpec(string appPath) => ShortcutSpec.For(appPath);
@@ -60,6 +74,10 @@ public static class ExplorerBridgeService
     {
         if (File.Exists(path)) File.Delete(path);
     }
+
+    private static string ShortcutPath(string sendToFolder) => Path.Combine(sendToFolder, ShortcutName);
+
+    private static string LegacyShortcutPath(string sendToFolder) => Path.Combine(sendToFolder, LegacyLauncherName);
 
     internal sealed record ShortcutSpec(
         string TargetPath,
