@@ -1,6 +1,16 @@
 # Changelog
 
 - - -
+## [v0.26.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.25.0..v0.26.0) - 2026-07-19
+#### Miscellaneous Chores
+- integrate milestones for v0.26.0 (#37) - ([6428e47](https://github.com/IvanLarinDev/dropwheel/commit/6428e475c33ad24e5821b638babac934e4c2b59f)) - Ivan Larin
+- (**deps**) bump actions/setup-dotnet in the github-actions group (#33) - ([6eb2eeb](https://github.com/IvanLarinDev/dropwheel/commit/6eb2eeb41ca788e45309c7e39c4909bd26e57557)) - dependabot\[bot\]
+- pin reproducible .NET toolchain (#32) - ([82f08b4](https://github.com/IvanLarinDev/dropwheel/commit/82f08b4486b5247c17c32fefe4abb07e34cae3e1)) - Ivan Larin
+- (**git**) ╨╜╨░╨▓╨╡╨┤╨╡╨╜╨╕╨╡ ╨┐╨╛╤Ç╤Å╨┤╨║╨░ ╨▓ ╤ü╤é╤Ç╤â╨║╤é╤â╤Ç╨╡ ╤Ç╨╡╨┐╨╛╨╖╨╕╤é╨╛╤Ç╨╕╤Å - ([0f03293](https://github.com/IvanLarinDev/dropwheel/commit/0f032932029a1332648a9dcc5ae3c6e53e147f65)) - Ivan Larin
+#### Other Changes
+- \[verified\] fix: harden watcher stability and Windows smoke coverage (#31) - ([fc7dc9c](https://github.com/IvanLarinDev/dropwheel/commit/fc7dc9c6e58c59d73f804bc76f5254df1aa1b368)) - Ivan Larin
+
+- - -
 ## [v0.25.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.24.1..v0.25.0) - 2026-07-15
 #### Features
 - (**ui**) живой предпросмотр анимации открытия в настройках - ([b8583bf](https://github.com/IvanLarinDev/dropwheel/commit/b8583bfe2e084304987c85b33a606efa90a7db30)) - Ivan Larin
