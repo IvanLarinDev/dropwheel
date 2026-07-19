@@ -395,8 +395,11 @@ public partial class App
     private static void StyleTrayMenu(WF.ContextMenuStrip menu)
     {
         var p = Dropwheel.UI.Palettes.Current;
-        StyleStrip(menu, new TrayMenuRenderer(new PaletteMenuColors(p)), ToSd(p.Surface), ToSd(p.Text));
+        StyleStrip(menu, CreateTrayMenuRenderer(p), ToSd(p.Surface), ToSd(p.Text));
     }
+
+    internal static WF.ToolStripRenderer CreateTrayMenuRenderer(Dropwheel.UI.Palette palette) =>
+        new TrayMenuRenderer(new PaletteMenuColors(palette), palette);
 
     /// <summary>Applies the renderer and colors to the strip and every nested drop-down. A submenu is
     /// its own ToolStrip that does not inherit the parent's colors — without this it keeps the stock
@@ -415,7 +418,46 @@ public partial class App
     /// so the stock check box that would be drawn behind it is suppressed entirely.</summary>
     private sealed class TrayMenuRenderer : WF.ToolStripProfessionalRenderer
     {
-        public TrayMenuRenderer(WF.ProfessionalColorTable table) : base(table) => RoundedEdges = false;
+        private readonly Dropwheel.UI.Palette _palette;
+
+        public TrayMenuRenderer(WF.ProfessionalColorTable table, Dropwheel.UI.Palette palette) : base(table)
+        {
+            _palette = palette;
+            RoundedEdges = false;
+        }
+
+        protected override void OnRenderMenuItemBackground(WF.ToolStripItemRenderEventArgs e)
+        {
+            if (e.Item.Enabled)
+            {
+                base.OnRenderMenuItemBackground(e);
+                return;
+            }
+
+            var colors = ResolveTrayMenuItemColors(_palette, enabled: false, selected: e.Item.Selected);
+            using var brush = new SD.SolidBrush(colors.Background);
+            e.Graphics.FillRectangle(brush, new SD.Rectangle(SD.Point.Empty, e.Item.Size));
+        }
+
+        protected override void OnRenderItemText(WF.ToolStripItemTextRenderEventArgs e)
+        {
+            e.TextColor = ResolveTrayMenuItemColors(_palette, e.Item.Enabled, e.Item.Selected).Text;
+            if (e.Item.Enabled)
+            {
+                base.OnRenderItemText(e);
+                return;
+            }
+
+            // ToolStripRenderer replaces every disabled color with SystemColors.GrayText. Draw the
+            // horizontal tray-menu label directly so the palette's verified muted color survives.
+            WF.TextRenderer.DrawText(
+                e.Graphics,
+                e.Text,
+                e.TextFont,
+                e.TextRectangle,
+                e.TextColor,
+                e.TextFormat);
+        }
 
         protected override void OnRenderItemCheck(WF.ToolStripItemImageRenderEventArgs e) { }
     }
@@ -439,6 +481,19 @@ public partial class App
             (int)(a.R + (b.R - a.R) * t),
             (int)(a.G + (b.G - a.G) * t),
             (int)(a.B + (b.B - a.B) * t));
+
+    internal readonly record struct TrayMenuItemColors(SD.Color Background, SD.Color Text);
+
+    /// <summary>Resolves the two colors that must stay coupled for a tray-menu item. Disabled items
+    /// deliberately ignore selection: WinForms otherwise paints the OS highlight behind muted text,
+    /// which can make the label disappear and incorrectly suggests that the item is actionable.</summary>
+    internal static TrayMenuItemColors ResolveTrayMenuItemColors(
+        Dropwheel.UI.Palette palette,
+        bool enabled,
+        bool selected) =>
+        new(
+            enabled && selected ? Blend(palette.Surface, palette.Accent, 0.30) : ToSd(palette.Surface),
+            ToSd(enabled ? palette.Text : palette.TextMuted));
 
     private sealed class PaletteMenuColors : WF.ProfessionalColorTable
     {
