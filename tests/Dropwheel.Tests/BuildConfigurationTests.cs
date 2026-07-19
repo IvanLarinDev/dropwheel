@@ -173,6 +173,85 @@ public sealed class BuildConfigurationTests
     }
 
     [Fact]
+    public void Sbom_generator_is_pinned_as_a_repository_tool()
+    {
+        var root = RepositoryRoot();
+        var toolManifestPath = Path.Combine(root, ".config", "dotnet-tools.json");
+        Assert.True(File.Exists(toolManifestPath), "The release SBOM generator must be pinned in a repository tool manifest.");
+
+        using var document = JsonDocument.Parse(File.ReadAllText(toolManifestPath));
+        var tool = document.RootElement
+            .GetProperty("tools")
+            .GetProperty("microsoft.sbom.dotnettool");
+        Assert.Equal("4.1.5", tool.GetProperty("version").GetString());
+        Assert.Equal(new[] { "sbom-tool" }, tool.GetProperty("commands").EnumerateArray().Select(static command => command.GetString()));
+        Assert.False(tool.GetProperty("rollForward").GetBoolean());
+    }
+
+    [Fact]
+    public void Release_requires_provenance_and_sbom_assets()
+    {
+        var root = RepositoryRoot();
+        var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        var releaseScript = File.ReadAllText(Path.Combine(root, "scripts", "release.ps1"));
+
+        foreach (var assetPattern in new[]
+                 {
+                     "Dropwheel-$env:RELEASE_TAG-PROVENANCE.json",
+                     "Dropwheel-$env:RELEASE_TAG-SBOM.spdx.json",
+                 })
+        {
+            Assert.Contains(assetPattern, workflow, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("dotnet sbom-tool generate", workflow, StringComparison.Ordinal);
+        Assert.Contains("New-Item -ItemType Directory -Path \"$sbomInput/fd\", \"$sbomInput/sc\", $sbomOutput", workflow, StringComparison.Ordinal);
+        var outputDirectory = workflow.IndexOf("New-Item -ItemType Directory -Path \"$sbomInput/fd\", \"$sbomInput/sc\", $sbomOutput", StringComparison.Ordinal);
+        var generation = workflow.IndexOf("dotnet sbom-tool generate", StringComparison.Ordinal);
+        Assert.True(outputDirectory < generation, "The SBOM manifest output directory must exist before generation.");
+        Assert.Contains("dotnet sbom-tool validate", workflow, StringComparison.Ordinal);
+        Assert.Contains("-o (Join-Path $sbomOutput 'validation.json')", workflow, StringComparison.Ordinal);
+        Assert.Contains("-mi SPDX:2.2", workflow, StringComparison.Ordinal);
+        Assert.Contains("-n true", workflow, StringComparison.Ordinal);
+        var validation = workflow.IndexOf("dotnet sbom-tool validate", StringComparison.Ordinal);
+        var releaseCopy = workflow.IndexOf("Copy-Item -LiteralPath $generatedSbom -Destination $sbom", StringComparison.Ordinal);
+        Assert.True(generation < validation && validation < releaseCopy, "SBOM validation must succeed before the release asset is copied.");
+        Assert.Contains("-bc (Join-Path $PWD 'src/Dropwheel')", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("-bc $PWD", workflow, StringComparison.Ordinal);
+        Assert.Contains("sdkVersion = (dotnet --version).Trim()", workflow, StringComparison.Ordinal);
+        Assert.Contains("runtimeIdentifier = 'win-x64'", workflow, StringComparison.Ordinal);
+        Assert.Contains("runtimePacks = $runtimePacks", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("$_.version.Trim('[', ']')", workflow, StringComparison.Ordinal);
+        Assert.Contains("$rangeParts.Count -ne 2", workflow, StringComparison.Ordinal);
+        Assert.Contains("[string]::Equals($rangeParts[0], $rangeParts[1], [StringComparison]::Ordinal)", workflow, StringComparison.Ordinal);
+        Assert.Contains("src/Dropwheel/packages.lock.json", workflow, StringComparison.Ordinal);
+        Assert.Contains("tests/Dropwheel.Tests/packages.lock.json", workflow, StringComparison.Ordinal);
+        Assert.Contains("Get-FileHash $fd, $sc, $provenance, $sbom", workflow, StringComparison.Ordinal);
+        Assert.Contains("$checksumLines.Count -ne 4", workflow, StringComparison.Ordinal);
+        Assert.Contains("PROVENANCE.json", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("SBOM.spdx.json", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("'release', 'download', $Tag", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("@($release.assets).Count -ne $requiredAssets.Count", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("verify-release-assets.ps1", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("-ExpectedCommit $ExpectedCommit", releaseScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Release_provenance_is_documented_for_operators()
+    {
+        var root = RepositoryRoot();
+        var readme = File.ReadAllText(Path.Combine(root, "scripts", "README.md"));
+
+        Assert.Contains("PROVENANCE.json", readme, StringComparison.Ordinal);
+        Assert.Contains("SBOM.spdx.json", readme, StringComparison.Ordinal);
+        Assert.Contains("пять обязательных артефактов", readme, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("verify-release-assets.ps1", readme, StringComparison.Ordinal);
+        Assert.Contains("повторно вычисляет", readme, StringComparison.Ordinal);
+        Assert.Contains("SHA-256 четырёх content assets", readme, StringComparison.Ordinal);
+        Assert.Contains("commit", readme, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Dependency_automation_is_scoped_and_runner_family_is_stable()
     {
         var root = RepositoryRoot();
@@ -190,6 +269,9 @@ public sealed class BuildConfigurationTests
             Assert.Contains("runs-on: windows-2025", contents, StringComparison.Ordinal);
             Assert.DoesNotContain("windows-latest", contents, StringComparison.Ordinal);
         }
+
+        var releaseWorkflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        Assert.Contains("persist-credentials: false", releaseWorkflow, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -440,7 +440,10 @@ function Start-OrResumeReleaseWorkflow {
 }
 
 function Assert-GitHubRelease {
-    param([Parameter(Mandatory)][string] $Tag)
+    param(
+        [Parameter(Mandatory)][string] $Tag,
+        [Parameter(Mandatory)][string] $ExpectedCommit
+    )
 
     $json = Invoke-Native gh @(
         'release', 'view', $Tag,
@@ -454,13 +457,58 @@ function Assert-GitHubRelease {
     $requiredAssets = @(
         "Dropwheel-$Tag-win-x64.zip",
         "Dropwheel-$Tag-win-x64-self-contained.zip",
+        "Dropwheel-$Tag-PROVENANCE.json",
+        "Dropwheel-$Tag-SBOM.spdx.json",
         "Dropwheel-$Tag-SHA256SUMS.txt"
     )
+    if (@($release.assets).Count -ne $requiredAssets.Count) {
+        $actualNames = @($release.assets | ForEach-Object name) -join ', '
+        throw "Release must contain exactly $($requiredAssets.Count) assets; found: $actualNames."
+    }
     foreach ($name in $requiredAssets) {
         $asset = @($release.assets | Where-Object { $_.name -eq $name })
         if ($asset.Count -ne 1) { throw "Release asset '$name' is missing or duplicated." }
         if ([int64] $asset[0].size -le 0) { throw "Release asset '$name' is empty." }
     }
+
+    $downloadPath = Join-Path ([IO.Path]::GetTempPath()) ("dropwheel-release-assets-" + [Guid]::NewGuid().ToString("N"))
+    $verificationFailure = $null
+    $cleanupFailure = $null
+    $verificationOutput = $null
+    try {
+        [void] (New-Item -ItemType Directory -Path $downloadPath)
+        $downloadArgs = @('release', 'download', $Tag, '--dir', $downloadPath, '--clobber')
+        foreach ($name in $requiredAssets) {
+            $downloadArgs += @('--pattern', $name)
+        }
+        Invoke-Native gh $downloadArgs
+
+        $verifier = Join-Path $PSScriptRoot 'verify-release-assets.ps1'
+        $verificationOutput = & $verifier -Directory $downloadPath -Tag $Tag -ExpectedCommit $ExpectedCommit
+    } catch {
+        $verificationFailure = $_
+    } finally {
+        try {
+            Remove-SafeTemporaryDirectory $downloadPath
+        } catch {
+            $cleanupFailure = $_
+        }
+    }
+
+    if ($null -ne $verificationFailure -and $null -ne $cleanupFailure) {
+        throw [AggregateException]::new(
+            'Release asset verification and temporary download cleanup both failed.',
+            [Exception[]]@($verificationFailure.Exception, $cleanupFailure.Exception))
+    }
+    if ($null -ne $verificationFailure) {
+        [Runtime.ExceptionServices.ExceptionDispatchInfo]::Capture($verificationFailure.Exception).Throw()
+        return
+    }
+    if ($null -ne $cleanupFailure) {
+        [Runtime.ExceptionServices.ExceptionDispatchInfo]::Capture($cleanupFailure.Exception).Throw()
+        return
+    }
+    $verificationOutput | Write-Output
     return $release
 }
 
@@ -706,7 +754,7 @@ try {
             [void] (Start-OrResumeReleaseWorkflow -Tag $targetTag -CommitSha $releaseSha -Deadline $deadline)
         }
     }
-    $release = Assert-GitHubRelease $targetTag
+    $release = Assert-GitHubRelease -Tag $targetTag -ExpectedCommit $releaseSha
 
     Write-Host ''
     Write-Host "Release complete: $currentVersion -> $targetVersion"
