@@ -130,7 +130,8 @@ public sealed class OnboardingAccessibilityTests
             "ExplorerBridgeService.InstallSendTo(CurrentAppPath())",
             "StartupService.SetEnabled(true)",
             "TargetStore.Save",
-            "new OnboardingWindow(setup, () => _overlay?.ToggleCloud())",
+            "new OnboardingWindow(",
+            "new OnboardingOptions(hadExplorerSendTo, hadStartup)",
         };
 
         Assert.All(requiredWiring, wiring => Assert.Contains(wiring, appCode, StringComparison.Ordinal));
@@ -151,9 +152,12 @@ public sealed class OnboardingAccessibilityTests
             "bool hadExplorerSendTo = ExplorerBridgeService.IsSendToInstalled()",
             "bool hadStartup = StartupService.IsEnabled",
             "rollbackExplorerSendTo:",
-            "ExplorerBridgeService.UninstallSendTo()",
+            "if (hadExplorerSendTo) ExplorerBridgeService.InstallSendTo(CurrentAppPath())",
             "rollbackStartup:",
-            "StartupService.SetEnabled(false)",
+            "StartupService.SetEnabled(hadStartup)",
+            "uninstallExplorerSendTo: ExplorerBridgeService.UninstallSendTo",
+            "disableStartup: () => StartupService.SetEnabled(false)",
+            "initialOptions: new OnboardingOptions(hadExplorerSendTo, hadStartup)",
         };
 
         Assert.All(rollbackWiring, wiring => Assert.Contains(wiring, appCode, StringComparison.Ordinal));
@@ -180,6 +184,78 @@ public sealed class OnboardingAccessibilityTests
 
         int refresh = trayCode.IndexOf("auto.Checked = StartupService.IsEnabled;", opening, StringComparison.Ordinal);
         Assert.True(refresh > opening, "Opening the tray must re-read the current startup integration state.");
+    }
+
+    [Fact]
+    public void Tray_help_reopens_quick_start_without_resetting_onboarding_state()
+    {
+        var trayCode = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "src", "Dropwheel", "App.Tray.cs"));
+        var help = trayCode.IndexOf("new WF.ToolStripMenuItem(\"Help\")", StringComparison.Ordinal);
+        var quickStart = trayCode.IndexOf(
+            "new WF.ToolStripMenuItem(\"Quick start…\")",
+            StringComparison.Ordinal);
+        var exit = trayCode.IndexOf("menu.Items.Add(\"Exit\"", StringComparison.Ordinal);
+
+        Assert.True(help >= 0, "The tray must expose its help entry to returning users.");
+        Assert.True(quickStart > help, "Quick start must live under the tray Help entry.");
+        Assert.True(exit > quickStart, "Help must remain discoverable directly before Exit.");
+        Assert.Contains("quickStart.Click += (_, _) => ShowOnboarding();", trayCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("OnboardingState.", trayCode, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Repeated_onboarding_requests_activate_the_existing_window()
+    {
+        var appCode = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "src", "Dropwheel", "App.xaml.cs"));
+        var expectedLifecycle = new[]
+        {
+            "private OnboardingWindow? _onboardingWindow;",
+            "if (_onboardingWindow is { IsVisible: true } existing)",
+            "existing.WindowState = WindowState.Normal;",
+            "existing.Activate();",
+            "_onboardingWindow = window;",
+            "window.Closed += (_, _) =>",
+            "ReferenceEquals(_onboardingWindow, window)",
+        };
+
+        Assert.All(expectedLifecycle, contract => Assert.Contains(contract, appCode, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Reopened_quick_start_reflects_current_system_integration_state()
+    {
+        var windowCode = File.ReadAllText(Path.ChangeExtension(OnboardingXamlPath(), ".xaml.cs"));
+        var appCode = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "src", "Dropwheel", "App.xaml.cs"));
+
+        var expectedWindowWiring = new[]
+        {
+            "OnboardingOptions initialOptions",
+            "ExplorerSendToToggle.IsChecked = initialOptions.EnableExplorerSendTo;",
+            "StartWithWindowsToggle.IsChecked = initialOptions.StartWithWindows;",
+        };
+        Assert.All(expectedWindowWiring, wiring => Assert.Contains(wiring, windowCode, StringComparison.Ordinal));
+        Assert.Contains(
+            "new OnboardingOptions(hadExplorerSendTo, hadStartup)",
+            appCode,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Setup_copy_explains_that_finishing_applies_both_on_and_off_choices()
+    {
+        var xaml = File.ReadAllText(OnboardingXamlPath());
+
+        Assert.Contains(
+            "Finishing setup applies these choices to Windows. You can change either later from the tray menu.",
+            xaml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Only options you switch on will change Windows.",
+            xaml,
+            StringComparison.Ordinal);
     }
 
     private static string OnboardingXamlPath() => Path.Combine(

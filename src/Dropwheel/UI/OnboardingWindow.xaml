@@ -208,7 +208,7 @@
                 </Border>
 
                 <StackPanel Grid.Row="5" Margin="2,1,0,0" VerticalAlignment="Top">
-                    <TextBlock Text="Only options you switch on will change Windows. Both can be turned off later from the tray menu."
+                    <TextBlock Text="Finishing setup applies these choices to Windows. You can change either later from the tray menu."
                                Style="{StaticResource SetupNote}"/>
                     <TextBlock x:Name="ErrorText" Margin="0,5,0,0" Visibility="Collapsed"
                                Focusable="True" KeyboardNavigation.IsTabStop="False"

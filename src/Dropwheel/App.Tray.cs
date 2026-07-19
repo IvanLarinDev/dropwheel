@@ -35,6 +35,7 @@ public partial class App
     private const string GlyphExport = "\uE898"; // Upload
     private const string GlyphReload = "\uE72C"; // Refresh
     private const string GlyphHistory = "\uE81C"; // History
+    private const string GlyphHelp = "\uE897"; // Help
     private const string GlyphExit = "\uE8BB"; // ChromeClose
 
     private static readonly Dictionary<(string Glyph, SD.Color Color), SD.Bitmap> GlyphCache = new();
@@ -189,6 +190,11 @@ public partial class App
         var recentDrops = new WF.ToolStripMenuItem("Recent drops");
         menu.Items.Add(recentDrops);
         menu.Items.Add(new WF.ToolStripSeparator());
+        var help = new WF.ToolStripMenuItem("Help");
+        var quickStart = new WF.ToolStripMenuItem("Quick start…");
+        quickStart.Click += (_, _) => ShowOnboarding();
+        help.DropDownItems.Add(quickStart);
+        menu.Items.Add(help);
         var exit = (WF.ToolStripMenuItem)menu.Items.Add("Exit", null, (_, _) => ExitApp());
 
         // Re-tinted on every open so a theme change recolors them live; toggles re-read their state.
@@ -204,6 +210,7 @@ public partial class App
             export.Image = Glyph(GlyphExport, muted);
             reload.Image = Glyph(GlyphReload, muted);
             recentDrops.Image = Glyph(GlyphHistory, muted);
+            help.Image = Glyph(GlyphHelp, muted);
             exit.Image = Glyph(GlyphExit, muted);
         }
 

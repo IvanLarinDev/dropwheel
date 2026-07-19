@@ -22,9 +22,24 @@ internal sealed class OnboardingSetup(
     Action enableStartup,
     Action save,
     Action? rollbackExplorerSendTo = null,
-    Action? rollbackStartup = null)
+    Action? rollbackStartup = null,
+    Action? uninstallExplorerSendTo = null,
+    Action? disableStartup = null,
+    OnboardingOptions initialOptions = default)
 {
-    public void DecideLater() => Finish(default);
+    public void DecideLater()
+    {
+        var previousVersion = config.OnboardingVersion;
+        try
+        {
+            CompleteAndSave();
+        }
+        catch
+        {
+            config.OnboardingVersion = previousVersion;
+            throw;
+        }
+    }
 
     public void Finish(OnboardingOptions options)
     {
@@ -32,18 +47,25 @@ internal sealed class OnboardingSetup(
         var rollback = new Stack<Action>();
         try
         {
-            if (options.EnableExplorerSendTo)
+            if (options.EnableExplorerSendTo != initialOptions.EnableExplorerSendTo)
             {
+                var apply = options.EnableExplorerSendTo
+                    ? installExplorerSendTo
+                    : uninstallExplorerSendTo
+                        ?? throw new InvalidOperationException("Explorer Send To cannot be disabled.");
                 if (rollbackExplorerSendTo is not null) rollback.Push(rollbackExplorerSendTo);
-                installExplorerSendTo();
+                apply();
             }
-            if (options.StartWithWindows)
+            if (options.StartWithWindows != initialOptions.StartWithWindows)
             {
+                var apply = options.StartWithWindows
+                    ? enableStartup
+                    : disableStartup
+                        ?? throw new InvalidOperationException("Windows startup cannot be disabled.");
                 if (rollbackStartup is not null) rollback.Push(rollbackStartup);
-                enableStartup();
+                apply();
             }
-            OnboardingState.Complete(config);
-            save();
+            CompleteAndSave();
         }
         catch (Exception failure)
         {
@@ -64,5 +86,11 @@ internal sealed class OnboardingSetup(
             ExceptionDispatchInfo.Capture(failure).Throw();
             throw;
         }
+    }
+
+    private void CompleteAndSave()
+    {
+        OnboardingState.Complete(config);
+        save();
     }
 }

@@ -18,6 +18,7 @@ public partial class App : Application
     private string? _smokeProbePath;
     private WF.NotifyIcon? _tray;
     private OverlayWindow? _overlay;
+    private OnboardingWindow? _onboardingWindow;
     private WatcherService? _watcher;
     private CancellationTokenSource? _explorerBridgeCts;
     private Task? _explorerBridgeTask;
@@ -120,6 +121,14 @@ public partial class App : Application
     {
         try
         {
+            if (_onboardingWindow is { IsVisible: true } existing)
+            {
+                if (existing.WindowState == WindowState.Minimized)
+                    existing.WindowState = WindowState.Normal;
+                existing.Activate();
+                return;
+            }
+
             bool hadExplorerSendTo = ExplorerBridgeService.IsSendToInstalled();
             bool hadStartup = StartupService.IsEnabled;
             var setup = new OnboardingSetup(
@@ -135,17 +144,31 @@ public partial class App : Application
                 TargetStore.Save,
                 rollbackExplorerSendTo: () =>
                 {
-                    if (!hadExplorerSendTo) ExplorerBridgeService.UninstallSendTo();
+                    if (hadExplorerSendTo) ExplorerBridgeService.InstallSendTo(CurrentAppPath());
+                    else ExplorerBridgeService.UninstallSendTo();
                 },
                 rollbackStartup: () =>
                 {
-                    if (!hadStartup) StartupService.SetEnabled(false);
-                });
-            var window = new OnboardingWindow(setup, () => _overlay?.ToggleCloud());
+                    StartupService.SetEnabled(hadStartup);
+                },
+                uninstallExplorerSendTo: ExplorerBridgeService.UninstallSendTo,
+                disableStartup: () => StartupService.SetEnabled(false),
+                initialOptions: new OnboardingOptions(hadExplorerSendTo, hadStartup));
+            var window = new OnboardingWindow(
+                setup,
+                new OnboardingOptions(hadExplorerSendTo, hadStartup),
+                () => _overlay?.ToggleCloud());
+            _onboardingWindow = window;
+            window.Closed += (_, _) =>
+            {
+                if (ReferenceEquals(_onboardingWindow, window))
+                    _onboardingWindow = null;
+            };
             window.Show();
         }
         catch (Exception ex)
         {
+            _onboardingWindow = null;
             ErrorLog.Write("Could not show onboarding", ex);
         }
     }
