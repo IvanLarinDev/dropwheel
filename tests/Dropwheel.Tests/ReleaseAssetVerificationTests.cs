@@ -18,11 +18,12 @@ public sealed class ReleaseAssetVerificationTests : IDisposable
         Directory.CreateDirectory(_root);
         WriteValidFixture();
 
-        Assert.Equal(0, RunVerifier());
+        var accepted = RunVerifier();
+        Assert.True(accepted.ExitCode == 0, accepted.Diagnostics);
 
         File.AppendAllText(Path.Combine(_root, $"Dropwheel-{Tag}-win-x64.zip"), "tampered");
 
-        Assert.NotEqual(0, RunVerifier());
+        Assert.NotEqual(0, RunVerifier().ExitCode);
     }
 
     [Fact]
@@ -43,7 +44,7 @@ public sealed class ReleaseAssetVerificationTests : IDisposable
             }));
         RewriteChecksum(provenanceName);
 
-        Assert.NotEqual(0, RunVerifier());
+        Assert.NotEqual(0, RunVerifier().ExitCode);
     }
 
     public void Dispose() => TempDir.Delete(_root);
@@ -93,13 +94,15 @@ public sealed class ReleaseAssetVerificationTests : IDisposable
         File.WriteAllLines(checksumPath, lines);
     }
 
-    private int RunVerifier()
+    private VerifierResult RunVerifier()
     {
         var script = Path.Combine(RepositoryRoot(), "scripts", "verify-release-assets.ps1");
         var startInfo = new ProcessStartInfo("powershell.exe")
         {
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
         };
         foreach (var argument in new[]
                  {
@@ -112,13 +115,18 @@ public sealed class ReleaseAssetVerificationTests : IDisposable
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start the release asset verifier.");
+        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stderr = process.StandardError.ReadToEndAsync();
         if (!process.WaitForExit(10_000))
         {
             process.Kill(entireProcessTree: true);
             Assert.True(process.WaitForExit(5_000), "Timed-out release asset verifier did not stop after kill.");
             Assert.Fail("Release asset verification timed out.");
         }
-        return process.ExitCode;
+        Assert.True(
+            Task.WaitAll([stdout, stderr], 5_000),
+            "Release asset verifier output did not drain after process exit.");
+        return new VerifierResult(process.ExitCode, stdout.Result, stderr.Result);
     }
 
     private static string RepositoryRoot()
@@ -132,5 +140,13 @@ public sealed class ReleaseAssetVerificationTests : IDisposable
         }
 
         throw new DirectoryNotFoundException("Could not locate the Dropwheel repository root.");
+    }
+
+    private readonly record struct VerifierResult(int ExitCode, string Stdout, string Stderr)
+    {
+        public string Diagnostics =>
+            $"Exit code: {ExitCode}{Environment.NewLine}" +
+            $"stdout:{Environment.NewLine}{Stdout}{Environment.NewLine}" +
+            $"stderr:{Environment.NewLine}{Stderr}";
     }
 }
