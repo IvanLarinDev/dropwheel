@@ -46,6 +46,63 @@ public sealed class BuildConfigurationTests
     }
 
     [Fact]
+    public void Runtime_baseline_verifies_ipc_delivery_and_graceful_shutdown()
+    {
+        var root = RepositoryRoot();
+        var verifier = File.ReadAllText(Path.Combine(root, "scripts", "verify-runtime-baseline.ps1"));
+
+        Assert.Contains("--smoke-test", verifier, StringComparison.Ordinal);
+        Assert.Contains("--smoke-send", verifier, StringComparison.Ordinal);
+        Assert.Contains("@(\"--smoke-test\", $profile, $probe)", verifier, StringComparison.Ordinal);
+        Assert.Contains("@(\"--smoke-send\", $profile, $probe)", verifier, StringComparison.Ordinal);
+        Assert.Contains("Join-Path $profile \"smoke-ack\"", verifier, StringComparison.Ordinal);
+        Assert.Contains("Join-Path $profile \"config.json\"", verifier, StringComparison.Ordinal);
+        Assert.Contains("Join-Path $profile \"error.log\"", verifier, StringComparison.Ordinal);
+        Assert.Contains("[string]::IsNullOrWhiteSpace($errors)", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("$errors -match", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("$env:APPDATA", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("$env:LOCALAPPDATA", verifier, StringComparison.Ordinal);
+        Assert.Contains("dropwheel runtime ", verifier, StringComparison.Ordinal);
+        Assert.Contains("Start-NativeProcess", verifier, StringComparison.Ordinal);
+        Assert.Contains("Stop-ProcessBounded", verifier, StringComparison.Ordinal);
+        Assert.Contains("$smokeFailure", verifier, StringComparison.Ordinal);
+        Assert.Contains("AggregateException", verifier, StringComparison.Ordinal);
+        Assert.Contains("$sender.WaitForExit(5000)", verifier, StringComparison.Ordinal);
+        Assert.Contains("WaitForExit(15000)", verifier, StringComparison.Ordinal);
+        Assert.Contains("LIFECYCLE_SMOKE_OK", verifier, StringComparison.Ordinal);
+        Assert.Contains("profile=isolated", verifier, StringComparison.Ordinal);
+        Assert.Contains("probe=matched", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("Write-Output \"LIFECYCLE_SMOKE_OK", verifier, StringComparison.Ordinal);
+        Assert.DoesNotContain("Write-Output \"RUNTIME_BASELINE_OK", verifier, StringComparison.Ordinal);
+        Assert.Contains("$verificationFailure", verifier, StringComparison.Ordinal);
+        Assert.Contains("$outputCleanupFailure", verifier, StringComparison.Ordinal);
+        var outputCleanup = verifier.LastIndexOf("Remove-Item -Recurse -Force $output", StringComparison.Ordinal);
+        var successEmission = verifier.LastIndexOf("Complete-Verification $verificationFailure $outputCleanupFailure $successOutput", StringComparison.Ordinal);
+        Assert.Contains("function Complete-Verification", verifier, StringComparison.Ordinal);
+        Assert.True(outputCleanup >= 0, "Runtime verifier must remove its temporary output.");
+        Assert.True(successEmission > outputCleanup, "Success markers must be emitted only after output cleanup succeeds.");
+
+        var app = File.ReadAllText(Path.Combine(root, "src", "Dropwheel", "App.xaml.cs"));
+        var profileOverride = app.IndexOf("TargetStore.DirOverride = command.SmokeProfileRoot", StringComparison.Ordinal);
+        var configLoad = app.IndexOf("TargetStore.Load()", StringComparison.Ordinal);
+        Assert.True(profileOverride >= 0, "Smoke mode must set an explicit TargetStore root.");
+        Assert.True(configLoad > profileOverride, "The smoke profile must be set before config is loaded.");
+        Assert.Contains("_smokeProbePath", app, StringComparison.Ordinal);
+        Assert.Contains("ExplorerBridgeCommandKind.SmokeSendFiles", app, StringComparison.Ordinal);
+        Assert.Contains("Shutdown(ExplorerBridgeIpc.TrySendFiles(command.Paths) ? 0 : 3)", app, StringComparison.Ordinal);
+        Assert.Contains("SmokeTestProtocol.IsExpectedProbe", app, StringComparison.Ordinal);
+        Assert.DoesNotContain("paths.Contains(_smokeProbePath", app, StringComparison.Ordinal);
+        Assert.Contains("SmokeTestProtocol.WriteAcknowledgement", app, StringComparison.Ordinal);
+        Assert.Contains("SmokeTestProtocol.WriteDeliveryMarker", app, StringComparison.Ordinal);
+        Assert.Contains("if (!_exitAfterExplorerDelivery)", app, StringComparison.Ordinal);
+        Assert.Contains("InitTray(maintainSystemIntegrations: !_exitAfterExplorerDelivery)", app, StringComparison.Ordinal);
+
+        var tray = File.ReadAllText(Path.Combine(root, "src", "Dropwheel", "App.Tray.cs"));
+        Assert.Contains("InitTray(bool maintainSystemIntegrations)", tray, StringComparison.Ordinal);
+        Assert.Contains("if (maintainSystemIntegrations)", tray, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Nuget_dependencies_are_pinned_locked_and_audited()
     {
         var root = RepositoryRoot();
@@ -116,6 +173,85 @@ public sealed class BuildConfigurationTests
     }
 
     [Fact]
+    public void Sbom_generator_is_pinned_as_a_repository_tool()
+    {
+        var root = RepositoryRoot();
+        var toolManifestPath = Path.Combine(root, ".config", "dotnet-tools.json");
+        Assert.True(File.Exists(toolManifestPath), "The release SBOM generator must be pinned in a repository tool manifest.");
+
+        using var document = JsonDocument.Parse(File.ReadAllText(toolManifestPath));
+        var tool = document.RootElement
+            .GetProperty("tools")
+            .GetProperty("microsoft.sbom.dotnettool");
+        Assert.Equal("4.1.5", tool.GetProperty("version").GetString());
+        Assert.Equal(new[] { "sbom-tool" }, tool.GetProperty("commands").EnumerateArray().Select(static command => command.GetString()));
+        Assert.False(tool.GetProperty("rollForward").GetBoolean());
+    }
+
+    [Fact]
+    public void Release_requires_provenance_and_sbom_assets()
+    {
+        var root = RepositoryRoot();
+        var workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        var releaseScript = File.ReadAllText(Path.Combine(root, "scripts", "release.ps1"));
+
+        foreach (var assetPattern in new[]
+                 {
+                     "Dropwheel-$env:RELEASE_TAG-PROVENANCE.json",
+                     "Dropwheel-$env:RELEASE_TAG-SBOM.spdx.json",
+                 })
+        {
+            Assert.Contains(assetPattern, workflow, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("dotnet sbom-tool generate", workflow, StringComparison.Ordinal);
+        Assert.Contains("New-Item -ItemType Directory -Path \"$sbomInput/fd\", \"$sbomInput/sc\", $sbomOutput", workflow, StringComparison.Ordinal);
+        var outputDirectory = workflow.IndexOf("New-Item -ItemType Directory -Path \"$sbomInput/fd\", \"$sbomInput/sc\", $sbomOutput", StringComparison.Ordinal);
+        var generation = workflow.IndexOf("dotnet sbom-tool generate", StringComparison.Ordinal);
+        Assert.True(outputDirectory < generation, "The SBOM manifest output directory must exist before generation.");
+        Assert.Contains("dotnet sbom-tool validate", workflow, StringComparison.Ordinal);
+        Assert.Contains("-o (Join-Path $sbomOutput 'validation.json')", workflow, StringComparison.Ordinal);
+        Assert.Contains("-mi SPDX:2.2", workflow, StringComparison.Ordinal);
+        Assert.Contains("-n true", workflow, StringComparison.Ordinal);
+        var validation = workflow.IndexOf("dotnet sbom-tool validate", StringComparison.Ordinal);
+        var releaseCopy = workflow.IndexOf("Copy-Item -LiteralPath $generatedSbom -Destination $sbom", StringComparison.Ordinal);
+        Assert.True(generation < validation && validation < releaseCopy, "SBOM validation must succeed before the release asset is copied.");
+        Assert.Contains("-bc (Join-Path $PWD 'src/Dropwheel')", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("-bc $PWD", workflow, StringComparison.Ordinal);
+        Assert.Contains("sdkVersion = (dotnet --version).Trim()", workflow, StringComparison.Ordinal);
+        Assert.Contains("runtimeIdentifier = 'win-x64'", workflow, StringComparison.Ordinal);
+        Assert.Contains("runtimePacks = $runtimePacks", workflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("$_.version.Trim('[', ']')", workflow, StringComparison.Ordinal);
+        Assert.Contains("$rangeParts.Count -ne 2", workflow, StringComparison.Ordinal);
+        Assert.Contains("[string]::Equals($rangeParts[0], $rangeParts[1], [StringComparison]::Ordinal)", workflow, StringComparison.Ordinal);
+        Assert.Contains("src/Dropwheel/packages.lock.json", workflow, StringComparison.Ordinal);
+        Assert.Contains("tests/Dropwheel.Tests/packages.lock.json", workflow, StringComparison.Ordinal);
+        Assert.Contains("Get-FileHash $fd, $sc, $provenance, $sbom", workflow, StringComparison.Ordinal);
+        Assert.Contains("$checksumLines.Count -ne 4", workflow, StringComparison.Ordinal);
+        Assert.Contains("PROVENANCE.json", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("SBOM.spdx.json", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("'release', 'download', $Tag", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("@($release.assets).Count -ne $requiredAssets.Count", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("verify-release-assets.ps1", releaseScript, StringComparison.Ordinal);
+        Assert.Contains("-ExpectedCommit $ExpectedCommit", releaseScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Release_provenance_is_documented_for_operators()
+    {
+        var root = RepositoryRoot();
+        var readme = File.ReadAllText(Path.Combine(root, "scripts", "README.md"));
+
+        Assert.Contains("PROVENANCE.json", readme, StringComparison.Ordinal);
+        Assert.Contains("SBOM.spdx.json", readme, StringComparison.Ordinal);
+        Assert.Contains("пять обязательных артефактов", readme, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("verify-release-assets.ps1", readme, StringComparison.Ordinal);
+        Assert.Contains("повторно вычисляет", readme, StringComparison.Ordinal);
+        Assert.Contains("SHA-256 четырёх content assets", readme, StringComparison.Ordinal);
+        Assert.Contains("commit", readme, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Dependency_automation_is_scoped_and_runner_family_is_stable()
     {
         var root = RepositoryRoot();
@@ -133,6 +269,9 @@ public sealed class BuildConfigurationTests
             Assert.Contains("runs-on: windows-2025", contents, StringComparison.Ordinal);
             Assert.DoesNotContain("windows-latest", contents, StringComparison.Ordinal);
         }
+
+        var releaseWorkflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
+        Assert.Contains("persist-credentials: false", releaseWorkflow, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -37,6 +37,7 @@ jobs:
         with:
           ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Validate release commit and project version
         shell: pwsh
@@ -71,6 +72,9 @@ jobs:
       - name: Restore
         run: dotnet restore Dropwheel.slnx --nologo --locked-mode
 
+      - name: Restore pinned release tools
+        run: dotnet tool restore --tool-manifest .config/dotnet-tools.json
+
       - name: Verify runtime baseline
         shell: pwsh
         run: ./scripts/verify-runtime-baseline.ps1
@@ -94,18 +98,120 @@ jobs:
           --self-contained true --no-restore -warnaserror
           -p:IncludeNativeLibrariesForSelfExtract=true --output dist-sc
 
+      - name: Generate provenance and SBOM
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_TAG.Substring(1)
+          $provenance = "Dropwheel-$env:RELEASE_TAG-PROVENANCE.json"
+          $sbom = "Dropwheel-$env:RELEASE_TAG-SBOM.spdx.json"
+
+          $assets = Get-Content -Raw src/Dropwheel/obj/project.assets.json | ConvertFrom-Json
+          $runtimePacks = @(
+            $assets.project.frameworks.'net10.0-windows'.downloadDependencies |
+              Where-Object name -in @(
+                'Microsoft.NETCore.App.Runtime.win-x64',
+                'Microsoft.WindowsDesktop.App.Runtime.win-x64'
+              ) |
+              Sort-Object name |
+              ForEach-Object {
+                $range = [string] $_.version
+                if ($range.Length -lt 5 -or -not $range.StartsWith('[') -or -not $range.EndsWith(']')) {
+                  throw "Runtime pack '$($_.name)' has invalid version range '$range'."
+                }
+                $rangeParts = @($range.Substring(1, $range.Length - 2).Split(',') | ForEach-Object { $_.Trim() })
+                if ($rangeParts.Count -ne 2 -or
+                    [string]::IsNullOrWhiteSpace($rangeParts[0]) -or
+                    -not [string]::Equals($rangeParts[0], $rangeParts[1], [StringComparison]::Ordinal)) {
+                  throw "Runtime pack '$($_.name)' must have an exact version range; found '$range'."
+                }
+                [ordered]@{
+                  name = $_.name
+                  version = $rangeParts[0]
+                }
+              }
+          )
+          if ($runtimePacks.Count -ne 2) {
+            throw "Expected exact NETCore and WindowsDesktop runtime packs; found $($runtimePacks.Count)."
+          }
+
+          $lockFiles = @(
+            'src/Dropwheel/packages.lock.json',
+            'tests/Dropwheel.Tests/packages.lock.json'
+          ) | ForEach-Object {
+            if (-not (Test-Path -LiteralPath $_)) { throw "Missing lock file '$_'." }
+            [ordered]@{
+              path = $_
+              sha256 = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+          }
+
+          $document = [ordered]@{
+            schemaVersion = 1
+            package = [ordered]@{
+              name = 'Dropwheel'
+              version = $version
+            }
+            source = [ordered]@{
+              repository = "https://github.com/$env:GITHUB_REPOSITORY"
+              commit = (git rev-parse HEAD).Trim()
+              tag = $env:RELEASE_TAG
+            }
+            build = [ordered]@{
+              sdkVersion = (dotnet --version).Trim()
+              targetFramework = 'net10.0-windows'
+              runtimeIdentifier = 'win-x64'
+              configuration = 'Release'
+              runtimePacks = $runtimePacks
+            }
+            dependencyLocks = $lockFiles
+          }
+          $document | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8NoBOM $provenance
+
+          $sbomInput = Join-Path $PWD 'sbom-input'
+          $sbomOutput = Join-Path $PWD 'sbom-output'
+          New-Item -ItemType Directory -Path "$sbomInput/fd", "$sbomInput/sc", $sbomOutput | Out-Null
+          Copy-Item -Path dist-fd/* -Destination "$sbomInput/fd" -Recurse
+          Copy-Item -Path dist-sc/* -Destination "$sbomInput/sc" -Recurse
+          dotnet sbom-tool generate `
+            -b $sbomInput -bc (Join-Path $PWD 'src/Dropwheel') -m $sbomOutput `
+            -pn Dropwheel -pv $version -ps IvanLarinDev -D true
+          if ($LASTEXITCODE -ne 0) { throw "SBOM generation failed with exit code $LASTEXITCODE." }
+
+          $generatedSbom = Join-Path $sbomOutput '_manifest/spdx_2.2/manifest.spdx.json'
+          if (-not (Test-Path -LiteralPath $generatedSbom)) {
+            throw "SBOM generator did not create '$generatedSbom'."
+          }
+          dotnet sbom-tool validate `
+            -b $sbomInput -m (Join-Path $sbomOutput '_manifest') `
+            -o (Join-Path $sbomOutput 'validation.json') -mi SPDX:2.2 -n true
+          if ($LASTEXITCODE -ne 0) { throw "SBOM validation failed with exit code $LASTEXITCODE." }
+
+          Copy-Item -LiteralPath $generatedSbom -Destination $sbom
+          foreach ($required in @($provenance, $sbom)) {
+            if ((Get-Item -LiteralPath $required).Length -le 0) {
+              throw "Generated release metadata '$required' is empty."
+            }
+          }
+
       - name: Package and checksum
         shell: pwsh
         run: |
           $fd = "Dropwheel-$env:RELEASE_TAG-win-x64.zip"
           $sc = "Dropwheel-$env:RELEASE_TAG-win-x64-self-contained.zip"
+          $provenance = "Dropwheel-$env:RELEASE_TAG-PROVENANCE.json"
+          $sbom = "Dropwheel-$env:RELEASE_TAG-SBOM.spdx.json"
           $checksums = "Dropwheel-$env:RELEASE_TAG-SHA256SUMS.txt"
 
           Compress-Archive -Path dist-fd/* -DestinationPath $fd
           Compress-Archive -Path dist-sc/* -DestinationPath $sc
-          Get-FileHash $fd, $sc -Algorithm SHA256 |
+          Get-FileHash $fd, $sc, $provenance, $sbom -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))" } |
             Set-Content -Encoding utf8NoBOM $checksums
+
+          $checksumLines = @(Get-Content -LiteralPath $checksums)
+          if ($checksumLines.Count -ne 4) {
+            throw "Expected checksums for four content assets; found $($checksumLines.Count)."
+          }
 
       - name: Create or repair GitHub Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # softprops/action-gh-release@v3.0.2
@@ -114,6 +220,8 @@ jobs:
           files: |
             Dropwheel-${{ env.RELEASE_TAG }}-win-x64.zip
             Dropwheel-${{ env.RELEASE_TAG }}-win-x64-self-contained.zip
+            Dropwheel-${{ env.RELEASE_TAG }}-PROVENANCE.json
+            Dropwheel-${{ env.RELEASE_TAG }}-SBOM.spdx.json
             Dropwheel-${{ env.RELEASE_TAG }}-SHA256SUMS.txt
           fail_on_unmatched_files: true
           overwrite_files: true
@@ -125,6 +233,8 @@ jobs:
 
             - `Dropwheel-${{ env.RELEASE_TAG }}-win-x64-self-contained.zip` — recommended; no separate .NET installation required
             - `Dropwheel-${{ env.RELEASE_TAG }}-win-x64.zip` — smaller; requires the .NET 10.0.10 Desktop Runtime (x64) or later
+            - `Dropwheel-${{ env.RELEASE_TAG }}-PROVENANCE.json` — exact source, SDK, runtime, RID, and lock-file identities
+            - `Dropwheel-${{ env.RELEASE_TAG }}-SBOM.spdx.json` — SPDX software bill of materials
 
             The app is currently unsigned, so Windows SmartScreen may show a warning.
             Use `Dropwheel-${{ env.RELEASE_TAG }}-SHA256SUMS.txt` to verify download integrity.

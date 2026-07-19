@@ -11,8 +11,8 @@ public static class TargetStore
     public static AppConfig Config { get; private set; } = new();
     internal static string? DirOverride { get; set; }
 
-    /// <summary>Raised after the config is written to disk. The folder watcher listens to this to
-    /// re-sync its FileSystemWatchers when targets or their Watch flag change.</summary>
+    /// <summary>Raised after the config is durably written to disk. Subscriber failures are logged
+    /// and isolated so a completed write is never reported to callers as a failed save.</summary>
     public static event Action? Saved;
 
     /// <summary>Every routable target, flattening one level of groups (groups themselves are not
@@ -140,12 +140,17 @@ public static class TargetStore
             var tmp = FilePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(Config, Opts));
             MoveWithRetry(tmp, FilePath);
-            Saved?.Invoke();
         }
         catch (Exception ex)
         {
             ErrorLog.Write("Failed to save settings", ex);
             throw new InvalidOperationException("Could not save settings. See error.log for details.", ex);
+        }
+
+        foreach (var subscriber in Saved?.GetInvocationList() ?? [])
+        {
+            try { ((Action)subscriber)(); }
+            catch (Exception ex) { ErrorLog.Write("Settings saved, but a save listener failed", ex); }
         }
     }
 
@@ -510,6 +515,7 @@ public static class TargetStore
         static string P(Environment.SpecialFolder f) => Environment.GetFolderPath(f);
         return new AppConfig
         {
+            OnboardingVersion = 0,
             GroupShortcutsInitialized = true,
             Presets = PresetService.Defaults(),
             Targets = {
