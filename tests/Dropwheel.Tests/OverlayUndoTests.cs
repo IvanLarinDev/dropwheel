@@ -1,5 +1,6 @@
 using System.IO;
 using Dropwheel.Models;
+using Dropwheel.Services;
 using Dropwheel.UI;
 
 namespace Dropwheel.Tests;
@@ -89,6 +90,24 @@ public sealed class OverlayUndoTests : IDisposable
         File.WriteAllText(renamed, "new"); // the copy the drop created
 
         Assert.Equal(new[] { renamed }, OverlayWindow.CopyUndoTargets(op));
+    }
+
+    [Fact]
+    public void Partial_copy_undo_targets_only_confirmed_destinations()
+    {
+        var completedSource = Path.Combine(_root, "src", "completed.txt");
+        var untouchedSource = Path.Combine(_root, "src", "untouched.txt");
+        var completedDestination = Path.Combine(_root, "dest", "completed.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(completedSource)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(completedDestination)!);
+        File.WriteAllText(completedSource, "completed");
+        File.WriteAllText(untouchedSource, "untouched");
+        File.WriteAllText(completedDestination, "completed");
+        var op = OverlayWindow.BuildPartialOp(
+            DropAction.Copy,
+            new[] { new FileOperationChange(completedSource, completedDestination) });
+
+        Assert.Equal(new[] { completedDestination }, OverlayWindow.CopyUndoTargets(op));
     }
 
     [Fact]

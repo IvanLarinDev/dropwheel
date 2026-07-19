@@ -6,7 +6,7 @@ namespace Dropwheel.Services;
 
 public enum DropHistoryAction { Copy, Move, Sort, Run, Telegram, SaveVirtualFiles, SaveText, AddTargets }
 
-public enum DropHistoryStatus { Succeeded, Failed, Cancelled }
+public enum DropHistoryStatus { Succeeded, PartiallySucceeded, Failed, Cancelled }
 
 public sealed class DropHistoryEntry
 {
@@ -47,7 +47,12 @@ public static class DropHistoryService
         var action = ActionLabel(entry.Action);
         var items = ItemLabel(entry.Action, entry.Payload, entry.ItemCount);
         var target = string.IsNullOrWhiteSpace(entry.TargetName) ? "Unknown" : entry.TargetName;
-        var status = entry.Status == DropHistoryStatus.Succeeded ? "" : $" ({entry.Status})";
+        var status = entry.Status switch
+        {
+            DropHistoryStatus.Succeeded => "",
+            DropHistoryStatus.PartiallySucceeded => " (Partial)",
+            _ => $" ({entry.Status})",
+        };
         return $"{time}  {action} {items} -> {target}{status}";
     }
 

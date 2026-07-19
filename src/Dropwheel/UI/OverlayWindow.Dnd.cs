@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Dropwheel.Models;
@@ -8,15 +8,6 @@ namespace Dropwheel.UI;
 
 public partial class OverlayWindow
 {
-    /// <summary>Priority: modifier (Ctrl/Shift) → target override → global setting. Delegates to the
-    /// pure DropDispatch.ResolveAction so the precedence is unit-testable without DragEventArgs.</summary>
-    private static DropAction Resolve(TargetItem t, DragEventArgs e)
-        => DropDispatch.ResolveAction(
-            e.KeyStates.HasFlag(DragDropKeyStates.ControlKey),
-            e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey),
-            t.Override,
-            TargetStore.Config.GlobalAction);
-
     private void OnBubbleDragOver(FrameworkElement tile, TargetItem t, Border badge, DragEventArgs e)
     {
         var preview = PreviewBubbleDrop(t, e);
@@ -226,7 +217,8 @@ public partial class OverlayWindow
 
     private void OnBubbleDropCore(TargetItem t, DragEventArgs e)
     {
-        if (TelegramDropService.CanAccept(t, e.Data))
+        var realFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
+        if (realFiles is not { Length: > 0 } && TelegramDropService.CanAccept(t, e.Data))
         {
             var result = TelegramDropService.CopyToClipboard(
                 e.Data,
@@ -252,11 +244,11 @@ public partial class OverlayWindow
                     pasted ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
                     detail: pasted
                         ? "Pasted via clipboard handoff."
-                        : "Telegram did not become ready; payload left on clipboard.");
+                        : "Telegram focus changed or did not become ready; payload left on clipboard.");
                 if (!pasted)
                 {
                     _ = Dispatcher.InvokeAsync(() => ShowToast(
-                        "Telegram did not become ready. The payload is still on the clipboard.",
+                        "Telegram focus changed or did not become ready. The payload is still on the clipboard.",
                         kind: ToastKind.Warning));
                 }
             });
@@ -272,79 +264,21 @@ public partial class OverlayWindow
         // A shortcut target (.lnk) to a folder stores the shortcut's own path — resolve it so files
         // land in the target folder, not next to the .lnk.
         var dest = LaunchService.DestPath(t);
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+        if (realFiles is { Length: > 0 } files)
         {
-            switch (DropDispatch.ClassifyFileDrop(DropDispatch.SortsNow(t.IsSorter), LaunchService.IsRunTarget(t)))
-            {
-                case FileDropRoute.Sort:
-                    DropSorted(t, files, Resolve(t, e));
-                    return;
-                case FileDropRoute.Run:
-                    bool launched = LaunchService.LaunchWith(t, files);
-                    RememberDropHistory(
-                        DropHistoryAction.Run,
-                        t,
-                        DropPayloadKind.Files,
-                        files.Length,
-                        launched ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                        detail: launched ? null : "LaunchWith returned false.");
-                    ShowToast(launched
-                        ? $"Opened {files.Length} item(s) with {t.Name}"
-                        : "Could not launch", kind: launched ? ToastKind.Success : ToastKind.Danger);
-                    return;
-            }
-            var act = Resolve(t, e);
-            FileOp op;
-            bool ok;
-            var historyDest = dest;
-            int skipped = 0;
-            if (!string.IsNullOrWhiteSpace(t.NameTemplate))
-            {
-                var now = DateTime.Now;
-                var pairs = files
-                    .Select(f => (Source: f, Dest: System.IO.Path.Combine(dest, RenamedFileName(t.NameTemplate!, f, now))))
-                    .ToList();
-                if (t.ConflictPolicy == ConflictPolicy.Skip)
-                {
-                    int before = pairs.Count;
-                    pairs = pairs.Where(p => !(System.IO.File.Exists(p.Dest) || System.IO.Directory.Exists(p.Dest))).ToList();
-                    skipped = before - pairs.Count;
-                }
-                var srcs = pairs.Select(p => p.Source).ToArray();
-                var destPaths = pairs.Select(p => p.Dest).ToArray();
-                op = BuildRenamedOp(act, srcs, dest, destPaths);
-                ok = FileOps.ExecuteTo(pairs, act, policy: t.ConflictPolicy);
-                if (destPaths.Length == 1) historyDest = destPaths[0];
-            }
-            else
-            {
-                var toCopy = files;
-                if (t.ConflictPolicy == ConflictPolicy.Skip)
-                {
-                    var conflictNames = FileOps.DestinationConflicts(files, dest)
-                        .Select(System.IO.Path.GetFileName)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                    toCopy = files.Where(f => !conflictNames.Contains(System.IO.Path.GetFileName(f))).ToArray();
-                    skipped = files.Length - toCopy.Length;
-                }
-                op = BuildOpBefore(act, toCopy, dest);
-                ok = FileOps.Execute(toCopy, dest, act, policy: t.ConflictPolicy);
-            }
-            if (ok) RememberOp(op);
-            RememberDropHistory(
-                act == DropAction.Move ? DropHistoryAction.Move : DropHistoryAction.Copy,
+            var plan = DropExecutionService.PlanRealFiles(
                 t,
-                DropPayloadKind.Files,
-                files.Length,
-                ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                destination: historyDest);
-            var verb = act == DropAction.Move ? "Moved" : "Copied";
-            int moved = files.Length - skipped;
-            ShowToast(ok
-                ? (skipped == 0 ? $"{verb}: {files.Length} item(s) → {t.Name}"
-                    : moved == 0 ? $"All {skipped} already at {t.Name} — skipped"
-                    : $"{verb}: {moved} → {t.Name}, {skipped} skipped")
-                : "Operation was not completed", ok, ok ? ToastKind.Success : ToastKind.Danger);
+                e.KeyStates.HasFlag(DragDropKeyStates.ControlKey),
+                e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey),
+                TargetStore.Config.GlobalAction,
+                DropDispatch.SortingPaused);
+            ExecuteRealFileDrop(t, files, plan, fromExplorer: false);
+            if (plan.Route == RealFileDropRoute.Telegram)
+            {
+                e.Effects = e.AllowedEffects.HasFlag(DragDropEffects.Copy)
+                    ? DragDropEffects.Copy
+                    : DragDropEffects.None;
+            }
         }
         else if (VirtualFileService.HasVirtualFiles(e.Data))
         {

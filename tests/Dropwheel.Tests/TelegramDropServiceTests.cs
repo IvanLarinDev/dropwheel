@@ -80,7 +80,7 @@ public sealed class TelegramDropServiceTests : IDisposable
             TimeSpan.Zero,
             TimeSpan.Zero,
             () => pasted = true,
-            () => "Dropwheel",
+            () => IntPtr.Zero,
             readyDelay: TimeSpan.Zero);
 
         Assert.False(result);
@@ -91,12 +91,13 @@ public sealed class TelegramDropServiceTests : IDisposable
     public async Task PasteIntoTelegramWhenReady_pastes_when_telegram_is_foreground()
     {
         var pasted = false;
+        var telegramWindow = new IntPtr(42);
 
         var result = await TelegramDropService.PasteIntoTelegramWhenReady(
             TimeSpan.Zero,
             TimeSpan.Zero,
             () => pasted = true,
-            () => "Telegram",
+            () => telegramWindow,
             readyDelay: TimeSpan.Zero);
 
         Assert.True(result);
@@ -107,19 +108,37 @@ public sealed class TelegramDropServiceTests : IDisposable
     public async Task PasteIntoTelegramWhenReady_pastes_after_activating_telegram_window()
     {
         var pasted = false;
-        var activated = false;
+        var telegramWindow = new IntPtr(42);
+        var foregroundReads = 0;
 
         var result = await TelegramDropService.PasteIntoTelegramWhenReady(
             TimeSpan.Zero,
             TimeSpan.Zero,
             () => pasted = true,
-            () => "Dropwheel",
-            () => activated = true,
+            () => ++foregroundReads == 1 ? IntPtr.Zero : telegramWindow,
+            () => telegramWindow,
             readyDelay: TimeSpan.Zero);
 
         Assert.True(result);
-        Assert.True(activated);
         Assert.True(pasted);
+    }
+
+    [Fact]
+    public async Task PasteIntoTelegramWhenReady_aborts_when_focus_changes_during_ready_delay()
+    {
+        var pasted = false;
+        var telegramWindow = new IntPtr(42);
+        var foregroundReads = 0;
+
+        var result = await TelegramDropService.PasteIntoTelegramWhenReady(
+            TimeSpan.Zero,
+            TimeSpan.Zero,
+            () => pasted = true,
+            () => ++foregroundReads == 1 ? telegramWindow : IntPtr.Zero,
+            readyDelay: TimeSpan.Zero);
+
+        Assert.False(result);
+        Assert.False(pasted);
     }
 
     [Fact]

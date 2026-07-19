@@ -1,4 +1,6 @@
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -83,5 +85,62 @@ public sealed class LinkMetadataServiceTests
         const string html = "<html><head><link rel=\"icon\" href=\"/icon.svg\"><link rel=\"icon\" href=\"/icon.png\"></head></html>";
 
         Assert.Equal("https://example.com/icon.png", LinkMetadataService.ExtractIconUri(page, html)?.AbsoluteUri);
+    }
+
+    [Theory]
+    [InlineData("93.184.216.34", true)]
+    [InlineData("127.0.0.1", false)]
+    [InlineData("10.0.0.1", false)]
+    [InlineData("172.16.0.1", false)]
+    [InlineData("192.168.1.1", false)]
+    [InlineData("169.254.169.254", false)]
+    [InlineData("192.0.2.1", false)]
+    [InlineData("198.51.100.1", false)]
+    [InlineData("203.0.113.1", false)]
+    [InlineData("::1", false)]
+    [InlineData("fc00::1", false)]
+    [InlineData("fe80::1", false)]
+    public void Network_policy_allows_only_public_addresses(string address, bool expected) =>
+        Assert.Equal(expected, LinkMetadataNetworkPolicy.IsPublicAddress(IPAddress.Parse(address)));
+
+    [Fact]
+    public async Task Network_transport_rechecks_dns_and_refuses_a_rebound_private_address()
+    {
+        var policy = new LinkMetadataNetworkPolicy((_, _) =>
+            Task.FromResult(new[] { IPAddress.Loopback }));
+
+        await Assert.ThrowsAsync<HttpRequestException>(async () =>
+            await policy.ConnectAsync(new DnsEndPoint("example.com", 80), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Metadata_request_blocks_redirect_to_loopback_before_second_request()
+    {
+        var handler = new RedirectHandler(new Uri("http://127.0.0.1/admin"));
+        using var client = new HttpClient(handler);
+        var policy = new LinkMetadataNetworkPolicy((_, _) =>
+            Task.FromResult(new[] { IPAddress.Parse("93.184.216.34") }));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            LinkMetadataService.GetAllowedAsync(client, new Uri("https://example.com"), policy, CancellationToken.None));
+
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    private sealed class RedirectHandler(Uri location) : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Redirect)
+            {
+                Headers = { Location = location },
+                RequestMessage = request,
+            });
+        }
     }
 }

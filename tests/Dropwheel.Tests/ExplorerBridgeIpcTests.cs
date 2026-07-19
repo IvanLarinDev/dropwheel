@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipes;
 using Dropwheel.Services;
 
 namespace Dropwheel.Tests;
@@ -7,6 +8,16 @@ namespace Dropwheel.Tests;
 [Collection("WindowsIntegration")]
 public sealed class ExplorerBridgeIpcTests
 {
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void Server_is_scoped_to_the_current_user_and_windows_session()
+    {
+        Assert.True(ExplorerBridgeIpc.ServerOptions.HasFlag(PipeOptions.CurrentUserOnly));
+        Assert.NotEqual(
+            ExplorerBridgeIpc.PipeNameForSession(1),
+            ExplorerBridgeIpc.PipeNameForSession(2));
+    }
+
     [Fact]
     [Trait("Category", "WindowsIntegration")]
     public async Task Named_pipe_round_trip_delivers_paths_and_stops_cleanly()

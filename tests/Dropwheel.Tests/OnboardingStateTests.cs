@@ -77,6 +77,28 @@ public sealed class OnboardingStateTests : IDisposable
     }
 
     [Fact]
+    public void Finish_disables_integrations_cleared_from_reopened_onboarding()
+    {
+        var applied = new List<string>();
+        var setup = new OnboardingSetup(
+            new AppConfig { OnboardingVersion = AppConfig.CurrentOnboardingVersion },
+            () => applied.Add("enable-send-to"),
+            () => applied.Add("enable-startup"),
+            () => applied.Add("save"),
+            uninstallExplorerSendTo: () => applied.Add("disable-send-to"),
+            disableStartup: () => applied.Add("disable-startup"),
+            initialOptions: new OnboardingOptions(
+                EnableExplorerSendTo: true,
+                StartWithWindows: true));
+
+        setup.Finish(new OnboardingOptions(
+            EnableExplorerSendTo: false,
+            StartWithWindows: false));
+
+        Assert.Equal(new[] { "disable-send-to", "disable-startup", "save" }, applied);
+    }
+
+    [Fact]
     public void Finish_persists_completion_after_selected_integrations()
     {
         var config = new AppConfig { OnboardingVersion = 0 };
@@ -172,6 +194,36 @@ public sealed class OnboardingStateTests : IDisposable
     }
 
     [Fact]
+    public void Finish_failure_restores_integrations_disabled_from_reopened_onboarding()
+    {
+        var effects = new List<string>();
+        var setup = new OnboardingSetup(
+            new AppConfig { OnboardingVersion = AppConfig.CurrentOnboardingVersion },
+            () => effects.Add("enable-send-to"),
+            () => effects.Add("enable-startup"),
+            () =>
+            {
+                effects.Add("save");
+                throw new InvalidOperationException("save failed");
+            },
+            rollbackExplorerSendTo: () => effects.Add("restore-send-to"),
+            rollbackStartup: () => effects.Add("restore-startup"),
+            uninstallExplorerSendTo: () => effects.Add("disable-send-to"),
+            disableStartup: () => effects.Add("disable-startup"),
+            initialOptions: new OnboardingOptions(
+                EnableExplorerSendTo: true,
+                StartWithWindows: true));
+
+        Assert.Throws<InvalidOperationException>(() => setup.Finish(new OnboardingOptions(
+            EnableExplorerSendTo: false,
+            StartWithWindows: false)));
+
+        Assert.Equal(
+            new[] { "disable-send-to", "disable-startup", "save", "restore-startup", "restore-send-to" },
+            effects);
+    }
+
+    [Fact]
     public void Rollback_failures_do_not_mask_the_original_or_skip_remaining_rollbacks()
     {
         var config = new AppConfig { OnboardingVersion = 0 };
@@ -225,5 +277,25 @@ public sealed class OnboardingStateTests : IDisposable
 
         Assert.Equal(new[] { "save" }, effects);
         Assert.False(OnboardingState.ShouldShow(config));
+    }
+
+    [Fact]
+    public void Decide_later_from_reopened_onboarding_preserves_current_integrations()
+    {
+        var effects = new List<string>();
+        var setup = new OnboardingSetup(
+            new AppConfig { OnboardingVersion = AppConfig.CurrentOnboardingVersion },
+            () => effects.Add("enable-send-to"),
+            () => effects.Add("enable-startup"),
+            () => effects.Add("save"),
+            uninstallExplorerSendTo: () => effects.Add("disable-send-to"),
+            disableStartup: () => effects.Add("disable-startup"),
+            initialOptions: new OnboardingOptions(
+                EnableExplorerSendTo: true,
+                StartWithWindows: true));
+
+        setup.DecideLater();
+
+        Assert.Equal(new[] { "save" }, effects);
     }
 }

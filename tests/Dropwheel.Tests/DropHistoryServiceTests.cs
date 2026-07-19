@@ -91,6 +91,25 @@ public sealed class DropHistoryServiceTests : IDisposable
     }
 
     [Fact]
+    public void MenuSummary_marks_partially_succeeded_operations()
+    {
+        var original = Entry("Downloads", 1);
+        var entry = new DropHistoryEntry
+        {
+            AtUtc = original.AtUtc,
+            Action = original.Action,
+            Payload = original.Payload,
+            Status = DropHistoryStatus.PartiallySucceeded,
+            TargetName = original.TargetName,
+            TargetPath = original.TargetPath,
+            Destination = original.Destination,
+            ItemCount = original.ItemCount,
+        };
+
+        Assert.Contains("(Partial)", DropHistoryService.MenuSummary(entry));
+    }
+
+    [Fact]
     public void MenuSummary_uses_target_word_for_added_targets()
     {
         var entry = new DropHistoryEntry

@@ -9,11 +9,16 @@ public partial class OnboardingWindow : Window
     private readonly OnboardingSetup _setup;
     private readonly Action _openWheel;
 
-    internal OnboardingWindow(OnboardingSetup setup, Action openWheel)
+    internal OnboardingWindow(
+        OnboardingSetup setup,
+        OnboardingOptions initialOptions,
+        Action openWheel)
     {
         _setup = setup;
         _openWheel = openWheel;
         InitializeComponent();
+        ExplorerSendToToggle.IsChecked = initialOptions.EnableExplorerSendTo;
+        StartWithWindowsToggle.IsChecked = initialOptions.StartWithWindows;
         Themes.ApplyWindow(this);
         MaxHeight = SystemParameters.WorkArea.Height;
         MaxWidth = SystemParameters.WorkArea.Width;

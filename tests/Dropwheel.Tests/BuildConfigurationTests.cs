@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -26,6 +28,114 @@ public sealed class BuildConfigurationTests
             Assert.Contains("global-json-file: global.json", contents, StringComparison.Ordinal);
             Assert.DoesNotContain("dotnet-version:", contents, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public void Run_helper_selects_a_compatible_dotnet_host_before_building()
+    {
+        var runCommand = File.ReadAllText(Path.Combine(RepositoryRoot(), "run.cmd"));
+        var requiredSelection = new[]
+        {
+            "call :select_dotnet",
+            "call :try_dotnet \"%DOTNET_ROOT%\\dotnet.exe\"",
+            "call :try_dotnet \"%USERPROFILE%\\.dotnet\\dotnet.exe\"",
+            "where.exe dotnet",
+            "pushd \"%~dp0\"",
+            "popd",
+            "\"%~1\" --version",
+            "set \"DOTNET_EXE=%~f1\"",
+            "set \"DOTNET_ROOT=%%~dpD\"",
+            "set \"PATH=%DOTNET_ROOT%;%PATH%\"",
+            "call :invoke_dotnet restore",
+            "call :invoke_dotnet build",
+            "call :invoke_dotnet publish",
+            "\"%DOTNET_EXE%\" %*",
+        };
+
+        Assert.All(requiredSelection, contract =>
+            Assert.Contains(contract, runCommand, StringComparison.Ordinal));
+        Assert.DoesNotContain("\ndotnet ", runCommand.ReplaceLineEndings("\n"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Run_helper_sdk_probe_resolves_an_absolute_path_host_outside_the_repository()
+    {
+        var root = RepositoryRoot();
+        var dotnetHost = CompatibleDotnetHost();
+        var dotnetRoot = Path.GetDirectoryName(dotnetHost)!;
+        var workingDirectory = Path.Combine(
+            Path.GetTempPath(), "dw_run_sdk_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(workingDirectory);
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe",
+                Arguments = $"/d /c \"\"{Path.Combine(root, "run.cmd")}\" sdk\"",
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            startInfo.Environment["DOTNET_ROOT"] = Path.Combine(workingDirectory, "missing-dotnet");
+            startInfo.Environment["USERPROFILE"] = workingDirectory;
+            startInfo.Environment["PATH"] = string.Join(
+                Path.PathSeparator,
+                dotnetRoot,
+                Environment.GetFolderPath(Environment.SpecialFolder.System));
+
+            using var process = Process.Start(startInfo);
+            Assert.NotNull(process);
+            var standardOutputTask = process.StandardOutput.ReadToEndAsync();
+            var standardErrorTask = process.StandardError.ReadToEndAsync();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync();
+                throw new TimeoutException("run.cmd sdk did not finish in time.");
+            }
+            var standardOutput = await standardOutputTask;
+            var standardError = await standardErrorTask;
+            var output = standardOutput + standardError;
+
+            Assert.Equal(0, process.ExitCode);
+            Assert.Contains($"DOTNET_EXE={dotnetHost}", output, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains($"DOTNET_ROOT={dotnetRoot}{Path.DirectorySeparatorChar}", output, StringComparison.OrdinalIgnoreCase);
+            var versionLine = output.ReplaceLineEndings("\n").Split('\n')
+                .Select(static line => line.Trim())
+                .SingleOrDefault(static line => Regex.IsMatch(line, @"^\d+\.\d+\.\d+$"));
+            Assert.NotNull(versionLine);
+            var selectedVersion = Version.Parse(versionLine);
+            using var globalJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "global.json")));
+            var pinnedVersion = Version.Parse(
+                globalJson.RootElement.GetProperty("sdk").GetProperty("version").GetString()!);
+            Assert.Equal(pinnedVersion.Major, selectedVersion.Major);
+            Assert.Equal(pinnedVersion.Minor, selectedVersion.Minor);
+            Assert.Equal(pinnedVersion.Build / 100, selectedVersion.Build / 100);
+            Assert.True(selectedVersion.Build >= pinnedVersion.Build);
+        }
+        finally
+        {
+            TempDir.Delete(workingDirectory);
+        }
+    }
+
+    [Fact]
+    public void Run_helper_uses_cmd_compatible_crlf_line_endings()
+    {
+        var root = RepositoryRoot();
+        var attributes = File.ReadAllText(Path.Combine(root, ".gitattributes"));
+        var runCommand = File.ReadAllText(Path.Combine(root, "run.cmd"));
+
+        Assert.Contains("*.cmd   text eol=crlf", attributes, StringComparison.Ordinal);
+        Assert.Contains("\r\n", runCommand, StringComparison.Ordinal);
+        Assert.DoesNotMatch(new Regex(@"(?<!\r)\n"), runCommand);
     }
 
     [Fact]
@@ -138,7 +248,7 @@ public sealed class BuildConfigurationTests
         }
 
         var runCommand = File.ReadAllText(Path.Combine(root, "run.cmd"));
-        Assert.Contains("dotnet restore \"%~dp0Dropwheel.slnx\" --locked-mode", runCommand, StringComparison.Ordinal);
+        Assert.Contains("call :invoke_dotnet restore \"%~dp0Dropwheel.slnx\" --locked-mode", runCommand, StringComparison.Ordinal);
         Assert.Contains("--no-restore", runCommand, StringComparison.Ordinal);
 
         var readme = File.ReadAllText(Path.Combine(root, "README.md"));
@@ -302,6 +412,19 @@ public sealed class BuildConfigurationTests
                 }
             }
         }
+    }
+
+    private static string CompatibleDotnetHost()
+    {
+        for (var directory = new DirectoryInfo(RuntimeEnvironment.GetRuntimeDirectory());
+             directory is not null;
+             directory = directory.Parent)
+        {
+            var candidate = Path.Combine(directory.FullName, "dotnet.exe");
+            if (File.Exists(candidate)) return candidate;
+        }
+
+        throw new InvalidOperationException("Could not locate the dotnet host for the running test process.");
     }
 
     private static string RepositoryRoot()

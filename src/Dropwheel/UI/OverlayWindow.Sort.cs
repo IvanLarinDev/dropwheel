@@ -41,31 +41,55 @@ public partial class OverlayWindow
     private void DropSorted(TargetItem t, string[] files, DropAction act)
     {
         var plan = SortService.Plan(t, files);
-        bool ok = true;
         var ops = new List<FileOp>();
+        var completed = 0;
+        var incomplete = false;
         foreach (var group in ExecutableSorterGroups(plan))
         {
             Directory.CreateDirectory(group.Folder);
             var op = BuildOpBefore(act, group.Sources, group.Folder);
-            if (FileOps.Execute(group.Sources, group.Folder, act)) ops.Add(op);
-            else ok = false;
+            var outcome = FileOps.ExecuteDetailed(group.Sources, group.Folder, act);
+            if (outcome.Status == FileOperationStatus.Succeeded)
+            {
+                ops.Add(op);
+                completed += outcome.CompletedCount;
+            }
+            else
+            {
+                incomplete = true;
+                completed += outcome.CompletedCount;
+                if (outcome.UndoableChanges.Count > 0)
+                    ops.Add(BuildPartialOp(act, outcome.UndoableChanges));
+            }
         }
         if (ops.Count > 0) RememberOps(ops);
+        var status = incomplete
+            ? completed > 0 ? DropHistoryStatus.PartiallySucceeded : DropHistoryStatus.Failed
+            : DropHistoryStatus.Succeeded;
         RememberDropHistory(
             DropHistoryAction.Sort,
             t,
             DropPayloadKind.Files,
-            files.Length,
-            ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+            status == DropHistoryStatus.Succeeded ? files.Length : completed,
+            status,
             destination: t.Path,
-            detail: ok
+            detail: status == DropHistoryStatus.Succeeded
                 ? ops.Count == 0 ? "No file moves were needed."
                     : ops.Count > 1 ? $"Routed into {ops.Count} folders." : null
-                : "At least one sorter route failed.");
-        ShowToast(ok
-            ? SortedToastText(files.Length, t.Name, ops.Count)
-            : "Sorting was not completed", ops.Count > 0,
-            ok ? ToastKind.Success : ToastKind.Danger);
+                : status == DropHistoryStatus.PartiallySucceeded
+                    ? $"Routed {completed} of {files.Length} items before the operation stopped."
+                    : "No sorter route completed.");
+        ShowToast(status switch
+        {
+            DropHistoryStatus.Succeeded => SortedToastText(files.Length, t.Name, ops.Count),
+            DropHistoryStatus.PartiallySucceeded => $"Sorted partially: {completed} of {files.Length} item(s)",
+            _ => "Sorting was not completed",
+        }, canUndo: ops.Count > 0, kind: status switch
+        {
+            DropHistoryStatus.Succeeded => ToastKind.Success,
+            DropHistoryStatus.PartiallySucceeded => ToastKind.Warning,
+            _ => ToastKind.Danger,
+        });
     }
 
     /// <summary>Virtual files are already saved into the sorter root — distribute
@@ -75,24 +99,49 @@ public partial class OverlayWindow
         var plan = SortService.Plan(t, saved);
         var ops = new List<FileOp>();
         string root = t.Path;
+        var completed = 0;
+        var incomplete = false;
         foreach (var (folder, group) in plan)
         {
             if (SameNormalizedFolder(folder, root))
-            { ops.Add(BuildCreatedCopyOp(group.ToArray(), folder)); continue; }
+            {
+                ops.Add(BuildCreatedCopyOp(group.ToArray(), folder));
+                completed += group.Count;
+                continue;
+            }
             Directory.CreateDirectory(folder);
             var sources = group.ToArray();
-            if (FileOps.Execute(sources, folder, DropAction.Move))
+            var outcome = FileOps.ExecuteDetailed(sources, folder, DropAction.Move);
+            if (outcome.Status == FileOperationStatus.Succeeded)
+            {
                 ops.Add(BuildCreatedCopyOp(sources, folder));
+                completed += outcome.CompletedCount;
+            }
+            else
+            {
+                incomplete = true;
+                completed += outcome.CompletedCount;
+                if (outcome.UndoableChanges.Count > 0)
+                    ops.Add(BuildPartialOp(DropAction.Copy, outcome.UndoableChanges));
+            }
         }
         if (ops.Count > 0) RememberOps(ops);
+        var status = incomplete
+            ? completed > 0 ? DropHistoryStatus.PartiallySucceeded : DropHistoryStatus.Failed
+            : saved.Length > 0 ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed;
         RememberDropHistory(
             DropHistoryAction.Sort,
             t,
             DropPayloadKind.VirtualFiles,
-            saved.Length,
-            saved.Length > 0 ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+            status == DropHistoryStatus.Succeeded ? saved.Length : completed,
+            status,
             destination: t.Path,
-            detail: saved.Length > 0 ? null : "No saved virtual files were routed.");
+            detail: status switch
+            {
+                DropHistoryStatus.Succeeded => null,
+                DropHistoryStatus.PartiallySucceeded => $"Routed {completed} of {saved.Length} saved items.",
+                _ => "No saved virtual files were routed.",
+            });
     }
 
     private void SortTargetFolderNow(TargetItem t)
@@ -112,36 +161,55 @@ public partial class OverlayWindow
                 return;
             }
 
-            bool ok = true;
             int moved = 0;
+            bool incomplete = false;
             var ops = new List<FileOp>();
             foreach (var (folder, sources) in plan)
             {
                 Directory.CreateDirectory(folder);
                 var op = BuildOpBefore(DropAction.Move, sources, folder);
-                if (FileOps.Execute(sources, folder, DropAction.Move))
+                var outcome = FileOps.ExecuteDetailed(sources, folder, DropAction.Move);
+                if (outcome.Status == FileOperationStatus.Succeeded)
                 {
                     ops.Add(op);
-                    moved += sources.Length;
+                    moved += outcome.CompletedCount;
                 }
-                else ok = false;
+                else
+                {
+                    incomplete = true;
+                    moved += outcome.CompletedCount;
+                    if (outcome.UndoableChanges.Count > 0)
+                        ops.Add(BuildPartialOp(DropAction.Move, outcome.UndoableChanges));
+                }
             }
 
             if (ops.Count > 0) RememberOps(ops);
+            var status = incomplete
+                ? moved > 0 ? DropHistoryStatus.PartiallySucceeded : DropHistoryStatus.Failed
+                : DropHistoryStatus.Succeeded;
             RememberDropHistory(
                 DropHistoryAction.Sort,
                 t,
                 DropPayloadKind.Files,
                 moved,
-                ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                status,
                 destination: t.Path,
-                detail: ok
+                detail: status == DropHistoryStatus.Succeeded
                     ? ops.Count > 1 ? $"Manual sorter run, into {ops.Count} folders." : "Manual sorter run."
-                    : "Manual sorter run failed.");
-            ShowToast(ok
-                ? SortedToastText(moved, t.Name, ops.Count)
-                : "Sorting was not completed", ops.Count > 0,
-                ok ? ToastKind.Success : ToastKind.Danger);
+                    : status == DropHistoryStatus.PartiallySucceeded
+                        ? $"Manual sorter moved {moved} items before stopping."
+                        : "Manual sorter run failed.");
+            ShowToast(status switch
+            {
+                DropHistoryStatus.Succeeded => SortedToastText(moved, t.Name, ops.Count),
+                DropHistoryStatus.PartiallySucceeded => $"Sorted partially: {moved} item(s)",
+                _ => "Sorting was not completed",
+            }, canUndo: ops.Count > 0, kind: status switch
+            {
+                DropHistoryStatus.Succeeded => ToastKind.Success,
+                DropHistoryStatus.PartiallySucceeded => ToastKind.Warning,
+                _ => ToastKind.Danger,
+            });
         }
         catch (Exception ex)
         {

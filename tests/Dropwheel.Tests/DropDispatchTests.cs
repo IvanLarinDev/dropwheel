@@ -1,3 +1,4 @@
+using System.IO;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -78,5 +79,55 @@ public sealed class DropDispatchTests
     {
         Assert.True(DropDispatch.SortsNow(isSorter: true));
         Assert.False(DropDispatch.SortsNow(isSorter: false));
+    }
+
+    [Fact]
+    public void Real_file_plan_uses_one_route_contract_for_drag_and_sendto()
+    {
+        var target = new TargetItem
+        {
+            Name = "Sorter",
+            Path = Path.GetTempPath(),
+            SortRules = new() { ["*"] = "" },
+            Override = DropAction.Move,
+        };
+
+        var dragPlan = DropExecutionService.PlanRealFiles(
+            target,
+            ctrl: false,
+            shift: false,
+            DropAction.Copy,
+            sortingPaused: false);
+        var sendToPlan = DropExecutionService.PlanRealFiles(
+            target,
+            ctrl: false,
+            shift: false,
+            DropAction.Copy,
+            sortingPaused: false);
+
+        Assert.Equal(dragPlan, sendToPlan);
+        Assert.Equal(RealFileDropRoute.Sort, dragPlan.Route);
+        Assert.Equal(DropAction.Move, dragPlan.Action);
+    }
+
+    [Fact]
+    public void Real_file_plan_falls_through_to_run_when_sorting_is_paused()
+    {
+        var executable = Path.Combine(Path.GetTempPath(), "tool.exe");
+        var target = new TargetItem
+        {
+            Name = "Tool",
+            Path = executable,
+            SortRules = new() { ["*"] = "" },
+        };
+
+        var plan = DropExecutionService.PlanRealFiles(
+            target,
+            ctrl: false,
+            shift: false,
+            DropAction.Copy,
+            sortingPaused: true);
+
+        Assert.Equal(RealFileDropRoute.Run, plan.Route);
     }
 }
