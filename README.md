@@ -23,7 +23,7 @@ browser — no video files:
   &nbsp;·&nbsp;
   <a href="https://ivanlarindev.github.io/dropwheel/demo/index.en.html">English</a>
   &nbsp;/&nbsp;
-  <a href="https://ivanlarindev.github.io/dropwheel/demo/">Русский</a>
+  <a href="https://ivanlarindev.github.io/dropwheel/demo/">Russian</a>
 </p>
 
 It replays the wheel opening, dropping files (copy/move badges), the wheel
@@ -418,8 +418,7 @@ expectations, and [SECURITY.md](SECURITY.md) for reporting vulnerabilities
 privately. Bug reports and feature requests use the issue templates.
 
 Note: the per-folder `README.md` files inside `src/` and `docs/demo/` are
-written in Russian, the maintainer's working language; code and comments are
-English.
+written in English, as are the code and comments.
 
 ## License
 

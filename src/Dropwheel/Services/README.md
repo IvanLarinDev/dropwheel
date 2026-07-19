@@ -1,37 +1,41 @@
-# Services — логика без интерфейса
+# Services — non-UI logic
 
-Здесь живёт вся «начинка» приложения: работа с файлами и ярлыками, запуск программ,
-глобальные хуки мыши и клавиатуры, слежение за папками, сортировка, иконки, метаданные
-ссылок. Ничего из этого не рисует окна — интерфейс отдельно, в `../UI`.
+This directory contains the application's core behavior: files and shortcuts,
+process launching, global mouse and keyboard hooks, folder watching, sorting,
+icons, and link metadata. It does not render windows; presentation belongs in
+`../UI`.
 
-## Что внутри (по темам)
+## Contents by area
 
-- Хранение и данные: `TargetStore` (загрузка/сохранение `config.json`, дедуп, санитайзер
-  конфига), `PresetService`, `SortMigration`.
-- Файлы и дроп: `FileOps` (копирование/перемещение через проводник), `DropDispatch`
-  (приоритеты дропа), `VirtualFileService` (перетаскивание из браузера/почты),
-  `TextDropService`, `LinkTargetService`, `FileMeta` (свойства файла для условий правил).
-- Запуск: `LaunchService` (открыть цель, запустить с файлами), `ShortcutResolver`
-  (разбор `.lnk`), `StartupService` (автозапуск), `TelegramDropService`.
-- Ввод и присутствие: `MouseHook`, `KeyboardHook`, `HotkeyService`, `OrbGesture`,
+- Storage and data: `TargetStore` (loading and saving `config.json`,
+  deduplication, and configuration sanitization), `PresetService`, and
+  `SortMigration`.
+- Files and drops: `FileOps` (Explorer-style copy and move), `DropDispatch`
+  (drop priority), `VirtualFileService` (browser and mail drags),
+  `TextDropService`, `LinkTargetService`, and `FileMeta` (file properties used
+  by rule conditions).
+- Launching: `LaunchService` (open a target or launch it with files),
+  `ShortcutResolver` (`.lnk` parsing), `StartupService`, and
+  `TelegramDropService`.
+- Input and presence: `MouseHook`, `KeyboardHook`, `HotkeyService`, `OrbGesture`,
   `GroupShortcutActivation`, `GroupShortcutSequence`, `ProximityState`,
-  `FullscreenDetector`, `CursorTargetLocator`.
-- Сортировка и раскладка: `SortService`, `WheelLayout`, `WatcherService` (авто-сортировка
-  наблюдаемых папок), `HintPolicy` (лимиты показов подсказок), `IconService`,
-  `LinkMetadataService`, `ErrorLog`.
-- Журнал и мост: `DropHistoryService` (список недавних дропов для меню трея),
-  `ExplorerBridgeService` (пункт «Send to → Dropwheel» в проводнике).
+  `FullscreenDetector`, and `CursorTargetLocator`.
+- Sorting and layout: `SortService`, `WheelLayout`, `WatcherService` (automatic
+  sorting for watched folders), `HintPolicy` (hint display limits),
+  `IconService`, `LinkMetadataService`, and `ErrorLog`.
+- History and integration: `DropHistoryService` (recent drops in the tray menu)
+  and `ExplorerBridgeService` (the Explorer "Send to → Dropwheel" entry).
 
-## Как работать
+## Working with services
 
-Сервисы вызываются из `../UI`. Многие методы намеренно `internal static` и чистые —
-чтобы их можно было покрыть тестами из `tests/Dropwheel.Tests` без запуска окна. Перед
-правкой ищи использования через `ck`, чтобы не сломать вызовы.
+`../UI` calls these services. Many methods are deliberately pure and
+`internal static` so `tests/Dropwheel.Tests` can exercise them without starting
+a window. Search for callers with `ck` before editing a service.
 
-## Что можно и нельзя
+## Guidelines
 
-- Можно добавлять новый сервис отдельным файлом; держи его сфокусированным на одной теме
-  и по возможности с чистыми, тестируемыми функциями.
-- Нельзя открывать окна и работать с WPF-визуалом отсюда (кроме уже существующих
-  оконных сервисов вроде подсказок захвата) — интерфейс живёт в `../UI`.
-- Нельзя «глотать» исключения молча: логируй через `ErrorLog` или пробрасывай.
+- Add a new service in its own focused file and prefer pure, testable functions.
+- Do not open windows or manipulate WPF visuals here, except for existing
+  window-oriented services such as capture hints. Presentation belongs in
+  `../UI`.
+- Do not swallow exceptions silently. Log through `ErrorLog` or propagate them.

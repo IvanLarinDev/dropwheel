@@ -1,37 +1,38 @@
-# tests/Dropwheel.Tests — тесты приложения
+# tests/Dropwheel.Tests — application tests
 
-Все автоматические тесты Dropwheel (xUnit). Проверяют чистую логику сервисов и моделей
-без запуска окон: сортировку, разбор хоткеев, работу с конфигом, форматирование текста
-для интерфейса и т.п.
+This directory contains all automated Dropwheel tests (xUnit). They exercise
+pure service and model logic without opening windows, including sorting, hotkey
+parsing, configuration behavior, and UI text formatting.
 
-## Как запустить
+## Running the tests
 
-Из корня репозитория:
+From the repository root:
 
 ```powershell
 dotnet restore Dropwheel.slnx --locked-mode
 dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-restore
 ```
 
-Весь набор проходит за секунды. Перед тем как сказать «готово» по любой задаче,
-набор гоняется целиком — частичный прогон не считается.
+The full suite completes in seconds. Run all tests before declaring any task
+complete; a partial run does not count.
 
-## Как устроено
+## Structure
 
-- Один файл — одна тема: `SortServiceTests.cs`, `HotkeyServiceTests.cs`,
-  `TargetStoreReloadTests.cs` и т.д. Классы плоские, `sealed`, без базовых классов
-  и хитрых фикстур.
-- Приложение открыто тестам через `InternalsVisibleTo`, поэтому тестируемую логику
-  в приложении делают `internal static` и чистой.
-- Тесты, которые трогают статический `TargetStore`, помечаются коллекцией
-  `[Collection("TargetStoreState")]` — она выключает параллельность между ними,
-  иначе они дерутся за общее состояние. Папка конфига подменяется через
-  `TargetStore.DirOverride` на временную и чистится в `Dispose`.
+- Each file covers one concern, such as `SortServiceTests.cs`,
+  `HotkeyServiceTests.cs`, or `TargetStoreReloadTests.cs`. Classes are flat and
+  `sealed`, without base classes or elaborate fixtures.
+- The application exposes internals through `InternalsVisibleTo`, so testable
+  application logic should be pure and `internal static`.
+- Tests that touch the static `TargetStore` use
+  `[Collection("TargetStoreState")]`, which disables parallel execution between
+  them to protect shared state. `TargetStore.DirOverride` redirects the
+  configuration directory to a temporary location that `Dispose` removes.
 
-## Что можно и нельзя
+## Guidelines
 
-- Новый тестовый файл — рядом, в том же стиле: плоский `sealed`-класс, имена тестов
-  читаются как предложения (`Broken_file_keeps_current_settings_and_reports_the_error`).
-- Нельзя оставлять за собой временные папки и файлы — убирай в `Dispose`.
-- Нельзя тестировать WPF-окна напрямую — выноси логику в чистую `internal`-функцию
-  и тестируй её.
+- Add test files alongside the existing files in the same style: a flat
+  `sealed` class with sentence-like test names such as
+  `Broken_file_keeps_current_settings_and_reports_the_error`.
+- Do not leave temporary files or directories behind; remove them in `Dispose`.
+- Do not test WPF windows directly. Extract behavior into a pure `internal`
+  function and test that function.

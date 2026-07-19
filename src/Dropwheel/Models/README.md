@@ -1,33 +1,35 @@
-# Models — данные приложения
+# Models — application data
 
-Здесь лежат простые классы-данные и перечисления, которыми описывается состояние
-Dropwheel: список целей, настройки, правила сортировки. Это «что храним», без всякой
-логики поведения.
+This directory contains the simple data classes and enums that describe
+Dropwheel state: targets, settings, and sorting rules. It defines what the
+application stores, without behavioral logic.
 
-## Что внутри
+## Contents
 
-- `AppConfig` — весь пользовательский конфиг: позиция и прозрачность орба, обе горячие
-  клавиши (основная и необязательная «открыть у орба»), тема, время и звук тостов,
-  режим переполнения колеса, список целей и пресеты правил. Именно этот объект
-  сохраняется в `config.json`.
-- `TargetItem` — одна плитка колеса: папка, приложение, ссылка или группа (у группы
-  заполнен `Children`). Здесь же признаки-помощники (`IsGroup`, `IsSorter`, `IsFolder`),
-  правила сортировки `Rules` и оформление плитки — эмодзи и свой цвет.
-- `SortRule` — правило маршрутизации файла в подпапку с условиями (`RuleCondition`).
-- `OpenAnimation`, `OverflowLayout` — перечисления вариантов анимации открытия и
-  раскладки колеса при переполнении.
-- `FilePreset` — заготовка набора расширений для редактора правил.
+- `AppConfig` — the complete user configuration: orb position and opacity, both
+  hotkeys (the primary hotkey and the optional "open at orb" hotkey), theme,
+  toast duration and sound, wheel overflow mode, targets, and rule presets. This
+  object is stored in `config.json`.
+- `TargetItem` — one wheel tile: a folder, application, link, or group (groups
+  have `Children`). It also contains helper properties such as `IsGroup`,
+  `IsSorter`, and `IsFolder`, the `Rules` collection, and tile presentation data
+  such as an emoji and custom color.
+- `SortRule` — a conditional (`RuleCondition`) rule that routes a file into a
+  subfolder.
+- `OpenAnimation`, `OverflowLayout` — the available opening animations and
+  overflow layouts.
+- `FilePreset` — a reusable extension set for the rule editor.
 
-## Как работать
+## Working with models
 
-Эти классы сериализуются в JSON, поэтому имена свойств — часть формата файла на диске.
-Читают и пишут их сервисы из `../Services` (в первую очередь `TargetStore`), а рисует
-`../UI`.
+These classes are serialized to JSON, so property names are part of the on-disk
+file format. Services in `../Services`, primarily `TargetStore`, read and write
+them; `../UI` renders them.
 
-## Что можно и нельзя
+## Guidelines
 
-- Можно добавлять новые свойства и перечисления, но помни: переименование свойства
-  ломает чтение старых `config.json` у пользователей. Для новых значений enum есть
-  санитайзер в `TargetStore`, чтобы неизвестное значение не стирало весь конфиг.
-- Нельзя класть сюда логику поведения, работу с файлами, сетью или интерфейсом — только
-  данные и мелкие вычисляемые признаки над ними.
+- New properties and enum values are allowed, but renaming a property breaks old
+  user `config.json` files. Add new enum values to the sanitizer in `TargetStore`
+  so an unknown value cannot erase the entire configuration.
+- Do not put behavioral logic, file operations, networking, or UI code here.
+  Keep this layer to data and small computed properties over that data.

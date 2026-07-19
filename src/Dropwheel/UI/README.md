@@ -1,37 +1,40 @@
-# UI — окна и колесо
+# UI — windows and wheel
 
-Здесь весь интерфейс Dropwheel: плавающий орб, раскрывающееся колесо целей, окно
-настроек, редактор цели и правил, маленькие подсказки. Вся логика без интерфейса — в
-`../Services`, данные — в `../Models`.
+This directory contains the complete Dropwheel interface: the floating orb,
+expandable target wheel, settings window, target and rule editor, and compact
+hints. Non-UI behavior belongs in `../Services`; data belongs in `../Models`.
 
-## Что внутри
+## Contents
 
-- `OverlayWindow` — главное прозрачное окно с орбом и колесом. Оно большое, поэтому
-  разбито на много файлов-частей `OverlayWindow.*.cs`, каждый про свою тему: раскладка
-  (`Layout`), облако плиток (`Cloud`), плитки (`Bubble`), перетаскивание (`Dnd`,
-  `OrbDrop`, `PinDrop`), проксимити-реакция (`Proximity`, `Charge`), захват Alt+Shift
-  (`Capture`), группы и шорткаты (`GroupShortcuts`), отмена (`Undo`), затухание
-  (`IdleFade`) и другие.
-- `SettingsWindow` — окно настроек (секции слева, живая проверка полей; горячие
-  клавиши выбираются чипами или записью, руками не печатаются).
-- `TargetEditorWindow` — редактор цели и правил сортировки (`TargetEditorWindow.Rules.cs`).
-  Здесь же плитке задаются эмодзи и свой цвет.
-- `PromptWindow` — простой ввод строки.
-- `DialogShell`, `DwMessageBox`, `ToastHost` — общий каркас всех диалогов, темизированная
-  замена системного MessageBox и тост обратной связи на колесе.
-- `Themes`, `Palette`, `MenuTheme.xaml` — цвета и оформление.
+- `OverlayWindow` — the main transparent window containing the orb and wheel.
+  Because it is large, it is split into focused `OverlayWindow.*.cs` partial
+  files: layout (`Layout`), tile cloud (`Cloud`), tiles (`Bubble`), drag and drop
+  (`Dnd`, `OrbDrop`, `PinDrop`), proximity response (`Proximity`, `Charge`),
+  Alt+Shift capture (`Capture`), groups and shortcuts (`GroupShortcuts`), undo
+  (`Undo`), idle fading (`IdleFade`), and others.
+- `SettingsWindow` — the settings window, with sections on the left, live field
+  validation, and hotkeys selected through chips or recording rather than typed
+  manually.
+- `TargetEditorWindow` — the target and sorting-rule editor
+  (`TargetEditorWindow.Rules.cs`), including per-tile emoji and color settings.
+- `PromptWindow` — simple text input.
+- `DialogShell`, `DwMessageBox`, `ToastHost` — the shared dialog frame, themed
+  system message-box replacement, and wheel feedback toast.
+- `Themes`, `Palette`, `MenuTheme.xaml` — colors and presentation.
 
-## Как работать
+## Working with the UI
 
-Части одного окна — это `partial class OverlayWindow`; новую тему выноси в отдельный
-файл `OverlayWindow.<Тема>.cs`, а не раздувай существующий. Значения геометрии, цветов и
-таймингов — источник правды для живого демо в `docs/demo`; меняя их, помни про демо.
+The main window is a `partial class OverlayWindow`. Put a new concern in a new
+`OverlayWindow.<Topic>.cs` file instead of expanding an existing one. Geometry,
+color, and timing values are the source of truth for the live demo in
+`docs/demo`; update the demo when those values change.
 
-## Что можно и нельзя
+## Guidelines
 
-- Внешний вид, анимации и раскладку экрана меняем только после мокапов (в проекте есть
-  гейт дизайна). Чисто логические правки UI-файла (без изменения картинки) — можно, но
-  при пуше гейт всё равно попросит waiver с пояснением, что визуал не менялся.
-- Нельзя тащить сюда бизнес-логику файлов/сети/запуска — она в `../Services`.
-- Плитки строятся из простых фигур: задавай им `AutomationProperties.Name`, иначе
-  скринридер их не назовёт.
+- Visual, animation, and layout changes require mockups through the project's
+  design gate. A logic-only UI change is allowed, but the push gate still
+  requires a waiver explaining that no visuals changed.
+- Do not place file, network, or process-launching business logic here; it
+  belongs in `../Services`.
+- Tiles use simple shapes, so set `AutomationProperties.Name` or screen readers
+  will not announce them.

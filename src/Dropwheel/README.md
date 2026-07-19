@@ -1,23 +1,26 @@
-# src/Dropwheel — само приложение
+# src/Dropwheel — application project
 
-Это проект C# приложения Dropwheel: оверлей-лаунчер для Windows. По экрану плавает орб,
-который раскрывается в радиальное колесо целей (папки, приложения, ссылки). На плитки
-можно бросать файлы (копировать/переместить), текст (сохранить в файл) или раскладывать
-файлы по подпапкам правилами-сортировщиками. Колесо само открывается, когда к орбу
-подносят перетаскиваемый файл.
+This is the C# project for Dropwheel, an overlay launcher for Windows. A
+floating orb expands into a radial wheel of targets such as folders,
+applications, and links. Drop files to copy or move them, drop text to save it
+as a file, or route files into subfolders with sorter rules. The wheel opens
+automatically when a dragged file approaches the orb.
 
-## Из чего состоит
+## Structure
 
-- `Models` — данные: конфиг, цели, правила сортировки. Только «что храним».
-- `Services` — вся логика без интерфейса: файлы, запуск, хуки ввода, слежение за
-  папками, сортировка, иконки. Читать их README в папке.
-- `UI` — окна и колесо (WPF). Главное окно `OverlayWindow` разбито на много файлов-частей.
-- `App.xaml.cs` — точка входа: создаёт оверлей, трей-иконку, ставит хуки.
-- `app.manifest` — манифест приложения (DPI-осведомлённость и т.п.).
+- `Models` — configuration, targets, and sorting rules: what the application
+  stores.
+- `Services` — all non-UI logic, including files, launching, input hooks, folder
+  watching, sorting, and icons. See the README in that directory.
+- `UI` — the WPF windows and wheel. The main `OverlayWindow` is split across
+  several partial files.
+- `App.xaml.cs` — the entry point, which creates the overlay and tray icon and
+  installs input hooks.
+- `app.manifest` — application metadata such as DPI awareness.
 
-## Как собрать и запустить
+## Building and running
 
-Из корня репозитория (нужен .NET 10 SDK, Windows):
+From the repository root on Windows with the .NET 10 SDK installed:
 
 ```powershell
 dotnet restore Dropwheel.slnx --locked-mode
@@ -26,15 +29,18 @@ dotnet run --project src/Dropwheel/Dropwheel.csproj --configuration Release --no
 dotnet test tests/Dropwheel.Tests/Dropwheel.Tests.csproj --configuration Release --no-restore
 ```
 
-## Что соблюдать при добавлении нового
+## Adding functionality
 
-- Данные — в `Models`, логику — в `Services`, интерфейс — в `UI`. Не смешивай слои.
-- Изменения внешнего вида и анимаций проводи через мокапы (в проекте есть гейт дизайна).
-- Логику, которую стоит протестировать, делай чистой и `internal` — тесты видят её через
-  InternalsVisibleTo.
+- Put data in `Models`, behavior in `Services`, and presentation in `UI`. Keep
+  the layers separate.
+- Use mockups for visual and animation changes; the project enforces a design
+  gate.
+- Keep testable logic pure and `internal`; tests access it through
+  `InternalsVisibleTo`.
 
-## Чего нельзя
+## Avoid
 
-- Молча глотать исключения — логируй через `ErrorLog` или пробрасывай.
-- Переименовывать свойства моделей без оглядки на старые `config.json` пользователей.
-- Тащить работу с файлами/сетью/запуском в слой `UI`.
+- Do not swallow exceptions silently. Log through `ErrorLog` or propagate them.
+- Do not rename model properties without accounting for existing user
+  `config.json` files.
+- Do not put file, network, or process-launching logic in the `UI` layer.

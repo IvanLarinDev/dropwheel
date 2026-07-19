@@ -244,10 +244,10 @@ public sealed class BuildConfigurationTests
 
         Assert.Contains("PROVENANCE.json", readme, StringComparison.Ordinal);
         Assert.Contains("SBOM.spdx.json", readme, StringComparison.Ordinal);
-        Assert.Contains("пять обязательных артефактов", readme, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("five required assets", readme, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("verify-release-assets.ps1", readme, StringComparison.Ordinal);
-        Assert.Contains("повторно вычисляет", readme, StringComparison.Ordinal);
-        Assert.Contains("SHA-256 четырёх content assets", readme, StringComparison.Ordinal);
+        Assert.Contains("recomputes SHA-256", readme, StringComparison.Ordinal);
+        Assert.Contains("all four content assets", readme, StringComparison.Ordinal);
         Assert.Contains("commit", readme, StringComparison.Ordinal);
     }
 

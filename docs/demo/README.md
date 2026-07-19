@@ -1,65 +1,68 @@
 # docs/demo
 
-Живая документация интерфейса Dropwheel для страницы GitHub Pages. Колесо целей
-и все взаимодействия рисуются на JavaScript (canvas) прямо в браузере — это
-замена GIF-записям экрана, которые раньше лежали в `docs/media`.
+Live Dropwheel interface documentation for the GitHub Pages site. The target
+wheel and every interaction are rendered directly in the browser with
+JavaScript and canvas. This replaces the screen-recording GIFs that previously
+lived in `docs/media`.
 
-## Что лежит
+## Contents
 
-- `index.html` — русская страница демо: набор сцен, каждая показывает один
-  сценарий работы, рядом текстовое объяснение. Внизу — карточки «Ещё возможности».
-- `index.en.html` — английская версия той же страницы. Обе делят движок, сцены и
-  стили; отличаются только текстом. Вверху страниц — переключатель RU / EN.
-- `dropwheel.js` — движок отрисовки. Класс `DW.Wheel(canvas, tiles, opts)` рисует
-  колесо и проигрывает анимации. Геометрия, тайминги и цвета взяты один в один из
-  настоящего приложения (`src/Dropwheel/UI/OverlayWindow.*`, `UI/Themes.cs`).
-- `scenes.js` — общий код всех сцен (таймлайны на `requestAnimationFrame`), одинаков
-  для обеих языковых страниц. Единственная локализуемая строка берётся из
-  `window.DW_TXT`, который страница задаёт перед подключением скрипта.
-- `styles.css` — общие стили страниц.
+- `index.html` — the Russian-language demo page. Each scene demonstrates one
+  workflow with a written explanation; the bottom of the page contains the
+  "More features" cards.
+- `index.en.html` — the English version of the same page. Both pages share the
+  engine, scenes, and styles and differ only in their text. An RU / EN switcher
+  appears at the top of each page.
+- `dropwheel.js` — the rendering engine. `DW.Wheel(canvas, tiles, opts)` draws
+  the wheel and plays its animations. Geometry, timing, and colors mirror the
+  real application (`src/Dropwheel/UI/OverlayWindow.*`, `UI/Themes.cs`).
+- `scenes.js` — shared code for every scene, with timelines driven by
+  `requestAnimationFrame`. The only localized string comes from `window.DW_TXT`,
+  which each page defines before loading the script.
+- `styles.css` — shared page styles.
 
-## Сцены
+## Scenes
 
-Основной вид (с выбором анимации, скорости и темы), элементы интерфейса
-(нумерованный глоссарий частей колеса), перетаскивание файла
-(копирование/перемещение), открытие при приближении, вход в группу, сохранение
-текста, запуск «открыть с помощью», сортер (раскладка по подпапкам), захват цели
-орбом (Alt+Shift), групповые коды (1 vs 11), перестановка тайлов по ободу, ссылка
-с заголовком и фавиконом, отмена, поведение орба (перемещение и затухание).
+The demo covers the main view (with animation, speed, and theme selectors), a
+numbered interface glossary, file dragging with copy and move actions,
+proximity opening, entering a group, saving text, opening files with an app,
+sorting into subfolders, pinning a target with the orb (Alt+Shift), group codes
+(1 versus 11), reordering tiles around the rim, links with titles and favicons,
+undo, and orb movement and fading.
 
-## Как посмотреть
+## Viewing the demo
 
-Открыть `index.html` в браузере напрямую, либо поднять статический сервер из
-корня демо:
+Open `index.html` directly in a browser, or start a static server from the demo
+root:
 
     python -m http.server 8777 --directory docs/demo
 
-и зайти на `http://localhost:8777`.
+Then visit `http://localhost:8777`.
 
-## Как добавлять сцены
+## Adding scenes
 
-Разметка сцены — блок `<section class="scene">` с холстом и описанием — в обеих
-страницах (`index.html` и `index.en.html`), а сам код сцены живёт в `scenes.js` и
-общий для них. Сцена — это функция на `requestAnimationFrame`, которая каждый кадр
-выставляет состояние привязанного `DW.Wheel` (см. поля движка ниже) и рисует.
-Опции конструктора: `theme` (Fluent/Dark/Light/Neon), `animation`
-(pop/burst/sweep/settle), `speed`, `startOpen`, `hover`. Добавляя сцену, правь
-разметку в обеих языковых страницах и логику в `scenes.js`; локализуемый текст
-внутри сцены бери из `window.DW_TXT`.
+A scene's markup is a `<section class="scene">` block containing a canvas and a
+description on both pages (`index.html` and `index.en.html`). The scene logic is
+shared in `scenes.js`. Each scene is a `requestAnimationFrame` function that
+updates the attached `DW.Wheel` state every frame (see the engine fields below)
+and renders it. Constructor options are `theme` (Fluent/Dark/Light/Neon),
+`animation` (pop/burst/sweep/settle), `speed`, `startOpen`, and `hover`. When
+adding a scene, update the markup on both language pages and the logic in
+`scenes.js`; read localized scene text from `window.DW_TXT`.
 
-Управляемое состояние на объекте `Wheel`: `forceHot`, `badges` (Map index→тип),
-`ghost` (kind file/text/orb), `toast`, `flash`, `chips`, `highlight`, `pinRing`,
-`cursor`, `orbPulse`/`orbLook`, `orbOffset`/`orbAlpha`, `tileAngles`, `tileMul`,
-`orbBadge`. Методы: `open()`, `close()`, `setTheme/setAnimation/setSpeed`,
-`tileCenter(i)`.
+Controllable state on a `Wheel` object includes `forceHot`, `badges` (a map from
+index to type), `ghost` (kind file/text/orb), `toast`, `flash`, `chips`,
+`highlight`, `pinRing`, `cursor`, `orbPulse`/`orbLook`, `orbOffset`/`orbAlpha`,
+`tileAngles`, `tileMul`, and `orbBadge`. Methods include `open()`, `close()`,
+`setTheme/setAnimation/setSpeed`, and `tileCenter(i)`.
 
-Набор целей задаётся массивом объектов `{ label, icon, group, sorter, num, code,
-add, back, fav }` — он демонстрационный и не обязан совпадать с реальными папками
-пользователя.
+Targets are supplied as an array of `{ label, icon, group, sorter, num, code,
+add, back, fav }` objects. This is demonstration data and does not need to match
+the user's real folders.
 
-## Чего не делать
+## Avoid
 
-- Не тащить сюда настоящие иконки shell Windows — иконки рисуются вектором в
-  `dropwheel.js`, чтобы демо оставалось самодостаточным и лёгким.
-- Не расходиться с геометрией и таймингами приложения на глаз: числа меняются
-  только вслед за кодом в `src/Dropwheel/UI`.
+- Do not add real Windows shell icons. `dropwheel.js` draws vector icons so the
+  demo remains self-contained and lightweight.
+- Do not approximate application geometry or timing by eye. Change these values
+  only when the corresponding code in `src/Dropwheel/UI` changes.
