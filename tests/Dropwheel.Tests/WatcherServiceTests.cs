@@ -8,7 +8,8 @@ namespace Dropwheel.Tests;
 
 /// <summary>Verifies the pure decision the folder watcher relies on: a file whose destination is its
 /// own folder must be left in place (no move, no loop), while a file routed into a subfolder moves.
-/// The FileSystemWatcher timing itself is covered by live testing, not here.</summary>
+/// Real FileSystemWatcher burst and cancellation behavior is covered separately by the Windows
+/// integration suite.</summary>
 public sealed class WatcherServiceTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "dw_watch_" + Guid.NewGuid().ToString("N"));
