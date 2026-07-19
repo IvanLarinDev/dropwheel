@@ -47,6 +47,50 @@ public sealed class ExplorerBridgeCommandTests : IDisposable
     }
 
     [Fact]
+    public void Parse_smoke_test_requires_explicit_profile_and_probe_paths()
+    {
+        var profile = Path.Combine(_root, "profile");
+        var probe = Path.Combine(_root, "probe.txt");
+        Directory.CreateDirectory(profile);
+        File.WriteAllText(probe, "nonce");
+
+        var command = ExplorerBridgeCommand.Parse(new[] { "--smoke-test", profile, probe });
+
+        Assert.Equal(ExplorerBridgeCommandKind.SmokeTest, command.Kind);
+        Assert.Equal(profile, command.SmokeProfileRoot);
+        Assert.Equal(probe, command.SmokeProbePath);
+        Assert.Empty(command.Paths);
+    }
+
+    [Fact]
+    public void Parse_smoke_sender_requires_explicit_profile_and_probe_paths()
+    {
+        var profile = Path.Combine(_root, "sender-profile");
+        var probe = Path.Combine(_root, "sender-probe.txt");
+        Directory.CreateDirectory(profile);
+        File.WriteAllText(probe, "nonce");
+
+        var command = ExplorerBridgeCommand.Parse(new[] { "--smoke-send", profile, probe });
+
+        Assert.Equal(ExplorerBridgeCommandKind.SmokeSendFiles, command.Kind);
+        Assert.Equal(profile, command.SmokeProfileRoot);
+        Assert.Equal(probe, command.SmokeProbePath);
+        Assert.Equal(new[] { probe }, command.Paths);
+    }
+
+    [Theory]
+    [InlineData("--smoke-test")]
+    [InlineData("--smoke-test", "relative-profile")]
+    [InlineData("--smoke-send")]
+    [InlineData("--smoke-send", "relative-profile")]
+    public void Parse_rejects_unisolated_smoke_commands(params string[] args)
+    {
+        var command = ExplorerBridgeCommand.Parse(args);
+
+        Assert.Equal(ExplorerBridgeCommandKind.Invalid, command.Kind);
+    }
+
+    [Fact]
     public void Parse_ignores_plain_startup_args()
     {
         var command = ExplorerBridgeCommand.Parse(new[] { "plain.txt" });

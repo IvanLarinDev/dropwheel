@@ -29,8 +29,26 @@ lock files; runtime baseline отдельно проверяет `verify-runtime
 ставит тег `vX.Y.Z`, дожидается сборки релиза на GitHub, проверяет его артефакты и
 подтягивает локальный `main` к релизному коммиту.
 
-GitHub-релиз содержит два portable ZIP — framework-dependent и self-contained —
-и файл `Dropwheel-vX.Y.Z-SHA256SUMS.txt`; installer и code signing пока не входят в pipeline.
+GitHub-релиз содержит **пять обязательных артефактов**: два portable ZIP — framework-dependent
+и self-contained — provenance manifest, SPDX SBOM и файл контрольных сумм:
+
+- `Dropwheel-vX.Y.Z-win-x64.zip`;
+- `Dropwheel-vX.Y.Z-win-x64-self-contained.zip`;
+- `Dropwheel-vX.Y.Z-PROVENANCE.json` — commit/tag, точные SDK, TFM, RID,
+  runtime packs и SHA-256 обоих NuGet lock files;
+- `Dropwheel-vX.Y.Z-SBOM.spdx.json` — SPDX software bill of materials для
+  содержимого обеих поставок;
+- `Dropwheel-vX.Y.Z-SHA256SUMS.txt` — SHA-256 двух ZIP, provenance и SBOM.
+
+Release workflow генерирует metadata до checksum-файла. Component detection для
+SBOM ограничен production-проектом `src/Dropwheel`, а manifest проходит штатную
+validation с запретом пустого списка packages до публикации.
+
+После публикации `release.ps1` скачивает все пять artifacts и запускает
+`verify-release-assets.ps1`: verifier требует точный набор имён, повторно вычисляет
+SHA-256 четырёх content assets и сверяет provenance `tag` и `commit` с релизом.
+Отсутствующий, повторный, пустой, повреждённый или stale artifact завершает релиз с
+ошибкой. Installer и code signing пока не входят в pipeline.
 
 ## Если релиз оборвался
 
