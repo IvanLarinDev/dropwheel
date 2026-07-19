@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -14,12 +15,24 @@ public static class LinkMetadataService
 {
     private const int MaxHtmlBytes = 512 * 1024;
     private const int MaxIconBytes = 1024 * 1024;
+    private const int MaxRedirects = 5;
 
+    private static readonly LinkMetadataNetworkPolicy NetworkPolicy = new();
     private static readonly HttpClient Client = CreateClient();
 
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseProxy = false,
+            ConnectCallback = (context, cancellationToken) =>
+                NetworkPolicy.ConnectAsync(context.DnsEndPoint, cancellationToken),
+        };
+        var client = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(5),
+        };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("Dropwheel/1.0");
         return client;
     }
@@ -82,7 +95,7 @@ public static class LinkMetadataService
 
     private static async Task<string> FetchHtmlAsync(Uri uri, CancellationToken ct)
     {
-        using var response = await Client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var response = await GetAllowedAsync(Client, uri, NetworkPolicy, ct);
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
@@ -107,7 +120,7 @@ public static class LinkMetadataService
 
         try
         {
-            using var response = await Client.GetAsync(iconUri, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await GetAllowedAsync(Client, iconUri, NetworkPolicy, ct);
             if (!response.IsSuccessStatusCode) return null;
 
             var contentType = response.Content.Headers.ContentType?.MediaType;
@@ -149,6 +162,41 @@ public static class LinkMetadataService
 
         return copy.Length > maxBytes ? Array.Empty<byte>() : copy.ToArray();
     }
+
+    internal static async Task<HttpResponseMessage> GetAllowedAsync(
+        HttpClient client,
+        Uri uri,
+        LinkMetadataNetworkPolicy policy,
+        CancellationToken cancellationToken)
+    {
+        var current = uri;
+        for (int redirect = 0; ; redirect++)
+        {
+            if (!await policy.AllowsAsync(current, cancellationToken))
+                throw new InvalidOperationException($"Automatic link metadata access is blocked for '{current.Host}'.");
+
+            var response = await client.GetAsync(current, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (!IsRedirect(response.StatusCode) || response.Headers.Location == null) return response;
+
+            if (redirect >= MaxRedirects)
+            {
+                response.Dispose();
+                throw new HttpRequestException("Link metadata redirect limit exceeded.");
+            }
+
+            current = response.Headers.Location.IsAbsoluteUri
+                ? response.Headers.Location
+                : new Uri(current, response.Headers.Location);
+            response.Dispose();
+        }
+    }
+
+    private static bool IsRedirect(HttpStatusCode status) => status is
+        HttpStatusCode.MovedPermanently
+        or HttpStatusCode.Redirect
+        or HttpStatusCode.RedirectMethod
+        or HttpStatusCode.TemporaryRedirect
+        or HttpStatusCode.PermanentRedirect;
 
     private static string? AttributeValue(string tag, string name)
     {

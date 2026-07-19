@@ -2,8 +2,6 @@ using System.IO;
 using System.Windows;
 using Dropwheel.Models;
 using Dropwheel.Services;
-using WpfDataObject = System.Windows.DataObject;
-using WpfDataFormats = System.Windows.DataFormats;
 
 namespace Dropwheel.UI;
 
@@ -103,107 +101,22 @@ public partial class OverlayWindow
 
     private bool DropExplorerFiles(TargetItem target, string[] files)
     {
-        var targetKind = DropIntent.ClassifyTarget(
+        var plan = DropExecutionService.PlanRealFiles(
             target,
-            LaunchService.IsFolderTarget(target),
-            LaunchService.IsRunTarget(target));
-        if (TelegramDropService.IsTelegramTarget(target)) targetKind = DropTargetKind.Telegram;
-
-        var compatibility = DropIntent.Compatibility(DropPayloadKind.Files, targetKind);
-        if (!compatibility.CanReceive)
-        {
-            ShowToast(compatibility.Reason, kind: ToastKind.Warning);
-            return false;
-        }
-
-        if (!ConfirmDropPreflight(target, DropPayloadKind.Files, targetKind, files.Length))
-            return false;
-
-        if (targetKind == DropTargetKind.Telegram)
-        {
-            SendExplorerFilesToTelegram(target, files);
-            return true;
-        }
-
-        switch (DropDispatch.ClassifyFileDrop(DropDispatch.SortsNow(target.IsSorter), LaunchService.IsRunTarget(target)))
-        {
-            case FileDropRoute.Sort:
-                DropSorted(target, files, DropDispatch.ResolveAction(
-                    ctrl: false,
-                    shift: false,
-                    target.Override,
-                    TargetStore.Config.GlobalAction));
-                return true;
-            case FileDropRoute.Run:
-                var launched = LaunchService.LaunchWith(target, files);
-                RememberDropHistory(
-                    DropHistoryAction.Run,
-                    target,
-                    DropPayloadKind.Files,
-                    files.Length,
-                    launched ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                    detail: launched ? "Opened from Explorer SendTo." : "LaunchWith returned false.");
-                ShowToast(launched
-                    ? $"Opened {files.Length} item(s) with {target.Name}"
-                    : "Could not launch", kind: launched ? ToastKind.Success : ToastKind.Danger);
-                return true;
-        }
-
-        var dest = LaunchService.DestPath(target);
-        var act = DropDispatch.ResolveAction(
             ctrl: false,
             shift: false,
-            target.Override,
-            TargetStore.Config.GlobalAction);
-        var op = BuildOpBefore(act, files, dest);
-        var ok = FileOps.Execute(files, dest, act);
-        if (ok) RememberOp(op);
-        RememberDropHistory(
-            act == DropAction.Move ? DropHistoryAction.Move : DropHistoryAction.Copy,
-            target,
-            DropPayloadKind.Files,
-            files.Length,
-            ok ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-            destination: dest,
-            detail: "Dropped from Explorer SendTo.");
-        ShowToast(ok
-            ? $"{(act == DropAction.Move ? "Moved" : "Copied")}: {files.Length} item(s) → {target.Name}"
-            : "Operation was not completed", ok, ok ? ToastKind.Success : ToastKind.Danger);
-        return true;
-    }
-
-    private void SendExplorerFilesToTelegram(TargetItem target, string[] files)
-    {
-        var data = new WpfDataObject();
-        data.SetData(WpfDataFormats.FileDrop, files);
-        var result = TelegramDropService.CopyToClipboard(
-            data,
-            System.IO.Path.Combine(TargetStore.Dir, "telegram-drop"));
-        if (result == null)
+            TargetStore.Config.GlobalAction,
+            DropDispatch.SortingPaused);
+        if (plan.Route == RealFileDropRoute.Denied)
         {
-            ShowToast("Nothing to send", kind: ToastKind.Warning);
-            return;
+            ShowToast(plan.DenialReason ?? "Target cannot receive this drop.", kind: ToastKind.Warning);
+            return false;
         }
 
-        LaunchService.Launch(new TargetItem { Name = target.Name, Path = TelegramDropService.LaunchPathFor(target) });
-        TelegramDropService.PasteIntoTelegramWhenReady(pasted =>
-        {
-            RememberDropHistory(
-                DropHistoryAction.Telegram,
-                target,
-                DropPayloadKind.Files,
-                result.Count,
-                pasted ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                detail: pasted
-                    ? "Pasted via Explorer SendTo handoff."
-                    : "Telegram did not become ready; payload left on clipboard.");
-            if (!pasted)
-            {
-                _ = Dispatcher.InvokeAsync(() => ShowToast(
-                    "Telegram did not become ready. The payload is still on the clipboard.",
-                    kind: ToastKind.Warning));
-            }
-        });
-        ShowToast($"Copied {result.Count} file(s); waiting for Telegram", kind: ToastKind.Info);
+        if (!ConfirmDropPreflight(target, DropPayloadKind.Files, plan.TargetKind, files.Length))
+            return false;
+
+        ExecuteRealFileDrop(target, files, plan, fromExplorer: true);
+        return true;
     }
 }

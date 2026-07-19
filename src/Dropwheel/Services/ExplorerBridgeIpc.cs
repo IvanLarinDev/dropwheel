@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Text.Json;
@@ -6,8 +7,11 @@ namespace Dropwheel.Services;
 
 public static class ExplorerBridgeIpc
 {
-    private const string PipeName = "Dropwheel_ExplorerBridge";
+    private static readonly string PipeName = PipeNameForSession(Process.GetCurrentProcess().SessionId);
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromMilliseconds(1200);
+    internal const PipeOptions ServerOptions = PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly;
+
+    internal static string PipeNameForSession(int sessionId) => $"Dropwheel_ExplorerBridge_{sessionId}";
 
     public static bool TrySendFiles(IReadOnlyList<string> paths) =>
         TrySendFiles(paths, PipeName, ConnectTimeout);
@@ -52,7 +56,7 @@ public static class ExplorerBridgeIpc
                         PipeDirection.In,
                         maxNumberOfServerInstances: 1,
                         PipeTransmissionMode.Byte,
-                        PipeOptions.Asynchronous);
+                        ServerOptions);
                     await pipe.WaitForConnectionAsync(token);
                     using var reader = new StreamReader(pipe);
                     var line = await reader.ReadLineAsync(token);

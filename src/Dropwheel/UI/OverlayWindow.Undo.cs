@@ -76,6 +76,14 @@ public partial class OverlayWindow
         return new(act, sources, dest, existing, destPaths);
     }
 
+    internal static FileOp BuildPartialOp(DropAction act, IReadOnlyList<FileOperationChange> changes) =>
+        new(
+            act,
+            changes.Select(change => change.Source).ToArray(),
+            Dest: "",
+            ExistingDestinations: Array.Empty<string>(),
+            changes.Select(change => change.Destination).ToArray());
+
     /// <summary>The file name a target's NameTemplate produces for a source file: the template expanded
     /// with the built-in ${name} tokens, sanitized to a single name, then the source's own extension. An
     /// empty or unfillable template falls back to the source file's own name.</summary>

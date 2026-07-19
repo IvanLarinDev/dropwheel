@@ -136,4 +136,40 @@ public sealed class FileOpsTests
             try { Directory.Delete(root, true); } catch (DirectoryNotFoundException) { }
         }
     }
+
+    [Fact]
+    public void ReconcileOutcome_reports_the_completed_subset_after_cancelled_move()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dw_fileop_reconcile_" + Guid.NewGuid().ToString("N"));
+        var sourceDir = Directory.CreateDirectory(Path.Combine(root, "source"));
+        var destinationDir = Directory.CreateDirectory(Path.Combine(root, "destination"));
+        var movedSource = Path.Combine(sourceDir.FullName, "moved.txt");
+        var untouchedSource = Path.Combine(sourceDir.FullName, "untouched.txt");
+        var movedDestination = Path.Combine(destinationDir.FullName, "moved.txt");
+        var untouchedDestination = Path.Combine(destinationDir.FullName, "untouched.txt");
+        File.WriteAllText(untouchedSource, "untouched");
+        File.WriteAllText(movedDestination, "moved");
+        try
+        {
+            var result = FileOps.ReconcileOutcome(
+                DropAction.Move,
+                new[]
+                {
+                    new FileOperationCandidate(movedSource, movedDestination, DestinationExisted: false),
+                    new FileOperationCandidate(untouchedSource, untouchedDestination, DestinationExisted: false),
+                },
+                shellSucceeded: false,
+                aborted: true);
+
+            Assert.Equal(FileOperationStatus.PartiallySucceeded, result.Status);
+            Assert.Equal(1, result.CompletedCount);
+            var change = Assert.Single(result.UndoableChanges);
+            Assert.Equal(movedSource, change.Source);
+            Assert.Equal(movedDestination, change.Destination);
+        }
+        finally
+        {
+            TempDir.Delete(root);
+        }
+    }
 }
