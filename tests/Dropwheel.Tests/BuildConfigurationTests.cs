@@ -127,6 +127,18 @@ public sealed class BuildConfigurationTests
     }
 
     [Fact]
+    public void Run_helper_uses_cmd_compatible_crlf_line_endings()
+    {
+        var root = RepositoryRoot();
+        var attributes = File.ReadAllText(Path.Combine(root, ".gitattributes"));
+        var runCommand = File.ReadAllText(Path.Combine(root, "run.cmd"));
+
+        Assert.Contains("*.cmd   text eol=crlf", attributes, StringComparison.Ordinal);
+        Assert.Contains("\r\n", runCommand, StringComparison.Ordinal);
+        Assert.DoesNotMatch(new Regex(@"(?<!\r)\n"), runCommand);
+    }
+
+    [Fact]
     public void Runtime_baseline_is_enforced_in_ci_and_documentation()
     {
         var root = RepositoryRoot();
