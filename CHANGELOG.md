@@ -1,6 +1,13 @@
 # Changelog
 
 - - -
+## [v0.27.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.26.1..v0.27.0) - 2026-07-19
+#### Features
+- improve onboarding and harden drop execution (#42) - ([64eac4c](https://github.com/IvanLarinDev/dropwheel/commit/64eac4cd6e3d69f6984847fd3fd6c30ece69eb5f)) - Ivan Larin
+#### Tests
+- expand Windows integration smoke (#41) - ([a744aad](https://github.com/IvanLarinDev/dropwheel/commit/a744aad2473c06505b1c184b7e975a9e37ba1c27)) - Ivan Larin
+
+- - -
 ## [v0.26.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.26.0..v0.26.1) - 2026-07-19
 #### Bug Fixes
 - (**release**) preserve pipeline and UTF-8 changelog (#39) - ([b36ec8c](https://github.com/IvanLarinDev/dropwheel/commit/b36ec8c166c100ab8bc1f847d6dce8bc200c50eb)) - Ivan Larin
