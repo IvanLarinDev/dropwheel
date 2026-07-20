@@ -18,162 +18,162 @@
 - integrate milestones for v0.26.0 (#37) - ([6428e47](https://github.com/IvanLarinDev/dropwheel/commit/6428e475c33ad24e5821b638babac934e4c2b59f)) - Ivan Larin
 - (**deps**) bump actions/setup-dotnet in the github-actions group (#33) - ([6eb2eeb](https://github.com/IvanLarinDev/dropwheel/commit/6eb2eeb41ca788e45309c7e39c4909bd26e57557)) - dependabot\[bot\]
 - pin reproducible .NET toolchain (#32) - ([82f08b4](https://github.com/IvanLarinDev/dropwheel/commit/82f08b4486b5247c17c32fefe4abb07e34cae3e1)) - Ivan Larin
-- (**git**) наведение порядка в структуре репозитория - ([0f03293](https://github.com/IvanLarinDev/dropwheel/commit/0f032932029a1332648a9dcc5ae3c6e53e147f65)) - Ivan Larin
+- (**git**) clean up the repository structure - ([0f03293](https://github.com/IvanLarinDev/dropwheel/commit/0f032932029a1332648a9dcc5ae3c6e53e147f65)) - Ivan Larin
 #### Other Changes
 - \[verified\] fix: harden watcher stability and Windows smoke coverage (#31) - ([fc7dc9c](https://github.com/IvanLarinDev/dropwheel/commit/fc7dc9c6e58c59d73f804bc76f5254df1aa1b368)) - Ivan Larin
 
 - - -
 ## [v0.25.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.24.1..v0.25.0) - 2026-07-15
 #### Features
-- (**ui**) живой предпросмотр анимации открытия в настройках - ([b8583bf](https://github.com/IvanLarinDev/dropwheel/commit/b8583bfe2e084304987c85b33a606efa90a7db30)) - Ivan Larin
+- (**ui**) add a live opening-animation preview in Settings - ([b8583bf](https://github.com/IvanLarinDev/dropwheel/commit/b8583bfe2e084304987c85b33a606efa90a7db30)) - Ivan Larin
 
 - - -
 ## [v0.24.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.24.0..v0.24.1) - 2026-07-15
 #### Bug Fixes
-- (**test**) устойчивое удаление temp-папки тестов против флака error.log - ([7cafa5e](https://github.com/IvanLarinDev/dropwheel/commit/7cafa5eb5cf25b2d7c856f0ca06ca06f8e9cc63b)) - Ivan Larin
+- (**test**) make test temp-folder cleanup resilient to the error.log flake - ([7cafa5e](https://github.com/IvanLarinDev/dropwheel/commit/7cafa5eb5cf25b2d7c856f0ca06ca06f8e9cc63b)) - Ivan Larin
 
 - - -
 ## [v0.24.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.23.0..v0.24.0) - 2026-07-15
 #### Features
-- (**ui**) создание группы через тайл Add с переключателем Target/Group - ([9c4b04a](https://github.com/IvanLarinDev/dropwheel/commit/9c4b04ad395cabf51a81e6f25a0f76027557b4c8)) - Ivan Larin
-- (**ui**) редактор цели — изменяемый размер и сплиттеры в виде сортировщика - ([12f0bdc](https://github.com/IvanLarinDev/dropwheel/commit/12f0bdca9e27a852cdf748ad83755b252f957689)) - Ivan Larin
+- (**ui**) create groups through the Add tile with a Target/Group switch - ([9c4b04a](https://github.com/IvanLarinDev/dropwheel/commit/9c4b04ad395cabf51a81e6f25a0f76027557b4c8)) - Ivan Larin
+- (**ui**) make the target editor resizable with sorter-style splitters - ([12f0bdc](https://github.com/IvanLarinDev/dropwheel/commit/12f0bdca9e27a852cdf748ad83755b252f957689)) - Ivan Larin
 
 - - -
 ## [v0.23.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.22.0..v0.23.0) - 2026-07-15
 #### Features
-- (**ui**) ползунок Wheel size в настройках — масштаб колеса 0.8–1.5 - ([d385672](https://github.com/IvanLarinDev/dropwheel/commit/d385672b74758070dc5c1c39770ffcb9b2d02534)) - Ivan Larin
-- (**ui**) обвязка масштаба колеса — WheelScale и ScaleTransform (при 1.0 без изменений) - ([4462e23](https://github.com/IvanLarinDev/dropwheel/commit/4462e230d04011e9d953384ed9d0f5d048ad6156)) - Ivan Larin
+- (**ui**) add a Wheel size slider in Settings for 0.8–1.5 scaling - ([d385672](https://github.com/IvanLarinDev/dropwheel/commit/d385672b74758070dc5c1c39770ffcb9b2d02534)) - Ivan Larin
+- (**ui**) add wheel-scaling plumbing with WheelScale and ScaleTransform (unchanged at 1.0) - ([4462e23](https://github.com/IvanLarinDev/dropwheel/commit/4462e230d04011e9d953384ed9d0f5d048ad6156)) - Ivan Larin
 
 - - -
 ## [v0.22.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.21.1..v0.22.0) - 2026-07-15
 #### Features
-- (**ui**) анимация Magnetic settle — заход по дуге и упругая защёлка - ([a4ef2c8](https://github.com/IvanLarinDev/dropwheel/commit/a4ef2c8ca8ecb815392bd0e6e28f55e5f4b7a050)) - Ivan Larin
-- (**ui**) справочник токенов Destination и форматы ${stem:N} и паддинг групп - ([0c96f3a](https://github.com/IvanLarinDev/dropwheel/commit/0c96f3a849e1280998899bed70f0033cc8b83379)) - Ivan Larin
+- (**ui**) add a Magnetic settle animation with an arc approach and spring snap - ([a4ef2c8](https://github.com/IvanLarinDev/dropwheel/commit/a4ef2c8ca8ecb815392bd0e6e28f55e5f4b7a050)) - Ivan Larin
+- (**ui**) document Destination tokens, ${stem:N} formats, and group padding - ([0c96f3a](https://github.com/IvanLarinDev/dropwheel/commit/0c96f3a849e1280998899bed70f0033cc8b83379)) - Ivan Larin
 #### Bug Fixes
-- (**ui**) редактор цели — убран зазор над панелью правила и перекрытие скроллбаром - ([969783f](https://github.com/IvanLarinDev/dropwheel/commit/969783f0e0b09c85d15feb4f9fe70a0320771cd0)) - Ivan Larin
+- (**ui**) remove the gap above the rule panel and scrollbar overlap in the target editor - ([969783f](https://github.com/IvanLarinDev/dropwheel/commit/969783f0e0b09c85d15feb4f9fe70a0320771cd0)) - Ivan Larin
 
 - - -
 ## [v0.21.1](https://github.com/IvanLarinDev/dropwheel/compare/v0.21.0..v0.21.1) - 2026-07-14
 #### Bug Fixes
-- (**ui**) чип наведения выходит за сетку плитки, а не режется по ней - ([69871ef](https://github.com/IvanLarinDev/dropwheel/commit/69871effbe2e54f4dcf8e1051b224e9f16bdae93)) - Ivan Larin
+- (**ui**) let the hover chip extend beyond the tile grid instead of clipping it - ([69871ef](https://github.com/IvanLarinDev/dropwheel/commit/69871effbe2e54f4dcf8e1051b224e9f16bdae93)) - Ivan Larin
 
 - - -
 ## [v0.21.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.20.0..v0.21.0) - 2026-07-14
 #### Features
-- (**ui**) число элементов папки в чипе наведения - ([b2d26b5](https://github.com/IvanLarinDev/dropwheel/commit/b2d26b560cdf972a7d4fdd9721337347ac785625)) - Ivan Larin
+- (**ui**) show the folder item count in the hover chip - ([b2d26b5](https://github.com/IvanLarinDev/dropwheel/commit/b2d26b560cdf972a7d4fdd9721337347ac785625)) - Ivan Larin
 #### Bug Fixes
-- (**config**) сохранение переживает мимолётную блокировку config.json - ([6e65d3c](https://github.com/IvanLarinDev/dropwheel/commit/6e65d3cb0ae50e961bff0186afee27f2748127bc)) - Ivan Larin
-- (**ui**) чип наведения вмещает строку места и счётчика - ([a294ccb](https://github.com/IvanLarinDev/dropwheel/commit/a294ccb64e419dd95588d7d232603621154388a8)) - Ivan Larin
-- (**sort**) пауза сортировки действует на текст, виртуальные файлы и SendTo - ([8447d5f](https://github.com/IvanLarinDev/dropwheel/commit/8447d5f5f784b720fc5923d0ec9409827afc191a)) - Ivan Larin
-- (**release**) возобновление после падения пуша тега и retry сетевых операций - ([ecbaca1](https://github.com/IvanLarinDev/dropwheel/commit/ecbaca172228a692e95c4c6437b5dba2b9e34aa9)) - Ivan Larin
+- (**config**) make saves survive a transient config.json lock - ([6e65d3c](https://github.com/IvanLarinDev/dropwheel/commit/6e65d3cb0ae50e961bff0186afee27f2748127bc)) - Ivan Larin
+- (**ui**) fit both location and count lines in the hover chip - ([a294ccb](https://github.com/IvanLarinDev/dropwheel/commit/a294ccb64e419dd95588d7d232603621154388a8)) - Ivan Larin
+- (**sort**) apply sorting pauses to text, virtual files, and SendTo - ([8447d5f](https://github.com/IvanLarinDev/dropwheel/commit/8447d5f5f784b720fc5923d0ec9409827afc191a)) - Ivan Larin
+- (**release**) resume after a tag push failure and retry network operations - ([ecbaca1](https://github.com/IvanLarinDev/dropwheel/commit/ecbaca172228a692e95c4c6437b5dba2b9e34aa9)) - Ivan Larin
 #### Documentation
-- (**demo**) плитка с эмодзи и цветом, вторая строка чипа, карточки новых фич - ([e0dbc06](https://github.com/IvanLarinDev/dropwheel/commit/e0dbc0691f9330bc7512a008ed312a9d80c47f94)) - Ivan Larin
-- документация догнала фичи v0.20.0, добавлены README/LLM для tests и scripts - ([3a83533](https://github.com/IvanLarinDev/dropwheel/commit/3a83533916bea4e13bedd69932dfd1c324303243)) - Ivan Larin
+- (**demo**) add emoji and color tiles, a second chip line, and new-feature cards - ([e0dbc06](https://github.com/IvanLarinDev/dropwheel/commit/e0dbc0691f9330bc7512a008ed312a9d80c47f94)) - Ivan Larin
+- bring documentation up to the v0.20.0 feature set and add README/LLM files for tests and scripts - ([3a83533](https://github.com/IvanLarinDev/dropwheel/commit/3a83533916bea4e13bedd69932dfd1c324303243)) - Ivan Larin
 #### Miscellaneous Chores
-- убраны все предупреждения компилятора - ([0a27aea](https://github.com/IvanLarinDev/dropwheel/commit/0a27aea30efa330cd436a929fc30966756be81b3)) - Ivan Larin
+- eliminate all compiler warnings - ([0a27aea](https://github.com/IvanLarinDev/dropwheel/commit/0a27aea30efa330cd436a929fc30966756be81b3)) - Ivan Larin
 
 - - -
 ## [v0.20.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.19.0..v0.20.0) - 2026-07-14
 #### Features
-- (**tray**) иконки пунктов, акцентные галочки и группировка меню - ([0531ccd](https://github.com/IvanLarinDev/dropwheel/commit/0531ccd53fa4c4967e271cc2453a8318019d3fdc)) - Ivan Larin
-- (**tray**) экспорт настроек и перезагрузка конфига с диска - ([71b6ef2](https://github.com/IvanLarinDev/dropwheel/commit/71b6ef291e970bee812893bf05d290ee4d1896fb)) - Ivan Larin
-- (**ui**) хоткеи выбираются чипами вместо ручного ввода - ([df9d8ea](https://github.com/IvanLarinDev/dropwheel/commit/df9d8ea578b5cc635117f5b00526a8d2bc527c7e)) - Ivan Larin
-- (**ui**) второй хоткей — открыть колесо у орба - ([0c12013](https://github.com/IvanLarinDev/dropwheel/commit/0c120133271a14c86e68f00d5cdfa60cffe012ef)) - Ivan Larin
-- (**ui**) настраиваемое время тоста и звук - ([448ef55](https://github.com/IvanLarinDev/dropwheel/commit/448ef55c3dd165ad8d1f94e5635d370df55fe1a7)) - Ivan Larin
-- (**tray**) раздельные паузы авто-сортировки и всей сортировки - ([1b230cc](https://github.com/IvanLarinDev/dropwheel/commit/1b230cc3ae36d141d00e207078e6dc2cc240f9f3)) - Ivan Larin
-- (**tray**) пауза авто-сортировки из трея - ([8b44907](https://github.com/IvanLarinDev/dropwheel/commit/8b4490765030260b5a8dc18e09fe8e2cb3e4e814)) - Ivan Larin
-- (**history**) копирование журнала недавних дропов в буфер - ([f431838](https://github.com/IvanLarinDev/dropwheel/commit/f431838d8ac706e9f1b00277d574a582965c14c6)) - Ivan Larin
-- (**sort**) тост сортировщика называет число папок - ([5699473](https://github.com/IvanLarinDev/dropwheel/commit/5699473d8ec8ff40059254a61cc16836bddebf75)) - Ivan Larin
-- (**ui**) свободное место на диске в чипе наведения - ([8d2419c](https://github.com/IvanLarinDev/dropwheel/commit/8d2419cab4dd0058628d45edf347a3d1d14e0850)) - Ivan Larin
-- (**ui**) свой цвет рамки плитки - ([5d8f0a4](https://github.com/IvanLarinDev/dropwheel/commit/5d8f0a4990a1632ed94557c7a37e441d709ee625)) - Ivan Larin
-- (**ui**) свой эмодзи на плитке вместо иконки - ([11f2bd7](https://github.com/IvanLarinDev/dropwheel/commit/11f2bd73f3522f9a360a5abf24d22c83ad036af5)) - Ivan Larin
-- (**ui**) полный путь цели во всплывающей подсказке плитки - ([4e7dce1](https://github.com/IvanLarinDev/dropwheel/commit/4e7dce181f7dd620281998f16547c5bd6e3e996c)) - Ivan Larin
+- (**tray**) add menu-item icons, accent check marks, and menu grouping - ([0531ccd](https://github.com/IvanLarinDev/dropwheel/commit/0531ccd53fa4c4967e271cc2453a8318019d3fdc)) - Ivan Larin
+- (**tray**) export settings and reload configuration from disk - ([71b6ef2](https://github.com/IvanLarinDev/dropwheel/commit/71b6ef291e970bee812893bf05d290ee4d1896fb)) - Ivan Larin
+- (**ui**) select hotkeys with chips instead of manual input - ([df9d8ea](https://github.com/IvanLarinDev/dropwheel/commit/df9d8ea578b5cc635117f5b00526a8d2bc527c7e)) - Ivan Larin
+- (**ui**) add a second hotkey to open the wheel at the orb - ([0c12013](https://github.com/IvanLarinDev/dropwheel/commit/0c120133271a14c86e68f00d5cdfa60cffe012ef)) - Ivan Larin
+- (**ui**) make toast duration and sound configurable - ([448ef55](https://github.com/IvanLarinDev/dropwheel/commit/448ef55c3dd165ad8d1f94e5635d370df55fe1a7)) - Ivan Larin
+- (**tray**) add separate pause controls for auto-sort and all sorting - ([1b230cc](https://github.com/IvanLarinDev/dropwheel/commit/1b230cc3ae36d141d00e207078e6dc2cc240f9f3)) - Ivan Larin
+- (**tray**) pause auto-sort from the tray - ([8b44907](https://github.com/IvanLarinDev/dropwheel/commit/8b4490765030260b5a8dc18e09fe8e2cb3e4e814)) - Ivan Larin
+- (**history**) copy recent-drop history to the clipboard - ([f431838](https://github.com/IvanLarinDev/dropwheel/commit/f431838d8ac706e9f1b00277d574a582965c14c6)) - Ivan Larin
+- (**sort**) report the folder count in sorter toasts - ([5699473](https://github.com/IvanLarinDev/dropwheel/commit/5699473d8ec8ff40059254a61cc16836bddebf75)) - Ivan Larin
+- (**ui**) show free disk space in the hover chip - ([8d2419c](https://github.com/IvanLarinDev/dropwheel/commit/8d2419cab4dd0058628d45edf347a3d1d14e0850)) - Ivan Larin
+- (**ui**) add a custom tile-border color - ([5d8f0a4](https://github.com/IvanLarinDev/dropwheel/commit/5d8f0a4990a1632ed94557c7a37e441d709ee625)) - Ivan Larin
+- (**ui**) use a custom emoji on a tile instead of its icon - ([11f2bd7](https://github.com/IvanLarinDev/dropwheel/commit/11f2bd73f3522f9a360a5abf24d22c83ad036af5)) - Ivan Larin
+- (**ui**) show the full target path in the tile tooltip - ([4e7dce1](https://github.com/IvanLarinDev/dropwheel/commit/4e7dce181f7dd620281998f16547c5bd6e3e996c)) - Ivan Larin
 #### Bug Fixes
-- (**ui**) читаемая подсветка тёмного меню трея и цвет эмодзи плитки - ([a52c5c6](https://github.com/IvanLarinDev/dropwheel/commit/a52c5c630b8de163bbdbdf52804e22b8a873ba82)) - Ivan Larin
-- (**ui**) отступ контента настроек от полосы прокрутки - ([f598f33](https://github.com/IvanLarinDev/dropwheel/commit/f598f33f16631bf01d773318252306a0ebeb68b1)) - Ivan Larin
-- (**sort**) пауза останавливает и ручную сортировку на плитке - ([f4d87ba](https://github.com/IvanLarinDev/dropwheel/commit/f4d87ba313faf1304df0222993a10e179da4c72d)) - Ivan Larin
-- (**tray**) подтверждать паузу авто-сортировки балуном - ([c7e3db7](https://github.com/IvanLarinDev/dropwheel/commit/c7e3db784f843b10ebc41663b8e647709d586841)) - Ivan Larin
-- (**history**) копировать список через буфер WinForms - ([7d8c577](https://github.com/IvanLarinDev/dropwheel/commit/7d8c577e6a32bb9a85d01a4356f8fec3327c83eb)) - Ivan Larin
-- (**ui**) эмодзи показывается и на плитке группы - ([89fee86](https://github.com/IvanLarinDev/dropwheel/commit/89fee86eb6955f52ebbb46af56ce416b12e332e4)) - Ivan Larin
+- (**ui**) improve dark tray-menu highlighting and tile emoji color readability - ([a52c5c6](https://github.com/IvanLarinDev/dropwheel/commit/a52c5c630b8de163bbdbdf52804e22b8a873ba82)) - Ivan Larin
+- (**ui**) add spacing between Settings content and the scrollbar - ([f598f33](https://github.com/IvanLarinDev/dropwheel/commit/f598f33f16631bf01d773318252306a0ebeb68b1)) - Ivan Larin
+- (**sort**) make the sorting pause stop manual tile sorting too - ([f4d87ba](https://github.com/IvanLarinDev/dropwheel/commit/f4d87ba313faf1304df0222993a10e179da4c72d)) - Ivan Larin
+- (**tray**) confirm auto-sort pauses with a balloon notification - ([c7e3db7](https://github.com/IvanLarinDev/dropwheel/commit/c7e3db784f843b10ebc41663b8e647709d586841)) - Ivan Larin
+- (**history**) copy the list through the WinForms clipboard - ([7d8c577](https://github.com/IvanLarinDev/dropwheel/commit/7d8c577e6a32bb9a85d01a4356f8fec3327c83eb)) - Ivan Larin
+- (**ui**) show emoji on group tiles too - ([89fee86](https://github.com/IvanLarinDev/dropwheel/commit/89fee86eb6955f52ebbb46af56ce416b12e332e4)) - Ivan Larin
 #### Miscellaneous Chores
-- (**design**) waiver на второй хоткей у орба - ([7f19aae](https://github.com/IvanLarinDev/dropwheel/commit/7f19aae283829b9c43e9474882d61576b1c77f44)) - Ivan Larin
-- (**design**) waiver на время и звук тоста - ([0fa26cd](https://github.com/IvanLarinDev/dropwheel/commit/0fa26cdaf12c9f3065f2c1a51169c934d27fbeda)) - Ivan Larin
-- (**design**) waiver на паузу ручной сортировки - ([10ca909](https://github.com/IvanLarinDev/dropwheel/commit/10ca90995bdeb36f1851a6add3c85ce0c8414d15)) - Ivan Larin
-- (**design**) waiver на число папок в тосте сортировщика - ([10854d1](https://github.com/IvanLarinDev/dropwheel/commit/10854d121b42c6a76d2ef2096f9ba2e110cf0849)) - Ivan Larin
-- (**design**) waiver на свободное место в чипе - ([502ee5c](https://github.com/IvanLarinDev/dropwheel/commit/502ee5cf0117659f5e5a8d7e00e5081ba6672539)) - Ivan Larin
-- (**design**) waiver на цвет рамки плитки - ([03b557f](https://github.com/IvanLarinDev/dropwheel/commit/03b557fdb6eb3cc69b4794d2af19fa4cf92a711c)) - Ivan Larin
-- (**design**) waiver на эмодзи плитки - ([feeb15c](https://github.com/IvanLarinDev/dropwheel/commit/feeb15c19928ee8db3c2565c832cb44ff3913305)) - Ivan Larin
-- (**design**) waiver на подсказку пути на плитке - ([ca296b6](https://github.com/IvanLarinDev/dropwheel/commit/ca296b65ac2c3146c3401c3c0bee7c311b4eafe7)) - Ivan Larin
-- (**release**) подтягивать локальный main после релиза - ([5c5d616](https://github.com/IvanLarinDev/dropwheel/commit/5c5d6161bceba74e450a2bb245e33e8ebd3bcfe1)) - Ivan Larin
+- (**design**) add a waiver for the second hotkey at the orb - ([7f19aae](https://github.com/IvanLarinDev/dropwheel/commit/7f19aae283829b9c43e9474882d61576b1c77f44)) - Ivan Larin
+- (**design**) add a waiver for toast duration and sound - ([0fa26cd](https://github.com/IvanLarinDev/dropwheel/commit/0fa26cdaf12c9f3065f2c1a51169c934d27fbeda)) - Ivan Larin
+- (**design**) add a waiver for pausing manual sorting - ([10ca909](https://github.com/IvanLarinDev/dropwheel/commit/10ca90995bdeb36f1851a6add3c85ce0c8414d15)) - Ivan Larin
+- (**design**) add a waiver for the folder count in sorter toasts - ([10854d1](https://github.com/IvanLarinDev/dropwheel/commit/10854d121b42c6a76d2ef2096f9ba2e110cf0849)) - Ivan Larin
+- (**design**) add a waiver for free space in the hover chip - ([502ee5c](https://github.com/IvanLarinDev/dropwheel/commit/502ee5cf0117659f5e5a8d7e00e5081ba6672539)) - Ivan Larin
+- (**design**) add a waiver for the tile-border color - ([03b557f](https://github.com/IvanLarinDev/dropwheel/commit/03b557fdb6eb3cc69b4794d2af19fa4cf92a711c)) - Ivan Larin
+- (**design**) add a waiver for tile emoji - ([feeb15c](https://github.com/IvanLarinDev/dropwheel/commit/feeb15c19928ee8db3c2565c832cb44ff3913305)) - Ivan Larin
+- (**design**) add a waiver for the tile path tooltip - ([ca296b6](https://github.com/IvanLarinDev/dropwheel/commit/ca296b65ac2c3146c3401c3c0bee7c311b4eafe7)) - Ivan Larin
+- (**release**) fast-forward local main after a release - ([5c5d616](https://github.com/IvanLarinDev/dropwheel/commit/5c5d6161bceba74e450a2bb245e33e8ebd3bcfe1)) - Ivan Larin
 
 - - -
 ## [v0.19.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.18.0..v0.19.0) - 2026-07-14
 #### Features
-- (**drop**) выбор поведения при конфликте имён у цели - ([86ab1e5](https://github.com/IvanLarinDev/dropwheel/commit/86ab1e544ce7558c69df2f3503f45acef9053331)) - Ivan Larin
-- (**drop**) переименование файлов по шаблону на цели - ([a316bae](https://github.com/IvanLarinDev/dropwheel/commit/a316bae2cb65ae3fc297db53cfe76c7a5d8153e6)) - Ivan Larin
-- (**link**) дроп нескольких ссылок одним броском - ([f9ea3e5](https://github.com/IvanLarinDev/dropwheel/commit/f9ea3e5fb982845d5e411c98f7d3a1db4896d4b0)) - Ivan Larin
-- (**drop**) копировать путь назначения в буфер после дропа - ([bd1738b](https://github.com/IvanLarinDev/dropwheel/commit/bd1738ba37ee5b62f7feec200ac51200e3ffdd28)) - Ivan Larin
-- (**text**) вставка токенов имени текста кликом по чипам - ([190a0b8](https://github.com/IvanLarinDev/dropwheel/commit/190a0b8be3f637f56b1bd1fa56a54ff8b6bbe587)) - Ivan Larin
-- (**sort**) единый синтаксис ${...} для имени текста и токен ${slug} - ([a565481](https://github.com/IvanLarinDev/dropwheel/commit/a5654815322ab5f6b98d29899fadc736d558b108)) - Ivan Larin
-- (**text**) шаблон имени для сохранённого текста - ([31094e8](https://github.com/IvanLarinDev/dropwheel/commit/31094e8ef72c612ecbecc75435d18c97168cab2d)) - Ivan Larin
+- (**drop**) let targets choose name-conflict behavior - ([86ab1e5](https://github.com/IvanLarinDev/dropwheel/commit/86ab1e544ce7558c69df2f3503f45acef9053331)) - Ivan Larin
+- (**drop**) rename dropped files with a per-target template - ([a316bae](https://github.com/IvanLarinDev/dropwheel/commit/a316bae2cb65ae3fc297db53cfe76c7a5d8153e6)) - Ivan Larin
+- (**link**) drop multiple links in one action - ([f9ea3e5](https://github.com/IvanLarinDev/dropwheel/commit/f9ea3e5fb982845d5e411c98f7d3a1db4896d4b0)) - Ivan Larin
+- (**drop**) copy the destination path to the clipboard after a drop - ([bd1738b](https://github.com/IvanLarinDev/dropwheel/commit/bd1738ba37ee5b62f7feec200ac51200e3ffdd28)) - Ivan Larin
+- (**text**) insert text filename tokens by clicking chips - ([190a0b8](https://github.com/IvanLarinDev/dropwheel/commit/190a0b8be3f637f56b1bd1fa56a54ff8b6bbe587)) - Ivan Larin
+- (**sort**) use shared ${...} syntax for text filenames and add the ${slug} token - ([a565481](https://github.com/IvanLarinDev/dropwheel/commit/a5654815322ab5f6b98d29899fadc736d558b108)) - Ivan Larin
+- (**text**) add a filename template for saved text - ([31094e8](https://github.com/IvanLarinDev/dropwheel/commit/31094e8ef72c612ecbecc75435d18c97168cab2d)) - Ivan Larin
 #### Bug Fixes
-- (**drop**) текст с сайта на папку сохраняется файлом, а не ссылкой - ([f5f4e22](https://github.com/IvanLarinDev/dropwheel/commit/f5f4e227234002c387cacd1873434cbf13f49c48)) - Ivan Larin
+- (**drop**) save website text dropped on a folder as a file instead of a link - ([f5f4e22](https://github.com/IvanLarinDev/dropwheel/commit/f5f4e227234002c387cacd1873434cbf13f49c48)) - Ivan Larin
 #### Documentation
-- возможности группы B в README и демо - ([2958666](https://github.com/IvanLarinDev/dropwheel/commit/2958666a9c5a207baf903f4f8611efdad2cebe91)) - Ivan Larin
-- токен ${slug} и единый синтаксис имени текста в README и демо - ([0858efa](https://github.com/IvanLarinDev/dropwheel/commit/0858efaa8e61f1d8463ed0b5962bc8a66183f595)) - Ivan Larin
+- document group B features in the README and demo - ([2958666](https://github.com/IvanLarinDev/dropwheel/commit/2958666a9c5a207baf903f4f8611efdad2cebe91)) - Ivan Larin
+- document the ${slug} token and shared text filename syntax in the README and demo - ([0858efa](https://github.com/IvanLarinDev/dropwheel/commit/0858efaa8e61f1d8463ed0b5962bc8a66183f595)) - Ivan Larin
 #### Miscellaneous Chores
-- (**design**) waiver на политику конфликта имён - ([b3b0b99](https://github.com/IvanLarinDev/dropwheel/commit/b3b0b998133ea33d0815e72797a4598a949f412b)) - Ivan Larin
-- (**design**) waiver на шаблон имени файла на цели - ([448e060](https://github.com/IvanLarinDev/dropwheel/commit/448e060c5582a6ec864b2e87977da139531ec52d)) - Ivan Larin
-- (**design**) waiver на дроп нескольких ссылок - ([e3fff4c](https://github.com/IvanLarinDev/dropwheel/commit/e3fff4cd0948300f7175ca1bbc369c61097604ed)) - Ivan Larin
-- (**design**) waiver на копирование пути в буфер - ([8aefa07](https://github.com/IvanLarinDev/dropwheel/commit/8aefa07bfa17df3fee34558da94ab1b7b6591670)) - Ivan Larin
-- (**design**) waiver на чипы токенов имени текста - ([460ff83](https://github.com/IvanLarinDev/dropwheel/commit/460ff83db664278f436bf4cb705137534971a686)) - Ivan Larin
-- (**design**) waiver на единый синтаксис токенов и ${slug} - ([119c09c](https://github.com/IvanLarinDev/dropwheel/commit/119c09c95567fbb293504d2c90e5fd0b322b9d40)) - Ivan Larin
-- (**design**) waiver на приоритет текста над ссылкой при дропе - ([32e5129](https://github.com/IvanLarinDev/dropwheel/commit/32e5129f45738515a1316dc7df60fc618bb359df)) - Ivan Larin
-- (**design**) waiver на настройку имени текст-дропа - ([ab8ac2c](https://github.com/IvanLarinDev/dropwheel/commit/ab8ac2c832ee8f745f7594c6dde7f6892f0557f3)) - Ivan Larin
+- (**design**) add a waiver for the name-conflict policy - ([b3b0b99](https://github.com/IvanLarinDev/dropwheel/commit/b3b0b998133ea33d0815e72797a4598a949f412b)) - Ivan Larin
+- (**design**) add a waiver for the per-target filename template - ([448e060](https://github.com/IvanLarinDev/dropwheel/commit/448e060c5582a6ec864b2e87977da139531ec52d)) - Ivan Larin
+- (**design**) add a waiver for dropping multiple links - ([e3fff4c](https://github.com/IvanLarinDev/dropwheel/commit/e3fff4cd0948300f7175ca1bbc369c61097604ed)) - Ivan Larin
+- (**design**) add a waiver for copying the destination path - ([8aefa07](https://github.com/IvanLarinDev/dropwheel/commit/8aefa07bfa17df3fee34558da94ab1b7b6591670)) - Ivan Larin
+- (**design**) add a waiver for text filename token chips - ([460ff83](https://github.com/IvanLarinDev/dropwheel/commit/460ff83db664278f436bf4cb705137534971a686)) - Ivan Larin
+- (**design**) add a waiver for shared token syntax and ${slug} - ([119c09c](https://github.com/IvanLarinDev/dropwheel/commit/119c09c95567fbb293504d2c90e5fd0b322b9d40)) - Ivan Larin
+- (**design**) add a waiver for prioritizing text over links during drops - ([32e5129](https://github.com/IvanLarinDev/dropwheel/commit/32e5129f45738515a1316dc7df60fc618bb359df)) - Ivan Larin
+- (**design**) add a waiver for text-drop filename settings - ([ab8ac2c](https://github.com/IvanLarinDev/dropwheel/commit/ab8ac2c832ee8f745f7594c6dde7f6892f0557f3)) - Ivan Larin
 
 - - -
 ## [v0.18.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.17.0..v0.18.0) - 2026-07-14
 #### Features
-- (**sort**) кликабельные чипы токенов в редакторе правил - ([59c1ffd](https://github.com/IvanLarinDev/dropwheel/commit/59c1ffd38d5bdda6e184edbb29df127a21bb29ed)) - Ivan Larin
-- (**sort**) условие по типу медиа - ([ec6b79a](https://github.com/IvanLarinDev/dropwheel/commit/ec6b79a826a9465c0b44f72091880624b4625434)) - Ivan Larin
-- (**sort**) привычные символы сравнения вместо Gt/Lt в редакторе - ([8e22c0f](https://github.com/IvanLarinDev/dropwheel/commit/8e22c0f630896f0e423aa9c08df946cf00a04586)) - Ivan Larin
-- (**sort**) условие по дате создания файла - ([6112ea5](https://github.com/IvanLarinDev/dropwheel/commit/6112ea5e6464bd07e648a26a7f9283f4f4312ecb)) - Ivan Larin
-- (**sort**) кнопка дублирования правила сортировщика - ([bf977bf](https://github.com/IvanLarinDev/dropwheel/commit/bf977bf3d7d0d9b4c6e199347273e88bf6b5b4e7)) - Ivan Larin
-- (**sort**) включение и выключение правила сортировщика - ([3fe1121](https://github.com/IvanLarinDev/dropwheel/commit/3fe11214846e543de62eafa0e491165f8afd4c38)) - Ivan Larin
-- (**sort**) флажок «НЕ» для инверсии условия правила - ([6866d49](https://github.com/IvanLarinDev/dropwheel/commit/6866d49079b8ebdf14f89c29c8c2a1c4382afcba)) - Ivan Larin
-- (**sort**) настраиваемые размерные корзины в токене size - ([c1bc287](https://github.com/IvanLarinDev/dropwheel/commit/c1bc287c131cc8d1d4fa330137d92aefae3b5880)) - Ivan Larin
-- (**sort**) токен размерной корзины sizebucket в назначении - ([04d8b64](https://github.com/IvanLarinDev/dropwheel/commit/04d8b64254806eceef4405ae79bb1b64d70bee22)) - Ivan Larin
+- (**sort**) add clickable token chips to the rule editor - ([59c1ffd](https://github.com/IvanLarinDev/dropwheel/commit/59c1ffd38d5bdda6e184edbb29df127a21bb29ed)) - Ivan Larin
+- (**sort**) add a media-type condition - ([ec6b79a](https://github.com/IvanLarinDev/dropwheel/commit/ec6b79a826a9465c0b44f72091880624b4625434)) - Ivan Larin
+- (**sort**) use familiar comparison symbols instead of Gt/Lt in the editor - ([8e22c0f](https://github.com/IvanLarinDev/dropwheel/commit/8e22c0f630896f0e423aa9c08df946cf00a04586)) - Ivan Larin
+- (**sort**) add a file-creation-date condition - ([6112ea5](https://github.com/IvanLarinDev/dropwheel/commit/6112ea5e6464bd07e648a26a7f9283f4f4312ecb)) - Ivan Larin
+- (**sort**) add a button to duplicate sorter rules - ([bf977bf](https://github.com/IvanLarinDev/dropwheel/commit/bf977bf3d7d0d9b4c6e199347273e88bf6b5b4e7)) - Ivan Larin
+- (**sort**) enable and disable sorter rules - ([3fe1121](https://github.com/IvanLarinDev/dropwheel/commit/3fe11214846e543de62eafa0e491165f8afd4c38)) - Ivan Larin
+- (**sort**) add a NOT checkbox to invert rule conditions - ([6866d49](https://github.com/IvanLarinDev/dropwheel/commit/6866d49079b8ebdf14f89c29c8c2a1c4382afcba)) - Ivan Larin
+- (**sort**) add configurable size buckets to the size token - ([c1bc287](https://github.com/IvanLarinDev/dropwheel/commit/c1bc287c131cc8d1d4fa330137d92aefae3b5880)) - Ivan Larin
+- (**sort**) add the sizebucket destination token - ([04d8b64](https://github.com/IvanLarinDev/dropwheel/commit/04d8b64254806eceef4405ae79bb1b64d70bee22)) - Ivan Larin
 #### Documentation
-- новые условия и токен size сортировщика в README и демо - ([f016307](https://github.com/IvanLarinDev/dropwheel/commit/f01630727302aa8438237e4d224e047d92c33073)) - Ivan Larin
+- document new sorter conditions and the size token in the README and demo - ([f016307](https://github.com/IvanLarinDev/dropwheel/commit/f01630727302aa8438237e4d224e047d92c33073)) - Ivan Larin
 #### Miscellaneous Chores
-- (**design**) waiver на чипы токенов в редакторе - ([d7f36a6](https://github.com/IvanLarinDev/dropwheel/commit/d7f36a68b091f1cb2e954c870bc5d10975254d40)) - Ivan Larin
-- (**design**) waiver на UI-правки условия типа медиа - ([4260c37](https://github.com/IvanLarinDev/dropwheel/commit/4260c37f5ff3ba0279359b37bf86c77d60842f2e)) - Ivan Larin
-- (**design**) waiver на символы операторов сравнения - ([ab5bc25](https://github.com/IvanLarinDev/dropwheel/commit/ab5bc253ae36d830e63b0bfcdc2d3366ef779d91)) - Ivan Larin
-- (**design**) waiver на UI-правки условия даты создания - ([179e9bf](https://github.com/IvanLarinDev/dropwheel/commit/179e9bf43b725065d0b612001f831770120601a3)) - Ivan Larin
-- (**design**) waiver на UI-правки дублирования правила - ([23a95b9](https://github.com/IvanLarinDev/dropwheel/commit/23a95b955c70bf03b61a08c9909e4ec1f2bb7f41)) - Ivan Larin
-- (**design**) waiver на UI-правки вкл/выкл правила - ([08d97de](https://github.com/IvanLarinDev/dropwheel/commit/08d97dea736478edaa35422a04a71d1843bca398)) - Ivan Larin
-- (**design**) waiver на UI-правки флажка «НЕ» - ([26f4e89](https://github.com/IvanLarinDev/dropwheel/commit/26f4e89625961f55f539f6d068522dbe1ccb7ab6)) - Ivan Larin
-- (**design**) waiver на UI-правки размерных корзин - ([70cf738](https://github.com/IvanLarinDev/dropwheel/commit/70cf7389e3407f6c0ce4c7c1fd429c2c14d35a41)) - Ivan Larin
+- (**design**) add a waiver for token chips in the editor - ([d7f36a6](https://github.com/IvanLarinDev/dropwheel/commit/d7f36a68b091f1cb2e954c870bc5d10975254d40)) - Ivan Larin
+- (**design**) add a waiver for media-type condition UI changes - ([4260c37](https://github.com/IvanLarinDev/dropwheel/commit/4260c37f5ff3ba0279359b37bf86c77d60842f2e)) - Ivan Larin
+- (**design**) add a waiver for comparison-operator symbols - ([ab5bc25](https://github.com/IvanLarinDev/dropwheel/commit/ab5bc253ae36d830e63b0bfcdc2d3366ef779d91)) - Ivan Larin
+- (**design**) add a waiver for creation-date condition UI changes - ([179e9bf](https://github.com/IvanLarinDev/dropwheel/commit/179e9bf43b725065d0b612001f831770120601a3)) - Ivan Larin
+- (**design**) add a waiver for rule-duplication UI changes - ([23a95b9](https://github.com/IvanLarinDev/dropwheel/commit/23a95b955c70bf03b61a08c9909e4ec1f2bb7f41)) - Ivan Larin
+- (**design**) add a waiver for rule enable/disable UI changes - ([08d97de](https://github.com/IvanLarinDev/dropwheel/commit/08d97dea736478edaa35422a04a71d1843bca398)) - Ivan Larin
+- (**design**) add a waiver for NOT-checkbox UI changes - ([26f4e89](https://github.com/IvanLarinDev/dropwheel/commit/26f4e89625961f55f539f6d068522dbe1ccb7ab6)) - Ivan Larin
+- (**design**) add a waiver for size-bucket UI changes - ([70cf738](https://github.com/IvanLarinDev/dropwheel/commit/70cf7389e3407f6c0ce4c7c1fd429c2c14d35a41)) - Ivan Larin
 
 - - -
 ## [v0.17.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.4..v0.17.0) - 2026-07-13
 #### Features
-- (**sort**) токены даты и сортировка папок в правилах - ([3c76761](https://github.com/IvanLarinDev/dropwheel/commit/3c767610a3d3b2bf16d906844dfc2550debfd24f)) - Ivan Larin
+- (**sort**) add date tokens and folder sorting to rules - ([3c76761](https://github.com/IvanLarinDev/dropwheel/commit/3c767610a3d3b2bf16d906844dfc2550debfd24f)) - Ivan Larin
 #### Documentation
-- токены назначения и сортировка папок в README и демо - ([f098453](https://github.com/IvanLarinDev/dropwheel/commit/f0984539331c837b676eb726f850ce3321aec05d)) - Ivan Larin
+- document destination tokens and folder sorting in the README and demo - ([f098453](https://github.com/IvanLarinDev/dropwheel/commit/f0984539331c837b676eb726f850ce3321aec05d)) - Ivan Larin
 #### Miscellaneous Chores
-- (**design**) waiver на UI-правки токенов и сортировки папок - ([0a933b1](https://github.com/IvanLarinDev/dropwheel/commit/0a933b1e9cb197b741fc5812bc6ce1736a30232b)) - Ivan Larin
+- (**design**) add a waiver for token and folder-sorting UI changes - ([0a933b1](https://github.com/IvanLarinDev/dropwheel/commit/0a933b1e9cb197b741fc5812bc6ce1736a30232b)) - Ivan Larin
 
 - - -
 ## [v0.16.4](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.3..v0.16.4) - 2026-07-13
 #### Features
-- (**brand**) иконка приложения в стиле орба (вариант A) - ([fa69d1f](https://github.com/IvanLarinDev/dropwheel/commit/fa69d1f5cf5e2884dfc551942b78b9eec0701066)) - Ivan Larin
-- (**demo**) сцены слоя уверенности и клавиатурной навигации - ([c921322](https://github.com/IvanLarinDev/dropwheel/commit/c92132203497cf8fad44a633ac0c3e817309e076)) - Ivan Larin
-- (**demo**) все четыре раздела настроек в галерее - ([31f287e](https://github.com/IvanLarinDev/dropwheel/commit/31f287e4d4c7260dae938c72b02a80707d9bae9b)) - Ivan Larin
-- (**demo**) сцена переполнения уровня со вторым кольцом - ([20f2a43](https://github.com/IvanLarinDev/dropwheel/commit/20f2a432ff531c8f40d113b157a910c9039527ac)) - Ivan Larin
-- (**demo**) галерея окон интерфейса под четырьмя темами - ([a3cb1db](https://github.com/IvanLarinDev/dropwheel/commit/a3cb1db78ba8a79f8bcec1ca21c047b47094c2c5)) - Ivan Larin
+- (**brand**) add an orb-style application icon (variant A) - ([fa69d1f](https://github.com/IvanLarinDev/dropwheel/commit/fa69d1f5cf5e2884dfc551942b78b9eec0701066)) - Ivan Larin
+- (**demo**) add confidence-layer and keyboard-navigation scenes - ([c921322](https://github.com/IvanLarinDev/dropwheel/commit/c92132203497cf8fad44a633ac0c3e817309e076)) - Ivan Larin
+- (**demo**) show all four Settings sections in the gallery - ([31f287e](https://github.com/IvanLarinDev/dropwheel/commit/31f287e4d4c7260dae938c72b02a80707d9bae9b)) - Ivan Larin
+- (**demo**) add a level-overflow scene with a second ring - ([20f2a43](https://github.com/IvanLarinDev/dropwheel/commit/20f2a432ff531c8f40d113b157a910c9039527ac)) - Ivan Larin
+- (**demo**) add an interface-window gallery across all four themes - ([a3cb1db](https://github.com/IvanLarinDev/dropwheel/commit/a3cb1db78ba8a79f8bcec1ca21c047b47094c2c5)) - Ivan Larin
 #### Documentation
-- актуализировал README и demo под 0.16.x - ([dcb1d3d](https://github.com/IvanLarinDev/dropwheel/commit/dcb1d3d6e0eee253f0c478b59755b3b44e26fcb0)) - Ivan Larin
+- update the README and demo for 0.16.x - ([dcb1d3d](https://github.com/IvanLarinDev/dropwheel/commit/dcb1d3d6e0eee253f0c478b59755b3b44e26fcb0)) - Ivan Larin
 
 - - -
 ## [v0.16.3](https://github.com/IvanLarinDev/dropwheel/compare/v0.16.2..v0.16.3) - 2026-07-13

@@ -1,68 +1,75 @@
-# scripts — служебные скрипты
+# scripts — maintenance scripts
 
-Здесь лежит один скрипт — `release.ps1`, единственная точка входа для выпуска релиза.
-Руками теги не ставим и релизы на GitHub не создаём: всё делает скрипт, в правильном
-порядке и с проверками.
+This directory contains one script: `release.ps1`, the only entry point for
+publishing a release. Do not create tags or GitHub releases manually; the
+script performs every step in the required order and verifies the result.
 
-## Как выпустить релиз
+## Publishing a release
 
-Из корня репозитория, в Windows PowerShell (на этой машине нет `pwsh`):
+Run the script from the repository root in Windows PowerShell (`pwsh` is not
+installed on this machine).
 
-Нужны `git`, SDK из `global.json` (сейчас .NET SDK 10.0.302) и авторизованный
-GitHub CLI (`gh auth status`). NuGet graph восстанавливается только по tracked
-lock files; runtime baseline отдельно проверяет `verify-runtime-baseline.ps1`.
+You need `git`, the SDK selected by `global.json` (currently .NET SDK 10.0.302),
+and an authenticated GitHub CLI session (`gh auth status`). The NuGet graph is
+restored only from tracked lock files, while `verify-runtime-baseline.ps1`
+checks the runtime baseline separately.
 
-    ./scripts/release.ps1 -Bump minor -DryRun   # сначала репетиция
-    ./scripts/release.ps1 -Bump minor           # затем по-настоящему
+    ./scripts/release.ps1 -Bump minor -DryRun   # rehearse first
+    ./scripts/release.ps1 -Bump minor           # then publish for real
 
-`-Bump` принимает `patch`, `minor`, `major` или точную версию `X.Y.Z`. Правило
-выбора: `patch` — косметика и демо, `minor` — новые возможности приложения.
+`-Bump` accepts `patch`, `minor`, `major`, or an exact `X.Y.Z` version. Use
+`patch` for cosmetic and demo changes and `minor` for new application features.
 
-Перед запуском все коммиты должны быть запушены: скрипт собирает не рабочую копию,
-а свежий `origin/main` в отдельной временной папке.
+Push every commit before starting. The script builds a fresh `origin/main` in
+an isolated temporary directory, not the current working tree.
 
-## Что скрипт делает
+## What the script does
 
-Проверяет инструменты и авторизацию GitHub, поднимает изолированную рабочую копию
-из `origin/main`, обновляет там только версию проекта и `CHANGELOG.md`, гоняет тесты
-и две публикации (обычную и самодостаточную), пушит релизный коммит, ждёт зелёный CI,
-ставит тег `vX.Y.Z`, дожидается сборки релиза на GitHub, проверяет его артефакты и
-подтягивает локальный `main` к релизному коммиту.
+The script checks tools and GitHub authentication, creates an isolated checkout
+from `origin/main`, changes only the project version and `CHANGELOG.md`, runs the
+tests and both framework-dependent and self-contained publishes, pushes the
+release commit, waits for a green CI run, creates the `vX.Y.Z` tag, waits for the
+GitHub release build, verifies its assets, and fast-forwards local `main` to the
+release commit.
 
-GitHub-релиз содержит **пять обязательных артефактов**: два portable ZIP — framework-dependent
-и self-contained — provenance manifest, SPDX SBOM и файл контрольных сумм:
+Every GitHub release contains **five required assets**: two portable ZIP files
+(framework-dependent and self-contained), a provenance manifest, an SPDX SBOM,
+and a checksum file:
 
 - `Dropwheel-vX.Y.Z-win-x64.zip`;
 - `Dropwheel-vX.Y.Z-win-x64-self-contained.zip`;
-- `Dropwheel-vX.Y.Z-PROVENANCE.json` — commit/tag, точные SDK, TFM, RID,
-  runtime packs и SHA-256 обоих NuGet lock files;
-- `Dropwheel-vX.Y.Z-SBOM.spdx.json` — SPDX software bill of materials для
-  содержимого обеих поставок;
-- `Dropwheel-vX.Y.Z-SHA256SUMS.txt` — SHA-256 двух ZIP, provenance и SBOM.
+- `Dropwheel-vX.Y.Z-PROVENANCE.json` — the commit and tag, exact SDK, TFM, RID,
+  runtime packs, and SHA-256 digests of both NuGet lock files;
+- `Dropwheel-vX.Y.Z-SBOM.spdx.json` — the SPDX software bill of materials for
+  the contents of both distributions;
+- `Dropwheel-vX.Y.Z-SHA256SUMS.txt` — SHA-256 digests for both ZIP files, the
+  provenance manifest, and the SBOM.
 
-Release workflow генерирует metadata до checksum-файла. Component detection для
-SBOM ограничен production-проектом `src/Dropwheel`, а manifest проходит штатную
-validation с запретом пустого списка packages до публикации.
+The Release workflow generates metadata before the checksum file. SBOM
+component detection is limited to the production project in `src/Dropwheel`,
+and the manifest passes standard validation with an empty package list rejected
+before publication.
 
-После публикации `release.ps1` скачивает все пять artifacts и запускает
-`verify-release-assets.ps1`: verifier требует точный набор имён, повторно вычисляет
-SHA-256 четырёх content assets и сверяет provenance `tag` и `commit` с релизом.
-Отсутствующий, повторный, пустой, повреждённый или stale artifact завершает релиз с
-ошибкой. Installer и code signing пока не входят в pipeline.
+After publication, `release.ps1` downloads all five assets and runs
+`verify-release-assets.ps1`. The verifier requires the exact filename set,
+recomputes SHA-256 for all four content assets, and matches the provenance `tag`
+and `commit` to the release. Any missing, duplicate, empty, corrupted, or stale
+asset fails the release. The pipeline does not yet include an installer or code
+signing.
 
-## Если релиз оборвался
+## Resuming an interrupted release
 
-Запусти скрипт ещё раз с точной версией, равной той, что уже стоит на `main`:
+Run the script again with the exact version already present on `main`:
 
     ./scripts/release.ps1 -Bump 0.20.0
 
-Скрипт найдёт готовый релизный коммит и доделает только недостающее (тег, сборку,
-проверку). Сетевые операции повторяются сами до трёх раз, так что разовый сбой сети
-прогон больше не убивает.
+The script finds the existing release commit and completes only the missing
+steps, such as the tag, build, or verification. Network operations retry up to
+three times, so a transient network failure no longer aborts the entire run.
 
-## Чего нельзя
+## Prohibited actions
 
-- Не ставить теги `v*` и не создавать релизы на GitHub руками мимо скрипта.
-- Не запускать два релиза одновременно.
-- Не редактировать `CHANGELOG.md` шапку вручную в момент, когда идёт релиз — скрипт
-  вписывает туда новую секцию сам.
+- Do not create `v*` tags or GitHub releases manually outside the script.
+- Do not run two releases concurrently.
+- Do not edit the top of `CHANGELOG.md` while a release is running; the script
+  inserts the new section itself.
