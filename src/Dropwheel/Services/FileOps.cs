@@ -1,5 +1,4 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using Dropwheel.Models;
 
 namespace Dropwheel.Services;
@@ -22,54 +21,29 @@ internal sealed record FileOperationResult(
     public bool Succeeded => Status == FileOperationStatus.Succeeded;
 }
 
-/// <summary>Copy/move via SHFileOperation: system progress UI, conflict dialogs
-/// and Recycle Bin undo (FOF_ALLOWUNDO) come for free.</summary>
+/// <summary>High-level copy, move, collision, and Recycle Bin operations.</summary>
 public static class FileOps
 {
-    private const uint FO_MOVE = 0x0001, FO_COPY = 0x0002, FO_DELETE = 0x0003;
-    private const ushort FOF_MULTIDESTFILES = 0x0001, FOF_ALLOWUNDO = 0x0040, FOF_NOCONFIRMMKDIR = 0x0200,
-        FOF_NOCONFIRMATION = 0x0010, FOF_SILENT = 0x0004, FOF_RENAMEONCOLLISION = 0x0008, FOF_NOERRORUI = 0x0400;
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct SHFILEOPSTRUCT
-    {
-        public IntPtr hwnd;
-        public uint wFunc;
-        public string pFrom;
-        public string pTo;
-        public ushort fFlags;
-        [MarshalAs(UnmanagedType.Bool)] public bool fAnyOperationsAborted;
-        public IntPtr hNameMappings;
-        public string? lpszProgressTitle;
-    }
-
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern int SHFileOperation(ref SHFILEOPSTRUCT op);
-
-    public static string[] DestinationConflicts(IEnumerable<string> files, string destFolder)
-    {
-        return files
-            .Select(Path.GetFileName)
-            .Where(n => !string.IsNullOrEmpty(n))
-            .Select(n => Path.Combine(destFolder, n!))
-            .Where(p => File.Exists(p) || Directory.Exists(p))
+    public static string[] DestinationConflicts(IEnumerable<string> files, string destinationFolder) =>
+        files.Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .Select(name => Path.Combine(destinationFolder, name!))
+            .Where(PathExists)
             .ToArray();
-    }
 
-    /// <summary>Moves one file or directory without ever replacing or auto-renaming an existing
-    /// destination. Files may move across volumes; directories use the filesystem's atomic rename
-    /// and fail safely when the destination is on another volume.</summary>
-    internal static bool MoveWithoutOverwrite(string source, string destFolder)
+    internal static bool MoveWithoutOverwrite(string source, string destinationFolder)
     {
         var trimmedSource = Path.TrimEndingDirectorySeparator(source);
         var name = Path.GetFileName(trimmedSource);
         if (string.IsNullOrEmpty(name)) return false;
-        var destination = Path.Combine(destFolder, name);
-
+        var destination = Path.Combine(destinationFolder, name);
         try
         {
             if (File.Exists(trimmedSource))
-                Microsoft.VisualBasic.FileIO.FileSystem.MoveFile(trimmedSource, destination, overwrite: false);
+                Microsoft.VisualBasic.FileIO.FileSystem.MoveFile(
+                    trimmedSource,
+                    destination,
+                    overwrite: false);
             else if (Directory.Exists(trimmedSource))
                 Directory.Move(trimmedSource, destination);
             else
@@ -82,71 +56,85 @@ public static class FileOps
         }
     }
 
-    /// <summary>Copy or move files into destFolder. When silent (used by the folder watcher for
-    /// auto-sort) the shell shows no progress window, no error UI and no conflict prompt. Callers
-    /// that need no-overwrite behavior must preflight with DestinationConflicts first.</summary>
-    public static bool Execute(IEnumerable<string> files, string destFolder, DropAction action,
-        bool silent = false, ConflictPolicy policy = ConflictPolicy.Ask) =>
-        ExecuteDetailed(files, destFolder, action, silent, policy).Succeeded;
+    public static bool Execute(
+        IEnumerable<string> files,
+        string destinationFolder,
+        DropAction action,
+        bool silent = false,
+        ConflictPolicy policy = ConflictPolicy.Ask) =>
+        ExecuteDetailed(files, destinationFolder, action, silent, policy).Succeeded;
 
     internal static FileOperationResult ExecuteDetailed(
         IEnumerable<string> files,
-        string destFolder,
+        string destinationFolder,
         DropAction action,
         bool silent = false,
         ConflictPolicy policy = ConflictPolicy.Ask)
     {
-        var list = files.ToArray();
-        if (list.Length == 0) return SuccessfulEmptyResult();
-        var candidates = list.Select(source =>
+        var candidates = files.Select(source =>
         {
-            var destination = Path.Combine(destFolder, Path.GetFileName(Path.TrimEndingDirectorySeparator(source)));
+            var destination = Path.Combine(
+                destinationFolder,
+                Path.GetFileName(Path.TrimEndingDirectorySeparator(source)));
             return new FileOperationCandidate(source, destination, PathExists(destination));
-        }).ToArray();
-        ushort flags = FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR;
-        if (silent) flags |= (ushort)(FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION | FOF_RENAMEONCOLLISION);
-        else flags |= ConflictFlags(policy);
-        var op = new SHFILEOPSTRUCT
-        {
-            wFunc = action == DropAction.Move ? FO_MOVE : FO_COPY,
-            pFrom = string.Join("\0", list) + "\0\0",
-            pTo = destFolder + "\0\0",
-            fFlags = flags,
-        };
-        var returnCode = SHFileOperation(ref op);
-        return ReconcileOutcome(action, candidates, returnCode == 0 && !op.fAnyOperationsAborted, op.fAnyOperationsAborted);
+        });
+        return ExecuteCandidates(candidates, action, silent, policy);
     }
 
-    /// <summary>Copy or move each source to its own explicit destination path, so files can be renamed on
-    /// the way. Uses the shell's multi-destination mode; the source and destination lists line up
-    /// one-to-one. Destination folders are created without a prompt. An empty list is a no-op success.</summary>
-    public static bool ExecuteTo(IReadOnlyList<(string Source, string Dest)> pairs, DropAction action,
-        bool silent = false, ConflictPolicy policy = ConflictPolicy.Ask) =>
+    public static bool ExecuteTo(
+        IReadOnlyList<(string Source, string Dest)> pairs,
+        DropAction action,
+        bool silent = false,
+        ConflictPolicy policy = ConflictPolicy.Ask) =>
         ExecuteToDetailed(pairs, action, silent, policy).Succeeded;
 
     internal static FileOperationResult ExecuteToDetailed(
         IReadOnlyList<(string Source, string Dest)> pairs,
         DropAction action,
         bool silent = false,
-        ConflictPolicy policy = ConflictPolicy.Ask)
+        ConflictPolicy policy = ConflictPolicy.Ask) =>
+        ExecuteCandidates(
+            pairs.Select(pair => new FileOperationCandidate(
+                pair.Source,
+                pair.Dest,
+                PathExists(pair.Dest))),
+            action,
+            silent,
+            policy);
+
+    private static FileOperationResult ExecuteCandidates(
+        IEnumerable<FileOperationCandidate> candidates,
+        DropAction action,
+        bool silent,
+        ConflictPolicy policy)
     {
-        if (pairs.Count == 0) return SuccessfulEmptyResult();
-        var candidates = pairs
-            .Select(pair => new FileOperationCandidate(pair.Source, pair.Dest, PathExists(pair.Dest)))
-            .ToArray();
-        ushort flags = (ushort)(FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR | FOF_MULTIDESTFILES);
-        if (silent) flags |= (ushort)(FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION | FOF_RENAMEONCOLLISION);
-        else flags |= ConflictFlags(policy);
-        var op = new SHFILEOPSTRUCT
-        {
-            wFunc = action == DropAction.Move ? FO_MOVE : FO_COPY,
-            pFrom = string.Join("\0", pairs.Select(p => p.Source)) + "\0\0",
-            pTo = string.Join("\0", pairs.Select(p => p.Dest)) + "\0\0",
-            fFlags = flags,
-        };
-        var returnCode = SHFileOperation(ref op);
-        return ReconcileOutcome(action, candidates, returnCode == 0 && !op.fAnyOperationsAborted, op.fAnyOperationsAborted);
+        var safeCandidates = SafeCandidates(candidates, policy);
+        return safeCandidates.Length == 0
+            ? SuccessfulEmptyResult()
+            : ShellFileOperationBackend.Execute(safeCandidates, action, silent, policy);
     }
+
+    private static FileOperationCandidate[] SafeCandidates(
+        IEnumerable<FileOperationCandidate> candidates,
+        ConflictPolicy policy)
+    {
+        if (policy == ConflictPolicy.KeepBoth) return candidates.ToArray();
+        var destinations = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        return candidates
+            .Where(candidate => destinations.Add(Path.GetFullPath(candidate.Destination)))
+            .ToArray();
+    }
+
+    public static uint ConflictFlags(ConflictPolicy policy) =>
+        ShellFileOperationBackend.ConflictFlags(policy);
+
+    public static bool HasDestinationCollision(
+        IEnumerable<string> sources,
+        string destinationFolder) =>
+        DestinationConflicts(sources, destinationFolder).Length > 0;
+
+    public static bool Delete(IEnumerable<string> paths) =>
+        ShellFileOperationBackend.Delete(paths);
 
     internal static FileOperationResult ReconcileOutcome(
         DropAction action,
@@ -155,16 +143,15 @@ public static class FileOps
         bool aborted)
     {
         if (shellSucceeded)
-        {
             return new FileOperationResult(
                 FileOperationStatus.Succeeded,
                 candidates.Count,
                 candidates.Count,
-                candidates
-                    .Where(candidate => !candidate.DestinationExisted)
-                    .Select(candidate => new FileOperationChange(candidate.Source, candidate.Destination))
+                candidates.Where(candidate => !candidate.DestinationExisted)
+                    .Select(candidate => new FileOperationChange(
+                        candidate.Source,
+                        candidate.Destination))
                     .ToArray());
-        }
 
         var completed = candidates
             .Where(candidate => !candidate.DestinationExisted && OperationCompleted(action, candidate))
@@ -184,33 +171,4 @@ public static class FileOps
 
     private static FileOperationResult SuccessfulEmptyResult() =>
         new(FileOperationStatus.Succeeded, 0, 0, Array.Empty<FileOperationChange>());
-
-    /// <summary>Extra SHFileOperation flags for a conflict policy on an interactive (non-silent) drop.
-    /// Ask shows the shell's dialog; KeepBoth auto-renames to "(2)"; Overwrite replaces without asking (the
-    /// replaced file still goes to the Recycle Bin through ALLOWUNDO). Skip is handled by the caller
-    /// filtering out the colliding files, so it needs no extra flag here.</summary>
-    public static ushort ConflictFlags(ConflictPolicy policy) => policy switch
-    {
-        ConflictPolicy.KeepBoth => FOF_RENAMEONCOLLISION,
-        ConflictPolicy.Overwrite => FOF_NOCONFIRMATION,
-        _ => 0,
-    };
-
-    public static bool HasDestinationCollision(IEnumerable<string> sources, string destFolder)
-        => DestinationConflicts(sources, destFolder).Length > 0;
-
-    /// <summary>Delete to Recycle Bin without confirmation (for Undo after a copy).</summary>
-    public static bool Delete(IEnumerable<string> paths)
-    {
-        var list = paths.ToArray();
-        if (list.Length == 0) return true;
-        var op = new SHFILEOPSTRUCT
-        {
-            wFunc = FO_DELETE,
-            pFrom = string.Join("\0", list) + "\0\0",
-            pTo = "\0\0",
-            fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION,
-        };
-        return SHFileOperation(ref op) == 0 && !op.fAnyOperationsAborted;
-    }
 }

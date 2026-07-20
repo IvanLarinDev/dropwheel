@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -20,10 +20,22 @@ public partial class OverlayWindow
     [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hwnd, int index);
     [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(
+        IntPtr hwnd, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
 
     private const int VK_LBUTTON = 0x01;
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TRANSPARENT = 0x20;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOREDRAW = 0x0008;
+    private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint SWP_SHOWWINDOW = 0x0040;
+    private static readonly IntPtr HwndTopmost = new(-1);
 
     /// <summary>A release closer than this to the orb counts as a click, not a capture, so a stray
     /// Alt+Shift click doesn't pin whatever sits behind the orb.</summary>
@@ -82,9 +94,7 @@ public partial class OverlayWindow
     {
         if (_ghost == null || !GetCursorPos(out var p)) { FinishOrbCapture(); return; }
 
-        var dip = DeviceToDip(p.X, p.Y);
-        _ghost.Left = dip.X - GhostSize / 2.0;
-        _ghost.Top = dip.Y - GhostSize / 2.0;
+        PositionGhostAtCursor(p.X, p.Y);
 
         bool armed = CursorTargetLocator.LooksLikeTargetWindow(IsOwnWindow);
         SetGhostArmed(armed);
@@ -160,7 +170,6 @@ public partial class OverlayWindow
 
     private void SpawnGhost(int screenX, int screenY)
     {
-        var spawn = DeviceToDip(screenX, screenY);
         var th = Themes.Current;
         _ghostCore = new Ellipse
         {
@@ -223,12 +232,38 @@ public partial class OverlayWindow
             ShowActivated = false,
             Topmost = true,
             ResizeMode = ResizeMode.NoResize,
-            Left = spawn.X - GhostSize / 2.0,
-            Top = spawn.Y - GhostSize / 2.0,
+            WindowStartupLocation = WindowStartupLocation.Manual,
             Content = grid,
         };
         _ghost.Show();
+        PositionGhostAtCursor(screenX, screenY);
         SetClickThrough(_ghost, true);
+    }
+
+    /// <summary>GetCursorPos is physical-pixel based. Move the ghost HWND in that same coordinate
+    /// space, then center it using its actual native size after any per-monitor DPI transition.</summary>
+    private void PositionGhostAtCursor(int screenX, int screenY)
+    {
+        if (_ghost == null) return;
+        var hwnd = new WindowInteropHelper(_ghost).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        _ = SetWindowPos(
+            hwnd,
+            HwndTopmost,
+            screenX,
+            screenY,
+            0,
+            0,
+            SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW);
+        if (!GetWindowRect(hwnd, out var rect)) return;
+        _ = SetWindowPos(
+            hwnd,
+            HwndTopmost,
+            screenX - (rect.Right - rect.Left) / 2,
+            screenY - (rect.Bottom - rect.Top) / 2,
+            0,
+            0,
+            SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
 
     private void SetGhostArmed(bool armed) => _ghostArmTarget = armed ? 1 : 0;
@@ -322,6 +357,17 @@ public partial class OverlayWindow
         }
     }
 
+    internal readonly record struct PhysicalWindowBounds(int X, int Y, int Width, int Height);
+
+    internal static PhysicalWindowBounds HighlightBounds(Rect physicalBounds, double padding = 3)
+    {
+        var left = (int)Math.Floor(physicalBounds.Left - padding);
+        var top = (int)Math.Floor(physicalBounds.Top - padding);
+        var right = (int)Math.Ceiling(physicalBounds.Right + padding);
+        var bottom = (int)Math.Ceiling(physicalBounds.Bottom + padding);
+        return new PhysicalWindowBounds(left, top, right - left, bottom - top);
+    }
+
     private void ShowHighlight(Rect r)
     {
         var th = Themes.Current;
@@ -348,8 +394,17 @@ public partial class OverlayWindow
             SetClickThrough(_hi, true);
         }
         _hiBorder!.BorderBrush = new SolidColorBrush(th.Accent);
-        _hi.Left = r.X - 3; _hi.Top = r.Y - 3;
-        _hi.Width = r.Width + 6; _hi.Height = r.Height + 6;
+        // UI Automation reports physical screen pixels, while WPF's geometry properties are DIPs.
+        // Position the HWND directly so the frame remains exact across mixed-scale monitors.
+        var bounds = HighlightBounds(r);
+        SetWindowPos(
+            new WindowInteropHelper(_hi).Handle,
+            HwndTopmost,
+            bounds.X,
+            bounds.Y,
+            bounds.Width,
+            bounds.Height,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW);
         _hi.Visibility = Visibility.Visible;
     }
 
@@ -371,8 +426,13 @@ public partial class OverlayWindow
     {
         if (_ghost == null) { onArrived(); return; }
 
-        double fromLeft = _ghost.Left, fromTop = _ghost.Top;
-        double toLeft = Left + HalfSize - GhostSize / 2.0, toTop = Top + HalfSize - GhostSize / 2.0;
+        var ghostHandle = new WindowInteropHelper(_ghost).Handle;
+        var orbHandle = new WindowInteropHelper(this).Handle;
+        if (!GetWindowRect(ghostHandle, out var from) || !GetWindowRect(orbHandle, out var orb))
+        {
+            onArrived();
+            return;
+        }
         var duration = TimeSpan.FromMilliseconds(ScaleTiming(180, AnimationSpeed()));
         var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
 
@@ -384,8 +444,19 @@ public partial class OverlayWindow
             double e = ease.Ease(t);
             if (_ghost != null)
             {
-                _ghost.Left = fromLeft + (toLeft - fromLeft) * e;
-                _ghost.Top = fromTop + (toTop - fromTop) * e;
+                if (GetWindowRect(ghostHandle, out var current))
+                {
+                    var targetLeft = (orb.Left + orb.Right - (current.Right - current.Left)) / 2;
+                    var targetTop = (orb.Top + orb.Bottom - (current.Bottom - current.Top)) / 2;
+                    _ = SetWindowPos(
+                        ghostHandle,
+                        HwndTopmost,
+                        (int)Math.Round(from.Left + (targetLeft - from.Left) * e),
+                        (int)Math.Round(from.Top + (targetTop - from.Top) * e),
+                        0,
+                        0,
+                        SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                }
                 _ghost.Opacity = 0.9 * (1 - e);
             }
             if (t >= 1) { timer.Stop(); onArrived(); }
@@ -414,6 +485,15 @@ public partial class OverlayWindow
     /// something rather than a click on the orb itself.</summary>
     internal static bool IsCapture(double cursorX, double cursorY, double homeCx, double homeCy, double minTravel)
         => Math.Sqrt(Math.Pow(cursorX - homeCx, 2) + Math.Pow(cursorY - homeCy, 2)) >= minTravel;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
 
     private bool IsOwnWindow(IntPtr hwnd)
         => hwnd == new WindowInteropHelper(this).Handle

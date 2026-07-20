@@ -12,7 +12,8 @@ public partial class OverlayWindow
         string[] Sources,
         string Dest,
         string[] ExistingDestinations,
-        string[]? DestPaths = null);
+        string[]? DestPaths = null,
+        FileUndoSnapshot[]? DestinationsAfter = null);
 
     /// <summary>A snapshot of a level taken before targets were added, so the add can be undone by
     /// restoring the level to exactly what it was — order and pin positions included. The added
@@ -77,12 +78,49 @@ public partial class OverlayWindow
     }
 
     internal static FileOp BuildPartialOp(DropAction act, IReadOnlyList<FileOperationChange> changes) =>
-        new(
+        CaptureUndoState(BuildUniquePartialOp(act, changes));
+
+    private static FileOp BuildUniquePartialOp(
+        DropAction act,
+        IReadOnlyList<FileOperationChange> changes)
+    {
+        // A destination produced more than once has no unambiguous source to restore and must not be
+        // armed for app-level Undo. This also prevents duplicate dictionary keys in the move path.
+        var unique = changes
+            .GroupBy(
+                change => IOPath.GetFullPath(change.Destination),
+                StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() == 1)
+            .Select(group => group.Single())
+            .ToArray();
+        return new FileOp(
             act,
-            changes.Select(change => change.Source).ToArray(),
+            unique.Select(change => change.Source).ToArray(),
             Dest: "",
             ExistingDestinations: Array.Empty<string>(),
-            changes.Select(change => change.Destination).ToArray());
+            unique.Select(change => change.Destination).ToArray());
+    }
+
+    /// <summary>Captures the exact filesystem objects produced by an operation. Later Undo is allowed
+    /// only while those same objects still exist with unchanged size and write time.</summary>
+    internal static FileOp CaptureUndoState(FileOp op)
+    {
+        var protectedPaths = op.ExistingDestinations
+            .Select(IOPath.GetFullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var destinations = op.DestPaths
+            ?? op.Sources.Select(source => IOPath.Combine(op.Dest, IOPath.GetFileName(source))).ToArray();
+        var snapshots = destinations
+            .Where(path => !protectedPaths.Contains(IOPath.GetFullPath(path)))
+            .Select(FileUndoSnapshot.Capture)
+            .Where(snapshot => snapshot.HasValue)
+            .Select(snapshot => snapshot!.Value)
+            .ToArray();
+        return op with { DestinationsAfter = snapshots };
+    }
+
+    internal static bool CanUndo(FileOp op) => op.DestinationsAfter?.Any(snapshot =>
+        snapshot.MatchesCurrent() && (op.Act == DropAction.Move || !snapshot.IsDirectory)) == true;
 
     /// <summary>The file name a target's NameTemplate produces for a source file: the template expanded
     /// with the built-in ${name} tokens, sanitized to a single name, then the source's own extension. An
@@ -102,9 +140,9 @@ public partial class OverlayWindow
         return new string(chars).Trim().TrimEnd('.', ' ');
     }
 
-    /// <summary>Best-effort: copy → delete the copies (to Recycle Bin), move → move back.
-    /// Files renamed by the conflict dialog are not tracked. Adding a target is undone by
-    /// restoring the level snapshot.</summary>
+    /// <summary>Best-effort: copy → delete unchanged copied files (to Recycle Bin), move → move
+    /// unchanged destinations back. Actual collision-renamed paths are tracked. Adding a target is
+    /// undone by restoring the level snapshot.</summary>
     private void Undo()
     {
         if (_lastDelete is { } del)
@@ -156,14 +194,11 @@ public partial class OverlayWindow
 
     internal static string[] CopyUndoTargets(FileOp op)
     {
-        var protectedPaths = new HashSet<string>(
-            op.ExistingDestinations.Select(p => IOPath.GetFullPath(p)),
-            StringComparer.OrdinalIgnoreCase);
-        // A renamed drop knows its exact destination paths; a plain drop keeps the source names in Dest.
-        var candidates = op.DestPaths ?? op.Sources.Select(s => IOPath.Combine(op.Dest, IOPath.GetFileName(s)));
-        return candidates
-            .Where(p => !protectedPaths.Contains(IOPath.GetFullPath(p)))
-            .Where(p => File.Exists(p) || Directory.Exists(p))
+        // Directories are deliberately excluded: a changed file below a copied tree does not update the
+        // root directory's identity, so deleting the tree could still destroy new user data.
+        return (op.DestinationsAfter ?? [])
+            .Where(snapshot => !snapshot.IsDirectory && snapshot.MatchesCurrent())
+            .Select(snapshot => snapshot.Path)
             .ToArray();
     }
 
@@ -174,27 +209,38 @@ public partial class OverlayWindow
         {
             var copies = CopyUndoTargets(op);
             if (copies.Length > 0) ok = FileOps.Delete(copies);
+            else ok = false;
         }
         else if (op.DestPaths is { } destPaths)
         {
+            var snapshots = (op.DestinationsAfter ?? [])
+                .ToDictionary(snapshot => snapshot.Path, StringComparer.OrdinalIgnoreCase);
             // Renamed move: put each file back at its original full path (name and folder).
             for (int i = 0; i < op.Sources.Length; i++)
             {
                 var dst = destPaths[i];
                 if (!op.ExistingDestinations.Contains(dst, StringComparer.OrdinalIgnoreCase)
-                    && (File.Exists(dst) || Directory.Exists(dst)))
+                    && snapshots.TryGetValue(IOPath.GetFullPath(dst), out var snapshot)
+                    && snapshot.MatchesCurrent()
+                    && !File.Exists(op.Sources[i]) && !Directory.Exists(op.Sources[i]))
                     ok &= FileOps.ExecuteTo(new[] { (dst, op.Sources[i]) }, DropAction.Move);
+                else ok = false;
             }
         }
         else
         {
+            var snapshots = (op.DestinationsAfter ?? [])
+                .ToDictionary(snapshot => snapshot.Path, StringComparer.OrdinalIgnoreCase);
             foreach (var src in op.Sources)
             {
                 var dst = IOPath.Combine(op.Dest, IOPath.GetFileName(src));
                 if (!op.ExistingDestinations.Contains(dst, StringComparer.OrdinalIgnoreCase)
-                    && (File.Exists(dst) || Directory.Exists(dst))
+                    && snapshots.TryGetValue(IOPath.GetFullPath(dst), out var snapshot)
+                    && snapshot.MatchesCurrent()
+                    && !File.Exists(src) && !Directory.Exists(src)
                     && IOPath.GetDirectoryName(src) is { Length: > 0 } dir)
                     ok &= FileOps.Execute(new[] { dst }, dir, DropAction.Move);
+                else ok = false;
             }
         }
         return ok;

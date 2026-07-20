@@ -10,6 +10,7 @@ namespace Dropwheel.Services;
 /// The extension is picked from the content: markdown-looking text becomes .md, otherwise .txt.</summary>
 public static class TextDropService
 {
+    internal const int MaxTextBytes = 8 * 1024 * 1024;
     private static readonly string[] PlainTextFormats =
     {
         DataFormats.UnicodeText,
@@ -143,13 +144,22 @@ public static class TextDropService
 
     private static string? TextFromData(object? data)
     {
-        if (data is string text) return text;
-        if (data is byte[] bytes) return TextFromBytes(bytes);
+        if (data is string text)
+            return Encoding.UTF8.GetByteCount(text) <= MaxTextBytes ? text : null;
+        if (data is byte[] bytes)
+            return bytes.Length <= MaxTextBytes ? TextFromBytes(bytes) : null;
         if (data is not Stream stream) return null;
 
         if (stream.CanSeek) stream.Position = 0;
         using var copy = new MemoryStream();
-        stream.CopyTo(copy);
+        var buffer = new byte[81920];
+        while (true)
+        {
+            var read = stream.Read(buffer, 0, buffer.Length);
+            if (read <= 0) break;
+            if (copy.Length + read > MaxTextBytes) return null;
+            copy.Write(buffer, 0, read);
+        }
         return TextFromBytes(copy.ToArray());
     }
 
@@ -231,14 +241,15 @@ public static class TextDropService
 
         var start = Regex.Match(html, @"StartFragment:(\d+)");
         var end = Regex.Match(html, @"EndFragment:(\d+)");
+        var utf8 = Encoding.UTF8.GetBytes(html);
         if (start.Success
             && end.Success
             && int.TryParse(start.Groups[1].Value, out var startIndex)
             && int.TryParse(end.Groups[1].Value, out var endIndex)
             && startIndex >= 0
             && endIndex > startIndex
-            && endIndex <= html.Length)
-            return html[startIndex..endIndex];
+            && endIndex <= utf8.Length)
+            return Encoding.UTF8.GetString(utf8, startIndex, endIndex - startIndex);
 
         return html;
     }

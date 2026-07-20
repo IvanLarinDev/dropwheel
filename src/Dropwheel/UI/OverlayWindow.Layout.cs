@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -212,7 +212,7 @@ public partial class OverlayWindow
         ResetGroupShortcutInput(preserveActivation: false);
         var dlg = new TargetEditorWindow(t, preselectGroup, isNew) { Owner = this };
         dlg.ShowDialog();
-        TargetStore.Save();
+        if (dlg.HasChanges) TargetStore.Save();
         RefreshGroupShortcuts();
         if (_open) BuildCloud();
         if (dlg.Deleted is { } del)

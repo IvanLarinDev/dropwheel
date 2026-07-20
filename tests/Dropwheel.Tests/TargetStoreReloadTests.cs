@@ -45,6 +45,47 @@ public sealed class TargetStoreReloadTests : IDisposable
     }
 
     [Fact]
+    public void Null_targets_are_normalized_before_the_config_is_published()
+    {
+        File.WriteAllText(TargetStore.FilePath, """{"HoverDelayMs": 888, "Targets": null}""");
+
+        Assert.True(TargetStore.TryReload(out var error));
+
+        Assert.Equal("", error);
+        Assert.Equal(888, TargetStore.Config.HoverDelayMs);
+        Assert.NotNull(TargetStore.Config.Targets);
+        Assert.Empty(TargetStore.Config.Targets);
+    }
+
+    [Fact]
+    public void Null_entries_are_removed_recursively_before_the_config_is_published()
+    {
+        File.WriteAllText(TargetStore.FilePath, """
+            {
+              "Targets": [
+                null,
+                {
+                  "Name": "group",
+                  "Children": [
+                    null,
+                    { "Name": "leaf", "Path": "x", "Rules": [null, { "Dest": null, "All": null }] }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        Assert.True(TargetStore.TryReload(out var error));
+
+        Assert.Equal("", error);
+        var group = Assert.Single(TargetStore.Config.Targets);
+        var leaf = Assert.Single(group.Children!);
+        var rule = Assert.Single(leaf.Rules!);
+        Assert.Equal("", rule.Dest);
+        Assert.Empty(rule.All);
+    }
+
+    [Fact]
     public void Broken_file_keeps_current_settings_and_reports_the_error()
     {
         TargetStore.Load();
@@ -79,5 +120,24 @@ public sealed class TargetStoreReloadTests : IDisposable
 
         Assert.Contains("not found", error);
         Assert.Equal(444, TargetStore.Config.HoverDelayMs);
+    }
+
+    [Fact]
+    public async Task Failed_replacement_write_keeps_the_live_config_unchanged()
+    {
+        TargetStore.Load();
+        var live = TargetStore.Config;
+        var draft = TargetStore.CloneConfig(live);
+        draft.HoverDelayMs = 999;
+        var fileInsteadOfDirectory = Path.Combine(_root, "not-a-directory");
+        File.WriteAllText(fileInsteadOfDirectory, "occupied");
+        TargetStore.DirOverride = fileInsteadOfDirectory;
+        try
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => TargetStore.ReplaceAndSaveAsync(draft));
+            Assert.Same(live, TargetStore.Config);
+            Assert.NotEqual(999, TargetStore.Config.HoverDelayMs);
+        }
+        finally { TargetStore.DirOverride = _root; }
     }
 }

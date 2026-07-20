@@ -111,9 +111,68 @@ public sealed class ExecutableTargetTests
             });
 
         Assert.Equal("runner.exe", psi.FileName);
-        Assert.Equal("--script \"C:\\scripts\\tool.bat\" --dir \"C:\\scripts\" -- \"C:\\drop\\a.txt\" \"C:\\drop\\b b.txt\"", psi.Arguments);
+        Assert.Equal(
+            new[]
+            {
+                "--script", @"C:\scripts\tool.bat", "--dir", @"C:\scripts", "--",
+                @"C:\drop\a.txt", @"C:\drop\b b.txt",
+            },
+            psi.ArgumentList);
+        Assert.Equal("", psi.Arguments);
         Assert.Equal(@"C:\scripts", psi.WorkingDirectory);
-        Assert.True(psi.UseShellExecute);
+        Assert.False(psi.UseShellExecute);
+    }
+
+    [Fact]
+    public void Custom_launch_keeps_each_file_as_an_opaque_argument()
+    {
+        var psi = LaunchService.BuildStartInfo(
+            @"C:\scripts\tool.bat",
+            new[] { @"C:\drop\a & calc.txt", @"C:\drop\b b.txt" },
+            new LaunchOptions { FileName = "runner.exe", Arguments = "-- {files}" });
+
+        Assert.Equal(new[] { "--", @"C:\drop\a & calc.txt", @"C:\drop\b b.txt" }, psi.ArgumentList);
+    }
+
+    [Theory]
+    [InlineData("powershell.exe", "-Command Write-Output {files}")]
+    [InlineData("powershell.exe", "-C Write-Output {files}")]
+    [InlineData("powershell.exe", "-Com Write-Output {files}")]
+    [InlineData("powershell.exe", "-CommandWithArgs Write-Output {files}")]
+    [InlineData("powershell.exe", "-e {files}")]
+    [InlineData("pwsh", "-Command Write-Output {files}")]
+    [InlineData("cmd.exe", "/c echo {files}")]
+    [InlineData("cmd.exe", "/cecho {files}")]
+    [InlineData("cmd.exe", "/q/c echo {files}")]
+    [InlineData("cmd.exe", "/d/cecho {files}")]
+    [InlineData("python.exe", "-c print({files})")]
+    [InlineData("python.exe", "-Ic print({files})")]
+    [InlineData("py", "-Eic print({files})")]
+    [InlineData("bash", "-lc echo {files}")]
+    [InlineData("sh", "-xec echo {files}")]
+    [InlineData("wsl", "bash -lc echo {files}")]
+    public void Custom_shell_command_mode_rejects_file_expansion(string program, string arguments)
+    {
+        var options = new LaunchOptions { FileName = program, Arguments = arguments };
+
+        Assert.Throws<InvalidOperationException>(() => LaunchService.BuildStartInfo(
+            @"C:\scripts\tool.bat", new[] { @"C:\drop\a & calc.txt" }, options));
+    }
+
+    [Theory]
+    [InlineData("powershell.exe", "-Com Write-Output {target}")]
+    [InlineData("cmd.exe", "/cecho {targetDir}")]
+    [InlineData("python.exe", "-c print({target})")]
+    public void Custom_shell_command_mode_rejects_all_dynamic_placeholders(
+        string program,
+        string arguments)
+    {
+        var options = new LaunchOptions { FileName = program, Arguments = arguments };
+
+        Assert.Throws<InvalidOperationException>(() => LaunchService.BuildStartInfo(
+            @"C:\drop\$(Write-Output injected).ps1",
+            Array.Empty<string>(),
+            options));
     }
 
     [Fact]

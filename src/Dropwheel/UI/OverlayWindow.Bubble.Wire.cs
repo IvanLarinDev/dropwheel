@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -44,7 +44,7 @@ public partial class OverlayWindow
             _suppressTileClick = false;
         };
         panel.MouseMove += (_, e) => StartTileReorderDrag(panel, t, e);
-        panel.MouseLeftButtonUp += (_, e) =>
+        panel.MouseLeftButtonUp += async (_, e) =>
         {
             _tileDragCandidate = null;
             if (_suppressTileClick)
@@ -53,15 +53,14 @@ public partial class OverlayWindow
                 e.Handled = true;
                 return;
             }
-            if (TryHandleExplorerBridgeTarget(t))
+            e.Handled = true;
+            if (await TryHandleExplorerBridgeTargetAsync(t))
             {
-                e.Handled = true;
                 return;
             }
             if (t.IsGroup) EnterGroup(t);
             else if (!t.Exists) ShowMissingMenu(t);
             else { LaunchService.Launch(t); CloseCloud(); }
-            e.Handled = true;
         };
         panel.MouseRightButtonUp += (_, e) => { OpenEditor(t); e.Handled = true; };
         panel.MouseUp += (_, e) =>

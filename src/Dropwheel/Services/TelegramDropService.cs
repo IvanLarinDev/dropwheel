@@ -89,31 +89,26 @@ public static class TelegramDropService
             ? linkTarget.Path
             : target.Path;
 
-    public static void PasteIntoTelegramWhenReady(Action<bool>? completed = null)
+    public static async Task<bool> PasteIntoTelegramWhenReadyAsync()
     {
-        _ = Task.Run(async () =>
+        try
         {
-            bool pasted = false;
-            try
-            {
-                pasted = await PasteIntoTelegramWhenReady(
-                    PasteTimeout,
-                    PastePoll,
-                    foregroundTelegramWindow: ForegroundTelegramWindow,
-                    activateTelegramWindow: TryActivateTelegramWindow);
-            }
-            catch (Exception ex)
-            {
-                ErrorLog.Write("Could not paste Telegram drop payload", ex);
-            }
-
-            completed?.Invoke(pasted);
-        });
+            return await PasteIntoTelegramWhenReady(
+                PasteTimeout,
+                PastePoll,
+                foregroundTelegramWindow: ForegroundTelegramWindow,
+                activateTelegramWindow: TryActivateTelegramWindow);
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Could not paste Telegram drop payload", ex);
+            return false;
+        }
     }
 
-    public static TelegramDropResult? CopyToClipboard(IDataObject data, string stagingFolder)
+    public static async Task<TelegramDropResult?> CopyToClipboardAsync(IDataObject data, string stagingFolder)
     {
-        var payload = CreatePayload(data, stagingFolder);
+        var payload = await CreatePayloadAsync(data, stagingFolder);
         if (payload == null) return null;
 
         payload.Copy();
@@ -130,23 +125,22 @@ public static class TelegramDropService
     }
 
     private static bool HasSendablePayload(IDataObject data) =>
-        RealFiles(data).Length > 0
-        || VirtualFileService.HasVirtualFiles(data)
+        data is System.Runtime.InteropServices.ComTypes.IDataObject
+        || RealFiles(data).Length > 0
         || TextDropService.HasPotentialText(data);
 
-    internal static TelegramClipboardPayload? CreatePayload(IDataObject data, string stagingFolder)
+    internal static async Task<TelegramClipboardPayload?> CreatePayloadAsync(
+        IDataObject data,
+        string stagingFolder)
     {
         var realFiles = RealFiles(data);
         if (realFiles.Length > 0)
             return new TelegramClipboardPayload { Kind = TelegramDropKind.Files, Files = realFiles };
 
-        if (VirtualFileService.HasVirtualFiles(data))
-        {
-            Directory.CreateDirectory(stagingFolder);
-            var saved = VirtualFileService.Extract(data, stagingFolder);
-            if (saved.Length > 0)
-                return new TelegramClipboardPayload { Kind = TelegramDropKind.Files, Files = saved };
-        }
+        Directory.CreateDirectory(stagingFolder);
+        var saved = await VirtualFileService.ExtractAsync(data, stagingFolder);
+        if (saved.Length > 0)
+            return new TelegramClipboardPayload { Kind = TelegramDropKind.Files, Files = saved };
 
         var text = TextDropService.GetText(data);
         return string.IsNullOrEmpty(text)
@@ -160,7 +154,8 @@ public static class TelegramDropService
         Action? paste = null,
         Func<IntPtr>? foregroundTelegramWindow = null,
         Func<IntPtr>? activateTelegramWindow = null,
-        TimeSpan? readyDelay = null)
+        TimeSpan? readyDelay = null,
+        Func<Func<bool>, Task<bool>>? dispatchPaste = null)
     {
         var foreground = foregroundTelegramWindow ?? ForegroundTelegramWindow;
         var deadline = DateTime.UtcNow + timeout;
@@ -169,13 +164,23 @@ public static class TelegramDropService
             var expectedWindow = foreground();
             if (expectedWindow != IntPtr.Zero)
             {
-                return await PasteAfterReadyDelay(expectedWindow, foreground, paste, readyDelay);
+                return await PasteAfterReadyDelay(
+                    expectedWindow,
+                    foreground,
+                    paste,
+                    readyDelay,
+                    dispatchPaste);
             }
 
             var activatedWindow = activateTelegramWindow?.Invoke() ?? IntPtr.Zero;
             if (activatedWindow != IntPtr.Zero)
             {
-                return await PasteAfterReadyDelay(activatedWindow, foreground, paste, readyDelay);
+                return await PasteAfterReadyDelay(
+                    activatedWindow,
+                    foreground,
+                    paste,
+                    readyDelay,
+                    dispatchPaste);
             }
 
             await Task.Delay(poll);
@@ -189,13 +194,25 @@ public static class TelegramDropService
         IntPtr expectedWindow,
         Func<IntPtr> foregroundTelegramWindow,
         Action? paste,
-        TimeSpan? readyDelay)
+        TimeSpan? readyDelay,
+        Func<Func<bool>, Task<bool>>? dispatchPaste)
     {
         await Task.Delay(readyDelay ?? PasteReadyDelay);
-        if (foregroundTelegramWindow() != expectedWindow) return false;
-        if (paste != null) paste();
-        else await Application.Current.Dispatcher.InvokeAsync(() => System.Windows.Forms.SendKeys.SendWait("^v"));
-        return true;
+        bool PasteIfStillFocused()
+        {
+            if (foregroundTelegramWindow() != expectedWindow) return false;
+            if (paste != null) paste();
+            else System.Windows.Forms.SendKeys.SendWait("^v");
+            return true;
+        }
+
+        if (dispatchPaste != null) return await dispatchPaste(PasteIfStillFocused);
+        if (paste != null)
+        {
+            return PasteIfStillFocused();
+        }
+
+        return await Application.Current.Dispatcher.InvokeAsync(PasteIfStillFocused);
     }
 
     internal static bool IsTelegramProcessName(string? processName) =>

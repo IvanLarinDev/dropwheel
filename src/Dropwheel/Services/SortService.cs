@@ -1,8 +1,4 @@
-using System.Collections.Concurrent;
-using System.Globalization;
 using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
 using Dropwheel.Models;
 
 namespace Dropwheel.Services;
@@ -10,727 +6,141 @@ namespace Dropwheel.Services;
 /// <summary>Distributes files according to a sorter target's rules.</summary>
 public static class SortService
 {
-    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(250);
-
-    /// <summary>Returns a plan: destination folder → files. Uses the rich Rules engine when
-    /// the target has Rules, otherwise the legacy SortRules. With no match and no catch-all
-    /// a file goes to the target root (t.Path).</summary>
-    public static Dictionary<string, List<string>> Plan(TargetItem t, IEnumerable<string> files)
+    public static Dictionary<string, List<string>> Plan(TargetItem target, IEnumerable<string> files)
     {
-        bool useV2 = t.Rules is { Count: > 0 };
-        // One timestamp for the whole drop so every file in it shares the same ${date} folder,
-        // even if the loop crosses a second or midnight boundary while running.
+        var useRichRules = target.Rules is { Count: > 0 };
         var now = DateTime.Now;
-        var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var f in files)
+        var plan = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in files)
         {
-            var folder = useV2 ? ResolveFolderV2(t, f, now) : ResolveFolder(t, f);
-            if (!map.TryGetValue(folder, out var list)) map[folder] = list = new();
-            list.Add(f);
+            var folder = useRichRules
+                ? ResolveFolder(target, file, now)
+                : ResolveLegacyFolder(target, file);
+            if (!plan.TryGetValue(folder, out var group)) plan[folder] = group = [];
+            group.Add(file);
         }
-        return map;
+        return plan;
     }
 
-    public static Dictionary<string, string[]> MovePlan(TargetItem t, IEnumerable<string> files)
+    public static Dictionary<string, string[]> MovePlan(TargetItem target, IEnumerable<string> files)
     {
-        var map = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (folder, group) in Plan(t, files))
+        var plan = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (folder, group) in Plan(target, files))
         {
             var moving = group.Where(file => !SameFolder(folder, file)).ToArray();
-            if (moving.Length > 0) map[folder] = moving;
+            if (moving.Length > 0) plan[folder] = moving;
         }
-        return map;
+        return plan;
     }
 
-    /// <summary>The destination folder is the file's own folder. Then there is nothing to move and,
-    /// more importantly, moving into the same folder could make a watched sorter loop.</summary>
-    public static bool SameFolder(string destFolder, string file)
+    public static bool SameFolder(string destinationFolder, string file)
     {
-        var src = Path.GetDirectoryName(Path.GetFullPath(file));
-        if (src == null) return false;
+        var sourceFolder = Path.GetDirectoryName(Path.GetFullPath(file));
+        if (sourceFolder == null) return false;
         return string.Equals(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(destFolder)),
-            Path.TrimEndingDirectorySeparator(src),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(destinationFolder)),
+            Path.TrimEndingDirectorySeparator(sourceFolder),
             StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Rules engine: first rule whose conditions all match wins. An empty condition
-    /// list is a catch-all. No match → target root. For a folder two extra guards keep a watched
-    /// sorter from eating its own output: a folder already sitting at a location that matches the
-    /// rule's destination shape stays put, and a destination inside the folder itself is refused. A
-    /// no-op is expressed by returning the item's own parent folder, which SameFolder then filters.</summary>
-    private static string ResolveFolderV2(TargetItem t, string file, DateTime now)
+    private static string ResolveFolder(TargetItem target, string file, DateTime now)
     {
-        var meta = FileMeta.Read(file);
-        int idx = MatchedRuleIndex(t.Rules!, meta);
-        if (idx < 0) return t.Path;
-        var rule = t.Rules![idx];
-        if (meta.IsDirectory && AlreadyPlaced(rule, file, t.Path)) return OwnFolder(file);
-        var dest = ExpandDest(rule, file, t.Path, now);
-        if (meta.IsDirectory && DestinationInsideSource(dest, file)) return OwnFolder(file);
-        return dest;
+        var metadata = FileMeta.Read(file);
+        var ruleIndex = MatchedRuleIndex(target.Rules!, metadata);
+        if (ruleIndex < 0) return target.Path;
+        var rule = target.Rules![ruleIndex];
+        if (metadata.IsDirectory && SortTemplate.AlreadyPlaced(rule, file, target.Path))
+            return OwnFolder(file);
+        var destination = SortTemplate.ExpandDest(rule, file, target.Path, now);
+        if (metadata.IsDirectory && SortTemplate.DestinationInsideSource(destination, file))
+            return OwnFolder(file);
+        return destination;
     }
 
-    /// <summary>The folder the item currently lives in. Returning it as a destination makes the move a
-    /// no-op, since SameFolder then skips it.</summary>
     private static string OwnFolder(string file) =>
         Path.GetDirectoryName(Path.GetFullPath(file)) ?? file;
 
-    /// <summary>Index of the first rule that fully matches the item, or -1 for no match (item goes
-    /// to the sorter root). Shared by the real router and the editor preview so both agree exactly
-    /// on which rule catches an item — even when several rules share the same destination.</summary>
     public static int MatchedRuleIndex(IReadOnlyList<SortRule> rules, string file) =>
         MatchedRuleIndex(rules, FileMeta.Read(file));
 
-    /// <summary>Overload taking an already-read <see cref="FileMeta"/> so the router does not stat the
-    /// item twice. A disabled rule is skipped, and a rule only catches an item whose kind (file or
-    /// folder) its Scope allows.</summary>
-    public static int MatchedRuleIndex(IReadOnlyList<SortRule> rules, FileMeta meta)
-    {
-        for (int i = 0; i < rules.Count; i++)
-            if (rules[i].Enabled && ScopeIncludes(rules[i].Scope, meta.IsDirectory)
-                && rules[i].All.All(c => Match(c, meta)))
-                return i;
-        return -1;
-    }
+    public static int MatchedRuleIndex(IReadOnlyList<SortRule> rules, FileMeta metadata) =>
+        SortConditionMatcher.MatchedRuleIndex(rules, metadata);
 
-    /// <summary>Whether a rule of the given scope may catch an item of the given kind.</summary>
-    public static bool ScopeIncludes(RuleScope scope, bool isDirectory) => scope switch
-    {
-        RuleScope.Files => !isDirectory,
-        RuleScope.Folders => isDirectory,
-        RuleScope.Both => true,
-        _ => !isDirectory,
-    };
+    public static bool ScopeIncludes(RuleScope scope, bool isDirectory) =>
+        SortConditionMatcher.ScopeIncludes(scope, isDirectory);
 
-    /// <summary>Legacy resolver: match by file extension, "*" is the fallback.</summary>
-    private static string ResolveFolder(TargetItem t, string file)
+    private static string ResolveLegacyFolder(TargetItem target, string file)
     {
-        var ext = Path.GetExtension(file).TrimStart('.').ToLowerInvariant();
-        string? dest = null, fallback = null;
-        foreach (var (key, value) in t.SortRules!)
+        var extension = Path.GetExtension(file).TrimStart('.').ToLowerInvariant();
+        string? destination = null;
+        string? fallback = null;
+        foreach (var (key, value) in target.SortRules!)
         {
-            if (key.Trim() == "*") { fallback = value; continue; }
-            var exts = key.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                          .Select(x => x.TrimStart('.').ToLowerInvariant());
-            if (ext.Length > 0 && exts.Contains(ext)) { dest = value; break; }
-        }
-        dest ??= fallback;
-        return dest == null ? t.Path : Combine(t.Path, dest);
-    }
-
-    /// <summary>Resolves a rule Dest against the sorter root: empty → root, absolute → verbatim,
-    /// otherwise relative to root.</summary>
-    private static string Combine(string root, string dest) =>
-        string.IsNullOrWhiteSpace(dest) ? root
-        : Path.IsPathRooted(dest) ? dest : Path.Combine(root, dest);
-
-    /// <summary>Matches a ${name} or ${name:format} placeholder inside a Dest template. The optional
-    /// format after the colon is a .NET format string used by the built-in date tokens.</summary>
-    private static readonly Regex TokenRx = new(@"\$\{([A-Za-z][A-Za-z0-9]*)(?::([^}]*))?\}", RegexOptions.Compiled);
-
-    /// <summary>Placeholder names the router fills itself, independent of any Name regex group:
-    /// drop-time date and time (date, year, month, day, time, week, quarter), the file's own last-write
-    /// date (the f-prefixed twins), the file's creation date (the c-prefixed twins), file-name pieces
-    /// (ext, stem, initial), and a coarse size bucket word (size, whose :spec names the buckets).
-    /// Reserved — a Name regex group that happens to share one of these names is shadowed by the
-    /// built-in.</summary>
-    public static readonly IReadOnlyCollection<string> BuiltinTokens = new HashSet<string>(StringComparer.Ordinal)
-    {
-        "date", "year", "month", "day", "time", "week", "quarter",
-        "fdate", "fyear", "fmonth", "fday", "fweek", "fquarter",
-        "cdate", "cyear", "cmonth", "cday", "cweek", "cquarter",
-        "ext", "stem", "initial", "size", "slug",
-    };
-
-    /// <summary>Default .NET format for each date-derived built-in token, used when the placeholder
-    /// carries no explicit :format. The f- and c-prefixed twins take the file's last-write or creation
-    /// time instead of the drop clock but share these formats. date uses ISO yyyy-MM-dd so folders sort
-    /// chronologically.</summary>
-    private static readonly Dictionary<string, string> DateTokenFormat = new(StringComparer.Ordinal)
-    {
-        ["date"] = "yyyy-MM-dd", ["year"] = "yyyy", ["month"] = "MM", ["day"] = "dd", ["time"] = "HH-mm-ss",
-        ["fdate"] = "yyyy-MM-dd", ["fyear"] = "yyyy", ["fmonth"] = "MM", ["fday"] = "dd",
-        ["cdate"] = "yyyy-MM-dd", ["cyear"] = "yyyy", ["cmonth"] = "MM", ["cday"] = "dd",
-    };
-
-    /// <summary>Resolves the folder for a matched file, expanding ${name} placeholders in the rule
-    /// Dest from its NameRegex groups. When any placeholder cannot be filled the file goes to the
-    /// sorter root instead of a half-built path.</summary>
-    private static string ExpandDest(SortRule rule, string filePath, string root, DateTime now)
-    {
-        if (!rule.Dest.Contains("${", StringComparison.Ordinal)) return Combine(root, rule.Dest);
-        var expanded = ExpandTemplate(rule, filePath, now, out bool ok);
-        return ok ? Combine(root, expanded) : root;
-    }
-
-    /// <summary>Substitutes ${name} tokens in the rule Dest. A built-in name (date/file-date/ext)
-    /// resolves from the drop clock <paramref name="now"/> and the file itself; any other name is
-    /// looked up among the sanitized captures of the rule's NameRegex conditions. Built-ins shadow a
-    /// same-named group. Sets ok=false when a token cannot be filled — unknown name, missing group,
-    /// empty value after sanitizing, unreadable file date, or a date format .NET rejects — so the
-    /// caller can route the file to the sorter root instead of a half-built path.</summary>
-    public static string ExpandTemplate(SortRule rule, string filePath, DateTime now, out bool ok)
-    {
-        var fileName = Path.GetFileName(filePath);
-        var groups = CollectGroups(rule, fileName);
-        bool allResolved = true;
-        var result = TokenRx.Replace(rule.Dest, m =>
-        {
-            var name = m.Groups[1].Value;
-            var format = m.Groups[2].Success ? m.Groups[2].Value : null;
-            string? value = BuiltinTokens.Contains(name)
-                ? ResolveBuiltin(name, format, filePath, now)
-                : groups.TryGetValue(name, out var raw) ? PadGroup(raw, format) : null;
-            if (value != null)
+            if (key.Trim() == "*")
             {
-                var clean = SanitizeSegment(value);
-                if (clean.Length > 0) return clean;
+                fallback = value;
+                continue;
             }
-            allResolved = false;
-            return m.Value;
-        });
-        ok = allResolved;
-        return result;
+            var extensions = key.Split(
+                    ' ',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(item => item.TrimStart('.').ToLowerInvariant());
+            if (extension.Length > 0 && extensions.Contains(extension))
+            {
+                destination = value;
+                break;
+            }
+        }
+        destination ??= fallback;
+        return destination == null
+            ? target.Path
+            : Path.IsPathRooted(destination) ? destination : Path.Combine(target.Path, destination);
     }
 
-    /// <summary>Editor/preview overload that expands against the current clock.</summary>
+    public static readonly IReadOnlyCollection<string> BuiltinTokens = SortTemplate.BuiltinTokens;
+
+    public static string ExpandTemplate(
+        SortRule rule,
+        string filePath,
+        DateTime now,
+        out bool ok) =>
+        SortTemplate.Expand(rule, filePath, now, out ok);
+
     public static string ExpandTemplate(SortRule rule, string filePath, out bool ok) =>
-        ExpandTemplate(rule, filePath, DateTime.Now, out ok);
+        SortTemplate.Expand(rule, filePath, out ok);
 
-    /// <summary>Value for a built-in token, or null when it cannot be produced (an f/c-token or
-    /// sizebucket on a file that is not on disk, or a date format string .NET rejects). Date/time tokens
-    /// come from <paramref name="now"/>; the f-prefixed twins from the file's last-write time, the
-    /// c-prefixed twins from its creation time; ext/stem/initial and sizebucket from the path.</summary>
-    private static string? ResolveBuiltin(string name, string? format, string filePath, DateTime now)
-    {
-        switch (name)
-        {
-            case "ext": return Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
-            case "stem": return Truncate(Path.GetFileNameWithoutExtension(filePath), format);
-            case "initial": return Initial(Path.GetFileName(filePath));
-            case "size": return SizeBucket(filePath, format);
-            case "slug": return FileSlug(filePath);
-        }
+    public static string? SizeBucketOf(double megabytes, string? spec = null) =>
+        SortTemplate.SizeBucketOf(megabytes, spec);
 
-        // A leading f/c switches the clock to the item's own last-write or creation time; anything else
-        // is a drop-time token read from now. Works for a folder as well as a file.
-        char prefix = name[0];
-        bool fileToken = prefix is 'f' or 'c';
-        DateTime source;
-        if (fileToken)
-        {
-            FileSystemInfo? info = Directory.Exists(filePath) ? new DirectoryInfo(filePath)
-                                 : File.Exists(filePath) ? new FileInfo(filePath) : null;
-            if (info is null) return null;
-            source = prefix == 'f' ? info.LastWriteTime : info.CreationTime;
-        }
-        else source = now;
+    public static IReadOnlyList<(string Name, double? Max)>? ParseSizeSpec(string spec) =>
+        SortTemplate.ParseSizeSpec(spec);
 
-        // The name without the file prefix picks which date component; week and quarter are computed,
-        // the rest are plain format-string renders that also honour an explicit :format.
-        var kind = fileToken ? name[1..] : name;
-        return kind switch
-        {
-            "week" => ISOWeek.GetWeekOfYear(source).ToString("D2", CultureInfo.InvariantCulture),
-            "quarter" => "Q" + ((source.Month - 1) / 3 + 1),
-            _ => Render(source, string.IsNullOrEmpty(format) ? DateTokenFormat[name] : format),
-        };
-    }
+    public static IReadOnlyList<string> TokensIn(string destination) =>
+        SortTemplate.TokensIn(destination);
 
-    /// <summary>Applies a .NET date format, returning null when the format is one .NET rejects so the
-    /// file falls back to the sorter root rather than crashing the drop.</summary>
-    private static string? Render(DateTime source, string format)
-    {
-        try { return source.ToString(format, CultureInfo.InvariantCulture); }
-        catch (FormatException) { return null; }
-    }
+    public static IReadOnlyList<(string Name, string? Format)> ParseTokens(string destination) =>
+        SortTemplate.ParseTokens(destination);
 
-    /// <summary>The slug of a file's first non-blank line, for the ${slug} token — handy for dropped text,
-    /// whose file the sorter routes by its opening line. Null when the file is missing, empty, or cannot
-    /// be read as text (a binary file), so the item falls back to the sorter root instead of a garbled
-    /// name. Only the first few lines are read, so it stays cheap on large files.</summary>
-    private static string? FileSlug(string filePath)
-    {
-        if (!File.Exists(filePath)) return null;
-        try
-        {
-            foreach (var line in File.ReadLines(filePath).Take(20))
-            {
-                var slug = TextDropService.SlugOf(line);
-                if (slug.Length > 0) return slug;
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.DecoderFallbackException)
-        {
-            return null;
-        }
-        return null;
-    }
+    public static bool TokenTakesFormat(string name) => SortTemplate.TokenTakesFormat(name);
 
-    /// <summary>First letter of the file name, upper-cased, for alphabetical buckets. A name whose
-    /// first letter is not a Unicode letter (a digit, symbol, or leading punctuation) buckets under
-    /// "#".</summary>
-    private static string Initial(string fileName)
-    {
-        foreach (var ch in fileName)
-        {
-            if (char.IsLetter(ch)) return char.ToUpperInvariant(ch).ToString();
-            if (char.IsDigit(ch)) break;
-        }
-        return "#";
-    }
+    public static bool IsValidTokenFormat(string name, string? format) =>
+        SortTemplate.IsValidTokenFormat(name, format);
 
-    /// <summary>A token's :count argument — a positive integer used as the length cap for ${stem:N} or the
-    /// zero-pad width for a numeric ${group:N}. Null when the format is absent or not a positive integer, so
-    /// the caller leaves the value untouched.</summary>
-    private static int? ParseCount(string? format) =>
-        !string.IsNullOrEmpty(format)
-        && int.TryParse(format, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && n > 0
-            ? n : null;
+    public static bool IsValidDateFormat(string? format) => SortTemplate.IsValidDateFormat(format);
 
-    /// <summary>Caps a value to the first N characters for ${stem:N}. An absent or invalid count leaves the
-    /// value whole, matching the router's habit of ignoring a format it cannot apply.</summary>
-    private static string Truncate(string value, string? format) =>
-        ParseCount(format) is { } max && value.Length > max ? value[..max] : value;
-
-    /// <summary>Zero-pads a captured group to width N for ${group:N}: a purely numeric value is left-padded
-    /// with zeros (a longer value is kept as is). A non-numeric value, or an absent/invalid width, leaves the
-    /// capture untouched, so a padding format never mangles a text group.</summary>
-    private static string PadGroup(string raw, string? format) =>
-        ParseCount(format) is { } width && raw.Length > 0 && raw.All(char.IsAsciiDigit)
-            ? raw.PadLeft(width, '0') : raw;
-
-    /// <summary>Default buckets a bare ${size} token uses: tiny below 1 MB, small below 10, medium below
-    /// 100, large below 1000, huge for the rest. A ${size:spec} overrides them.</summary>
-    private static readonly IReadOnlyList<(string Name, double? Max)> DefaultSizeBuckets = new (string, double?)[]
-    {
-        ("tiny", 1), ("small", 10), ("medium", 100), ("large", 1000), ("huge", null),
-    };
-
-    /// <summary>The bucket word for a size in megabytes against a spec: the first bucket whose upper
-    /// bound the size is below, or the bound-less catch-all bucket. Null/empty spec uses the defaults.
-    /// Returns null when the spec is invalid or every bucket has a bound the size exceeds, so the caller
-    /// falls back to the sorter root. Public so the editor and tests can map a size without touching
-    /// disk.</summary>
-    public static string? SizeBucketOf(double megabytes, string? spec = null)
-    {
-        var buckets = string.IsNullOrWhiteSpace(spec) ? DefaultSizeBuckets : ParseSizeSpec(spec);
-        if (buckets is null) return null;
-        foreach (var (name, max) in buckets)
-            if (max is null || megabytes < max) return name;
-        return null;
-    }
-
-    /// <summary>The size bucket of a file on disk, or null when the path is not an existing file (a
-    /// folder or a missing path has no meaningful size) or the spec is invalid, so the item falls back
-    /// to the sorter root. Megabytes are computed the same way the SizeMb condition reads them, so bucket
-    /// boundaries and size rules agree.</summary>
-    private static string? SizeBucket(string filePath, string? spec)
-    {
-        if (!File.Exists(filePath)) return null;
-        return SizeBucketOf(new FileInfo(filePath).Length / (1024.0 * 1024.0), spec);
-    }
-
-    /// <summary>Parses a ${size} spec — comma-separated "name limit" buckets in strictly ascending order
-    /// of limit, the last optionally with no limit as the catch-all, e.g. "tiny 0.5, small 10, huge".
-    /// The limit is an upper bound in megabytes (a file is in the first bucket it falls below). Returns
-    /// null when the spec is malformed: an empty name, a missing/non-positive number on a non-final
-    /// bucket, limits not strictly ascending, or a non-final bucket without a limit.</summary>
-    public static IReadOnlyList<(string Name, double? Max)>? ParseSizeSpec(string spec)
-    {
-        var parts = spec.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length == 0) return null;
-        var buckets = new List<(string Name, double? Max)>();
-        double prev = double.NegativeInfinity;
-        for (int i = 0; i < parts.Length; i++)
-        {
-            var bits = parts[i].Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            if (bits.Length is 0 or > 2) return null;
-            bool last = i == parts.Length - 1;
-            if (bits.Length == 1)
-            {
-                if (!last) return null; // only the final bucket may drop its limit
-                buckets.Add((bits[0], null));
-            }
-            else
-            {
-                if (!double.TryParse(bits[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var max)
-                    || max <= 0 || max <= prev) return null;
-                prev = max;
-                buckets.Add((bits[0], max));
-            }
-        }
-        return buckets;
-    }
-
-    /// <summary>True when the destination folder is the source folder itself or lies inside it. Moving a
-    /// folder into its own subtree is impossible, so such a match becomes a no-op instead.</summary>
-    private static bool DestinationInsideSource(string dest, string source)
-    {
-        var d = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dest));
-        var s = Path.TrimEndingDirectorySeparator(Path.GetFullPath(source));
-        return d.Equals(s, StringComparison.OrdinalIgnoreCase)
-            || d.StartsWith(s + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>True when a folder already sits at a location that matches the shape of its matched
-    /// rule's destination — so it is one of the sorter's own output folders and must be left alone,
-    /// otherwise a watched sorter would re-file the very folders it creates. The check derives a
-    /// recogniser from the destination template (date tokens become digit patterns, quarter becomes
-    /// Q1–Q4, and so on) and matches the folder's path relative to the sorter root against the leading
-    /// destination segments.</summary>
-    private static bool AlreadyPlaced(SortRule rule, string folderPath, string root)
-    {
-        if (string.IsNullOrWhiteSpace(rule.Dest)) return false;
-        string rel;
-        try { rel = Path.GetRelativePath(Path.GetFullPath(root), Path.GetFullPath(folderPath)); }
-        catch { return false; }
-        if (rel is "." or "" || rel.StartsWith("..", StringComparison.Ordinal)) return false;
-
-        var srcSegments = rel.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
-        var destSegments = rule.Dest.Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
-        if (srcSegments.Length == 0 || srcSegments.Length > destSegments.Length) return false;
-
-        for (int i = 0; i < srcSegments.Length; i++)
-        {
-            var recogniser = SegmentRecogniser(destSegments[i]);
-            if (recogniser is null || !recogniser.IsMatch(srcSegments[i])) return false;
-        }
-        return true;
-    }
-
-    private static readonly char[] PathSeparators = { '\\', '/' };
-
-    /// <summary>An anchored regex that matches any concrete folder name a Dest segment can expand to:
-    /// tokens become shape patterns, literal text is escaped. Null when the segment cannot be compiled
-    /// (then the caller treats the folder as not-already-placed and lets the other guards catch a
-    /// self-move).</summary>
-    private static Regex? SegmentRecogniser(string segment)
-    {
-        var sb = new StringBuilder("^");
-        int pos = 0;
-        foreach (Match m in TokenRx.Matches(segment))
-        {
-            sb.Append(Regex.Escape(segment[pos..m.Index]));
-            sb.Append(TokenShape(m.Groups[1].Value, m.Groups[2].Success ? m.Groups[2].Value : null));
-            pos = m.Index + m.Length;
-        }
-        sb.Append(Regex.Escape(segment[pos..]));
-        sb.Append('$');
-        try { return new Regex(sb.ToString(), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout); }
-        catch (ArgumentException) { return null; }
-    }
-
-    /// <summary>The regex fragment a single ${token} can expand to inside a folder name. Date tokens
-    /// follow their format string; week/quarter/initial have fixed shapes; size becomes the alternation
-    /// of its bucket names; ext/stem and Name-regex groups become "any run of name characters".</summary>
-    private static string TokenShape(string name, string? format)
-    {
-        if (!BuiltinTokens.Contains(name)) return "[^\\\\/]+"; // a Name-regex group capture
-        if (DateTokenFormat.TryGetValue(name, out var defaultFormat)) return DateFormatShape(format ?? defaultFormat);
-        var kind = name[0] is 'f' or 'c' ? name[1..] : name;
-        return kind switch
-        {
-            "week" => "\\d{2}",
-            "quarter" => "Q[1-4]",
-            "initial" => "[^\\\\/]",
-            "size" => SizeShape(format),
-            _ => "[^\\\\/]+", // ext, stem, slug
-        };
-    }
-
-    /// <summary>The alternation of a ${size} spec's bucket names, so a watched sorter recognises its own
-    /// size folders. Falls back to "any name run" when the spec is empty or invalid.</summary>
-    private static string SizeShape(string? format)
-    {
-        var buckets = string.IsNullOrWhiteSpace(format) ? DefaultSizeBuckets : ParseSizeSpec(format);
-        if (buckets is null || buckets.Count == 0) return "[^\\\\/]+";
-        return "(?:" + string.Join("|", buckets.Select(b => Regex.Escape(b.Name))) + ")";
-    }
-
-    /// <summary>Turns a .NET date format string into a loose regex: runs of numeric specifiers become
-    /// digit groups, month/day name specifiers and AM/PM become a name run, literals are escaped. Loose
-    /// on purpose — it must recognise the sorter's own dated folders without matching ordinary names.</summary>
-    private static string DateFormatShape(string format)
-    {
-        var sb = new StringBuilder();
-        int i = 0;
-        while (i < format.Length)
-        {
-            char c = format[i];
-            if (char.IsLetter(c))
-            {
-                int j = i;
-                while (j < format.Length && format[j] == c) j++;
-                sb.Append((c, j - i) switch
-                {
-                    ('y', _) => "\\d{2,4}",
-                    ('M', >= 3) or ('d', >= 3) or ('t', _) => "[^\\\\/]+",
-                    ('M', _) or ('d', _) or ('H', _) or ('h', _) or ('m', _) or ('s', _) => "\\d{1,2}",
-                    _ => "",
-                });
-                i = j;
-            }
-            else { sb.Append(Regex.Escape(c.ToString())); i++; }
-        }
-        return sb.ToString();
-    }
-
-    /// <summary>Named-group captures from every NameRegex condition of the rule, matched against the
-    /// file name. Numeric group names are skipped; a later condition wins on a name clash.</summary>
-    private static Dictionary<string, string> CollectGroups(SortRule rule, string fileName)
-    {
-        var map = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var c in rule.All)
-        {
-            if (c.Field != ConditionField.NameRegex || Compiled(c.Value) is not { } rx) continue;
-            if (!TryMatch(rx, fileName, c.Value, out var m)) continue;
-            if (!m.Success) continue;
-            foreach (var name in rx.GetGroupNames())
-            {
-                if (int.TryParse(name, out _)) continue;
-                var g = m.Groups[name];
-                if (g.Success) map[name] = g.Value;
-            }
-        }
-        return map;
-    }
-
-    /// <summary>The distinct ${name} tokens a Dest template references.</summary>
-    public static IReadOnlyList<string> TokensIn(string dest) =>
-        TokenRx.Matches(dest).Select(m => m.Groups[1].Value).Distinct(StringComparer.Ordinal).ToList();
-
-    /// <summary>Every ${name} / ${name:format} placeholder in a Dest as a (name, format) pair, so the
-    /// editor can validate built-in date formats without re-parsing the template. Format is null when
-    /// the placeholder carries no colon.</summary>
-    public static IReadOnlyList<(string Name, string? Format)> ParseTokens(string dest) =>
-        TokenRx.Matches(dest)
-            .Select(m => (m.Groups[1].Value, m.Groups[2].Success ? m.Groups[2].Value : (string?)null))
-            .ToList();
-
-    /// <summary>Whether a built-in token carries a :format / :spec the editor should validate: the plain
-    /// date/time tokens (a .NET format) and size (a bucket spec). week, quarter, ext, stem and initial
-    /// ignore any format.</summary>
-    public static bool TokenTakesFormat(string name) =>
-        DateTokenFormat.ContainsKey(name) || name == "size" || name == "stem";
-
-    /// <summary>True when a token's format/spec is one the router can apply: a valid .NET date format for
-    /// a date token, or a well-formed bucket spec for size. Tokens that ignore format are always valid.
-    /// Used by the editor to block Save on ${date:garbage} or a malformed ${size:…}.</summary>
-    public static bool IsValidTokenFormat(string name, string? format)
-    {
-        if (name == "size") return string.IsNullOrEmpty(format) || ParseSizeSpec(format) is not null;
-        if (DateTokenFormat.ContainsKey(name)) return IsValidDateFormat(format);
-        if (name == "stem") return string.IsNullOrEmpty(format) || ParseCount(format) is not null;
-        return true;
-    }
-
-    /// <summary>True when a date token's format string is one .NET can apply. An empty format uses the
-    /// token default and is always valid. Used by the editor to block Save on ${date:garbage}.</summary>
-    public static bool IsValidDateFormat(string? format)
-    {
-        if (string.IsNullOrEmpty(format)) return true;
-        try { _ = new DateTime(2001, 2, 3, 4, 5, 6).ToString(format, CultureInfo.InvariantCulture); return true; }
-        catch (FormatException) { return false; }
-    }
-
-    /// <summary>How the in-app token reference groups tokens for display.</summary>
     public enum TokenGroup { DropDate, FileDate, FileName, Size }
 
-    /// <summary>One reference entry for a built-in token: its group, a one-line summary, an example of
-    /// what it expands to, and whether it accepts a :format / :spec.</summary>
-    public sealed record TokenDoc(string Name, TokenGroup Group, string Summary, string Example, bool TakesFormat);
+    public sealed record TokenDoc(
+        string Name,
+        TokenGroup Group,
+        string Summary,
+        string Example,
+        bool TakesFormat);
 
-    /// <summary>A fixed sample moment the reference renders date examples against, so shown values come
-    /// from the real format strings rather than hand-written text.</summary>
-    private static readonly DateTime SampleTime = new(2026, 3, 14, 15, 9, 26);
+    public static IReadOnlyList<TokenDoc> TokenDocs() => SortTemplate.TokenDocs();
 
-    /// <summary>Reference metadata per token, in display order: group, summary, and — for the non-date
-    /// tokens whose value is not a clock reading — a literal example. Date tokens leave Example null and
-    /// get a value rendered from their own format at SampleTime.</summary>
-    private static readonly (string Name, TokenGroup Group, string Summary, string? Example)[] TokenInfo =
-    {
-        ("date", TokenGroup.DropDate, "Drop date, ISO so folders sort by time.", null),
-        ("year", TokenGroup.DropDate, "Drop year.", null),
-        ("month", TokenGroup.DropDate, "Drop month, two digits.", null),
-        ("day", TokenGroup.DropDate, "Drop day of month, two digits.", null),
-        ("time", TokenGroup.DropDate, "Drop time of day.", null),
-        ("week", TokenGroup.DropDate, "ISO week number of the drop.", null),
-        ("quarter", TokenGroup.DropDate, "Calendar quarter of the drop.", null),
-        ("fdate", TokenGroup.FileDate, "File's modified date (f- prefix on any date token).", null),
-        ("fyear", TokenGroup.FileDate, "File's modified year.", null),
-        ("fmonth", TokenGroup.FileDate, "File's modified month.", null),
-        ("fday", TokenGroup.FileDate, "File's modified day.", null),
-        ("fweek", TokenGroup.FileDate, "File's modified ISO week.", null),
-        ("fquarter", TokenGroup.FileDate, "File's modified quarter.", null),
-        ("cdate", TokenGroup.FileDate, "File's created date (c- prefix on any date token).", null),
-        ("cyear", TokenGroup.FileDate, "File's created year.", null),
-        ("cmonth", TokenGroup.FileDate, "File's created month.", null),
-        ("cday", TokenGroup.FileDate, "File's created day.", null),
-        ("cweek", TokenGroup.FileDate, "File's created ISO week.", null),
-        ("cquarter", TokenGroup.FileDate, "File's created quarter.", null),
-        ("ext", TokenGroup.FileName, "File extension, lower-case, no dot.", "jpg"),
-        ("stem", TokenGroup.FileName, "File name without the extension; a :N caps it to N characters.", "Holiday Photo"),
-        ("initial", TokenGroup.FileName, "First letter of the name, upper-case; '#' when not a letter.", "H"),
-        ("slug", TokenGroup.FileName, "Slug of a text file's first non-blank line.", "meeting-notes"),
-        ("size", TokenGroup.Size, "Coarse size bucket; a :spec names the buckets.", "large"),
-    };
+    public static IReadOnlyCollection<string> AvailableTokens(SortRule rule) =>
+        SortTemplate.AvailableTokens(rule);
 
-    /// <summary>The full token reference — one entry per built-in token, in display order — for the
-    /// in-app help. Built from the same BuiltinTokens / DateTokenFormat / TokenTakesFormat tables the
-    /// router uses; a test keeps this list and BuiltinTokens in step, so a new engine token cannot ship
-    /// without a reference entry. Date examples are rendered from each token's own format at a fixed
-    /// sample time, never drifting from what the router produces.</summary>
-    public static IReadOnlyList<TokenDoc> TokenDocs() =>
-        TokenInfo.Select(t => new TokenDoc(
-            t.Name, t.Group, t.Summary, t.Example ?? DateExample(t.Name), TokenTakesFormat(t.Name))).ToList();
-
-    /// <summary>The example value a date token shows in the reference, rendered from its default format at
-    /// the fixed sample time (week and quarter are computed the way the router computes them).</summary>
-    private static string DateExample(string name)
-    {
-        var kind = name[0] is 'f' or 'c' ? name[1..] : name;
-        return kind switch
-        {
-            "week" => ISOWeek.GetWeekOfYear(SampleTime).ToString("D2", CultureInfo.InvariantCulture),
-            "quarter" => "Q" + ((SampleTime.Month - 1) / 3 + 1),
-            _ => Render(SampleTime, DateTokenFormat[name]) ?? "",
-        };
-    }
-
-    /// <summary>The named groups a rule's NameRegex conditions expose for token substitution. Used by
-    /// the editor to hint available tokens and to block a Dest that references a missing one.</summary>
-    public static IReadOnlyCollection<string> AvailableTokens(SortRule rule)
-    {
-        var set = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var c in rule.All)
-        {
-            if (c.Field != ConditionField.NameRegex || Compiled(c.Value) is not { } rx) continue;
-            foreach (var name in rx.GetGroupNames())
-                if (!int.TryParse(name, out _)) set.Add(name);
-        }
-        return set;
-    }
-
-    /// <summary>Strips characters illegal in a folder name (plus trailing dots and spaces that
-    /// Windows forbids) from a captured token so it can serve as a path segment.</summary>
-    private static string SanitizeSegment(string value)
-    {
-        var invalid = Path.GetInvalidFileNameChars();
-        var chars = value.Where(ch => Array.IndexOf(invalid, ch) < 0).ToArray();
-        return new string(chars).Trim().TrimEnd('.', ' ');
-    }
-
-    /// <summary>Whether a condition holds for a file, honouring its Negate flag. The underlying test is
-    /// inverted after the fact, so "not extension jpg" also catches a file with no extension at all.</summary>
-    private static bool Match(RuleCondition c, FileMeta meta)
-    {
-        bool hit = c.Field switch
-        {
-            ConditionField.Extension => MatchExtension(c.Value, meta.Ext),
-            ConditionField.NameContains => meta.Name.Contains(c.Value, StringComparison.OrdinalIgnoreCase),
-            ConditionField.NameRegex => Compiled(c.Value) is { } rx && IsMatch(rx, meta.Name, c.Value),
-            ConditionField.SizeMb => MatchNumber(c.Op, meta.SizeMb, c.Value),
-            ConditionField.AgeDays => MatchNumber(c.Op, meta.AgeDays, c.Value),
-            ConditionField.CreatedDaysAgo => MatchNumber(c.Op, meta.CreationAgeDays, c.Value),
-            ConditionField.MediaKind => MatchMediaKind(c.Value, meta.Ext),
-            _ => false,
-        };
-        return c.Negate ? !hit : hit;
-    }
-
-    /// <summary>Known media kinds, in the order the editor lists them. Each maps to a set of extensions
-    /// so a rule can match "any image" without spelling out png/jpg/webp/…</summary>
-    public static readonly IReadOnlyList<string> MediaKinds = new[] { "image", "video", "audio", "document", "archive" };
-
-    private static readonly Dictionary<string, string[]> MediaKindExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["image"] = new[] { "jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "tif", "heic", "heif", "svg", "ico", "raw", "cr2", "nef", "arw", "dng" },
-        ["video"] = new[] { "mp4", "mkv", "mov", "avi", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "3gp", "ts", "m2ts" },
-        ["audio"] = new[] { "mp3", "wav", "flac", "aac", "ogg", "oga", "m4a", "wma", "opus", "aiff", "aif", "alac" },
-        ["document"] = new[] { "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "rtf", "txt", "md", "csv", "epub", "pages", "numbers", "key" },
-        ["archive"] = new[] { "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "zst", "tgz", "iso", "cab", "lz", "lzma" },
-    };
-
-    /// <summary>Whether the file's extension belongs to the named media kind. An unknown kind (a
-    /// hand-edited config) or an extensionless file simply does not match.</summary>
-    private static bool MatchMediaKind(string kind, string ext) =>
-        ext.Length > 0 && MediaKindExtensions.TryGetValue(kind, out var exts)
-        && Array.IndexOf(exts, ext) >= 0;
-
-    private static readonly char[] ExtSeparators = { ' ', ',', ';' };
-
-    private static bool MatchExtension(string value, string ext)
-    {
-        if (ext.Length == 0) return false;
-        var exts = value.Split(ExtSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Select(x => x.TrimStart('.').ToLowerInvariant());
-        return exts.Contains(ext);
-    }
-
-    private static bool MatchNumber(CompareOp op, double actual, string value)
-    {
-        if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var target))
-            return false;
-        return op switch
-        {
-            CompareOp.Gt => actual > target,
-            CompareOp.Lt => actual < target,
-            CompareOp.Gte => actual >= target,
-            CompareOp.Lte => actual <= target,
-            _ => false,
-        };
-    }
-
-    /// <summary>Regex cache keyed by pattern. Thread-safe: the folder watcher calls Plan from
-    /// background threads, so this must not assume the UI thread. A race may compile the same pattern
-    /// twice, but the results are identical, so last-write-wins is harmless.</summary>
-    private static readonly ConcurrentDictionary<string, Regex?> RegexCache = new();
-
-    /// <summary>Compiled regex for the pattern, or null when the pattern is invalid. A broken
-    /// pattern (possible in a hand-edited config) must not crash a drop, so it is cached as null
-    /// and treated as "never matches"; the rule with it simply lets the file fall through.</summary>
-    private static Regex? Compiled(string pattern)
-    {
-        if (RegexCache.TryGetValue(pattern, out var rx)) return rx;
-        try
-        {
-            rx = new Regex(pattern,
-                RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-                RegexTimeout);
-        }
-        catch (ArgumentException ex) // invalid pattern (RegexParseException derives from this)
-        {
-            ErrorLog.Write($"Invalid regular expression in rule: '{pattern}'", ex);
-            rx = null;
-        }
-        RegexCache[pattern] = rx;
-        return rx;
-    }
-
-    private static bool IsMatch(Regex rx, string input, string pattern)
-    {
-        try { return rx.IsMatch(input); }
-        catch (RegexMatchTimeoutException ex)
-        {
-            ErrorLog.Write($"Regular expression timed out in rule: '{pattern}'", ex);
-            return false;
-        }
-    }
-
-    private static bool TryMatch(Regex rx, string input, string pattern, out System.Text.RegularExpressions.Match match)
-    {
-        try
-        {
-            match = rx.Match(input);
-            return true;
-        }
-        catch (RegexMatchTimeoutException ex)
-        {
-            ErrorLog.Write($"Regular expression timed out in rule: '{pattern}'", ex);
-            match = System.Text.RegularExpressions.Match.Empty;
-            return false;
-        }
-    }
+    public static IReadOnlyList<string> MediaKinds => SortConditionMatcher.MediaKinds;
 }

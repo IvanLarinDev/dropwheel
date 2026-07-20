@@ -156,4 +156,25 @@ public sealed class DropIntentTests
             DropTargetKind.Folder,
             itemCount: 1));
     }
+
+    [Fact]
+    public void TrustGate_bypasses_only_the_selected_drop_confirmations()
+    {
+        var runTarget = new TargetItem { Name = "Scripts" };
+        var telegramTarget = new TargetItem { Name = "Telegram" };
+        var sorterTarget = new TargetItem { Name = "Inbox", Watch = true };
+
+        Assert.Null(DropTrustGate.Evaluate(
+            runTarget, DropPayloadKind.Files, DropTargetKind.Run, 1,
+            DropConfirmationKind.RunDroppedFiles));
+        Assert.NotNull(DropTrustGate.Evaluate(
+            runTarget, DropPayloadKind.Files, DropTargetKind.Run, 1,
+            DropConfirmationKind.TelegramHandoff));
+        Assert.Null(DropTrustGate.Evaluate(
+            telegramTarget, DropPayloadKind.Text, DropTargetKind.Telegram, 1,
+            DropConfirmationKind.TelegramHandoff));
+        Assert.Null(DropTrustGate.Evaluate(
+            sorterTarget, DropPayloadKind.Files, DropTargetKind.Sorter, 1,
+            DropConfirmationKind.WatchedSorterRules));
+    }
 }

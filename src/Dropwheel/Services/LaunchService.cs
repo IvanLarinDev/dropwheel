@@ -66,18 +66,132 @@ public static class LaunchService
 
     internal static ProcessStartInfo BuildStartInfo(string exe, IReadOnlyList<string> files, LaunchOptions? custom)
     {
-        var args = BuildArgs(files);
         var targetDir = Path.GetDirectoryName(exe) ?? "";
         var psi = custom == null
             ? DefaultStartInfo(exe, files)
-            : new ProcessStartInfo(
-                ExpandTemplate(custom.FileName, exe, args, targetDir),
-                ExpandTemplate(custom.Arguments, exe, args, targetDir))
-            { UseShellExecute = true };
+            : CustomStartInfo(custom, exe, files, targetDir);
         psi.WorkingDirectory = custom == null
             ? targetDir
-            : ExpandTemplate(custom.WorkingDirectory, exe, args, targetDir);
+            : ExpandScalar(custom.WorkingDirectory, exe, targetDir);
         return psi;
+    }
+
+    private static ProcessStartInfo CustomStartInfo(
+        LaunchOptions custom,
+        string target,
+        IReadOnlyList<string> files,
+        string targetDir)
+    {
+        var fileName = ExpandScalar(custom.FileName, target, targetDir);
+        var tokens = TokenizeArguments(custom.Arguments);
+        var expandsFiles = tokens.Any(token => token.Contains("{files}", StringComparison.Ordinal));
+        var expandsDynamicValue = expandsFiles || tokens.Any(token =>
+            token.Contains("{target}", StringComparison.Ordinal)
+            || token.Contains("{targetDir}", StringComparison.Ordinal));
+        if (expandsDynamicValue && IsCommandShellMode(fileName, tokens))
+            throw new InvalidOperationException(
+                "Dynamic placeholders cannot be used with a shell command mode. Use an executable or script-file mode instead.");
+
+        var psi = new ProcessStartInfo(fileName) { UseShellExecute = false };
+        foreach (var token in tokens)
+        {
+            if (token == "{files}")
+            {
+                foreach (var file in files) psi.ArgumentList.Add(file);
+                continue;
+            }
+            if (token.Contains("{files}", StringComparison.Ordinal))
+                throw new InvalidOperationException("{files} must be a separate argument token.");
+            psi.ArgumentList.Add(ExpandScalar(token, target, targetDir));
+        }
+        return psi;
+    }
+
+    private static bool IsCommandShellMode(string fileName, IReadOnlyList<string> tokens)
+    {
+        var program = Path.GetFileNameWithoutExtension(fileName);
+        if (program.Equals("powershell", StringComparison.OrdinalIgnoreCase)
+            || program.Equals("pwsh", StringComparison.OrdinalIgnoreCase))
+            return tokens.Any(IsPowerShellCommandSwitch);
+        if (program.Equals("cmd", StringComparison.OrdinalIgnoreCase))
+            return tokens.Any(IsCmdCommandSwitch);
+        if (program.Equals("python", StringComparison.OrdinalIgnoreCase)
+            || program.Equals("py", StringComparison.OrdinalIgnoreCase))
+            return tokens.Any(token => token.Equals("--command", StringComparison.OrdinalIgnoreCase)
+                || IsClusteredCommandSwitch(token));
+        if (program.Equals("bash", StringComparison.OrdinalIgnoreCase)
+            || program.Equals("sh", StringComparison.OrdinalIgnoreCase)
+            || program.Equals("wsl", StringComparison.OrdinalIgnoreCase))
+            return tokens.Any(IsPosixShellCommandSwitch);
+        return false;
+    }
+
+    private static bool IsCmdCommandSwitch(string token)
+    {
+        if (token.Length < 2 || token[0] != '/') return false;
+        for (var i = 1; i < token.Length; i++)
+        {
+            if ((i == 1 || token[i - 1] == '/')
+                && (token[i] is 'c' or 'C' or 'k' or 'K'))
+                return true;
+        }
+        return false;
+    }
+
+    private static bool IsPosixShellCommandSwitch(string token) =>
+        token.Equals("--command", StringComparison.OrdinalIgnoreCase)
+        || IsClusteredCommandSwitch(token);
+
+    private static bool IsClusteredCommandSwitch(string token) =>
+        token.Length > 1
+        && token[0] == '-'
+        && token[1] != '-'
+        && token.AsSpan(1).Contains('c');
+
+    /// <summary>PowerShell accepts unique parameter abbreviations (for example -Com for -Command),
+    /// so checking a few exact spellings is unsafe. Match every accepted prefix of a code-bearing
+    /// switch, including colon/equals attached forms, while leaving unrelated switches alone.</summary>
+    private static bool IsPowerShellCommandSwitch(string token)
+    {
+        var name = token.TrimStart('-', '/');
+        var separator = name.IndexOfAny(':', '=');
+        if (separator >= 0) name = name[..separator];
+        return name.Length > 0
+            && ("command".StartsWith(name, StringComparison.OrdinalIgnoreCase)
+                || "commandwithargs".StartsWith(name, StringComparison.OrdinalIgnoreCase)
+                || "encodedcommand".StartsWith(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Splits a launch template into Windows-style argument tokens while removing grouping
+    /// quotes. Placeholders are expanded only after tokenization, so file paths remain opaque values.</summary>
+    internal static IReadOnlyList<string> TokenizeArguments(string arguments)
+    {
+        var result = new List<string>();
+        var token = new System.Text.StringBuilder();
+        var quoted = false;
+        for (var i = 0; i < arguments.Length; i++)
+        {
+            var ch = arguments[i];
+            if (ch == '"') { quoted = !quoted; continue; }
+            if (char.IsWhiteSpace(ch) && !quoted)
+            {
+                if (token.Length > 0) { result.Add(token.ToString()); token.Clear(); }
+                continue;
+            }
+            token.Append(ch);
+        }
+        if (quoted) throw new InvalidOperationException("Custom launch arguments contain an unmatched quote.");
+        if (token.Length > 0) result.Add(token.ToString());
+        return result;
+    }
+
+    private static string ExpandScalar(string template, string target, string targetDir)
+    {
+        if (template.Contains("{files}", StringComparison.Ordinal))
+            throw new InvalidOperationException("{files} is only valid in the arguments field.");
+        return template.Replace("{target}", target, StringComparison.Ordinal)
+            .Replace("{targetDir}", targetDir, StringComparison.Ordinal)
+            .Trim();
     }
 
     /// <summary>Builds the launch for an interpreter/executable target. The interpreter branches pass

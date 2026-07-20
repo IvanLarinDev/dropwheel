@@ -1,6 +1,4 @@
 using System.IO;
-using System.Reflection;
-using System.Windows.Threading;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -131,8 +129,7 @@ public sealed class WatcherServiceTests : IDisposable
                 { Field = ConditionField.Extension, Op = CompareOp.In, Value = "jpg" } } } },
         };
 
-        var service = new WatcherService(Dispatcher.CurrentDispatcher, _ => { });
-        InvokeSortOne(service, target, file);
+        WatcherFileProcessor.Sort(target, file, CancellationToken.None);
 
         Assert.True(File.Exists(file));
         Assert.Equal("source", File.ReadAllText(file));
@@ -157,12 +154,11 @@ public sealed class WatcherServiceTests : IDisposable
                 },
             },
         };
-        var entry = CreateEntry(target);
+        var snapshot = WatcherService.CreateSortSnapshot(target);
 
         target.Rules[0].Dest = "Changed";
 
-        var service = new WatcherService(Dispatcher.CurrentDispatcher, _ => { });
-        InvokeSortOne(service, entry, file);
+        WatcherFileProcessor.Sort(snapshot, file, CancellationToken.None);
 
         Assert.Equal("source", File.ReadAllText(Path.Combine(_root, "Images", "a.jpg")));
         Assert.False(Directory.Exists(Path.Combine(_root, "Changed")));
@@ -204,26 +200,6 @@ public sealed class WatcherServiceTests : IDisposable
             cts.Token);
 
         Assert.False(ready);
-    }
-
-    private static void InvokeSortOne(WatcherService service, TargetItem target, string file)
-        => InvokeSortOne(service, CreateEntry(target), file);
-
-    private static object CreateEntry(TargetItem target)
-    {
-        var entryType = typeof(WatcherService).GetNestedType("Entry", BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("WatcherService.Entry not found.");
-        var entry = Activator.CreateInstance(entryType, nonPublic: true)
-            ?? throw new InvalidOperationException("WatcherService.Entry could not be created.");
-        entryType.GetProperty("Target", BindingFlags.Instance | BindingFlags.Public)?.SetValue(entry, target);
-        return entry;
-    }
-
-    private static void InvokeSortOne(WatcherService service, object entry, string file)
-    {
-        var sortOne = typeof(WatcherService).GetMethod("SortOne", BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("WatcherService.SortOne not found.");
-        sortOne.Invoke(service, new[] { entry, file, CancellationToken.None });
     }
 
     [Fact]

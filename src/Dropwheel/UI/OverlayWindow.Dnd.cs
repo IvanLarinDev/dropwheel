@@ -164,21 +164,33 @@ public partial class OverlayWindow
     private static int RealFileCount(DragEventArgs e) =>
         e.Data.GetData(DataFormats.FileDrop) is string[] files ? files.Length : 0;
 
-    private void OnBubbleDrop(TargetItem t, Border badge, DragEventArgs e)
+    private async void OnBubbleDrop(TargetItem t, Border badge, DragEventArgs e)
     {
         badge.Visibility = Visibility.Collapsed;
+        e.Handled = true;
         try
         {
-            if (ConfirmDropPreflight(t, e)) OnBubbleDropCore(t, e);
-            else e.Effects = DragDropEffects.None;
+            if (!ConfirmDropPreflight(t, e))
+            {
+                e.Effects = DragDropEffects.None;
+                return;
+            }
+
+            var data = e.Data;
+            var allowedEffects = e.AllowedEffects;
+            var keyStates = e.KeyStates;
+            e.Effects = PreviewBubbleDrop(t, e).Effects;
+            await OnBubbleDropCore(t, data, allowedEffects, keyStates);
         }
         catch (Exception ex)
         {
             ErrorLog.Write($"Error dropping onto '{t.Name}'", ex);
             ShowToast("The operation could not be completed", kind: ToastKind.Danger);
         }
-        CloseCloud();
-        e.Handled = true;
+        finally
+        {
+            CloseCloud();
+        }
     }
 
     private bool ConfirmDropPreflight(TargetItem t, DragEventArgs e)
@@ -215,49 +227,37 @@ public partial class OverlayWindow
             _ => 0,
         };
 
-    private void OnBubbleDropCore(TargetItem t, DragEventArgs e)
+    private async Task OnBubbleDropCore(
+        TargetItem t,
+        IDataObject data,
+        DragDropEffects allowedEffects,
+        DragDropKeyStates keyStates)
     {
-        var realFiles = e.Data.GetData(DataFormats.FileDrop) as string[];
-        if (realFiles is not { Length: > 0 } && TelegramDropService.CanAccept(t, e.Data))
+        var realFiles = data.GetData(DataFormats.FileDrop) as string[];
+        if (realFiles is not { Length: > 0 } && TelegramDropService.CanAccept(t, data))
         {
-            var result = TelegramDropService.CopyToClipboard(
-                e.Data,
+            var result = await TelegramDropService.CopyToClipboardAsync(
+                data,
                 System.IO.Path.Combine(TargetStore.Dir, "telegram-drop"));
 
             if (result == null)
             {
                 ErrorLog.Write(
-                    $"Telegram drop had no extractable payload. AllowedEffects={e.AllowedEffects}; Formats={TextDropService.DescribeFormats(e.Data)}");
+                    $"Telegram drop had no extractable payload. AllowedEffects={allowedEffects}; Formats={TextDropService.DescribeFormats(data)}");
                 ShowToast("Nothing to send", kind: ToastKind.Warning);
                 return;
             }
 
             LaunchService.Launch(new TargetItem { Name = t.Name, Path = TelegramDropService.LaunchPathFor(t) });
             var historyPayload = result.Kind == TelegramDropKind.Files ? DropPayloadKind.Files : DropPayloadKind.Text;
-            TelegramDropService.PasteIntoTelegramWhenReady(pasted =>
-            {
-                RememberDropHistory(
-                    DropHistoryAction.Telegram,
-                    t,
-                    historyPayload,
-                    result.Count,
-                    pasted ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                    detail: pasted
-                        ? "Pasted via clipboard handoff."
-                        : "Telegram focus changed or did not become ready; payload left on clipboard.");
-                if (!pasted)
-                {
-                    _ = Dispatcher.InvokeAsync(() => ShowToast(
-                        "Telegram focus changed or did not become ready. The payload is still on the clipboard.",
-                        kind: ToastKind.Warning));
-                }
-            });
-            e.Effects = e.AllowedEffects.HasFlag(DragDropEffects.Copy)
-                ? DragDropEffects.Copy
-                : DragDropEffects.None;
             ShowToast(result.Kind == TelegramDropKind.Files
                 ? $"Copied {result.Count} file(s); waiting for Telegram"
                 : "Copied text; waiting for Telegram", kind: ToastKind.Info);
+            await CompleteTelegramPasteAsync(
+                t,
+                historyPayload,
+                result.Count,
+                "Pasted via clipboard handoff.");
             return;
         }
 
@@ -268,59 +268,56 @@ public partial class OverlayWindow
         {
             var plan = DropExecutionService.PlanRealFiles(
                 t,
-                e.KeyStates.HasFlag(DragDropKeyStates.ControlKey),
-                e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey),
+                keyStates.HasFlag(DragDropKeyStates.ControlKey),
+                keyStates.HasFlag(DragDropKeyStates.ShiftKey),
                 TargetStore.Config.GlobalAction,
                 DropDispatch.SortingPaused);
-            ExecuteRealFileDrop(t, files, plan, fromExplorer: false);
-            if (plan.Route == RealFileDropRoute.Telegram)
+            await ExecuteRealFileDropAsync(t, files, plan, fromExplorer: false);
+        }
+        else
+        {
+            var saved = await VirtualFileService.ExtractAsync(data, dest);
+            if (VirtualFileService.HasVirtualFiles(data))
             {
-                e.Effects = e.AllowedEffects.HasFlag(DragDropEffects.Copy)
-                    ? DragDropEffects.Copy
-                    : DragDropEffects.None;
+                bool sortNow = DropDispatch.SortsNow(t.IsSorter);
+                if (saved.Length > 0)
+                {
+                    if (sortNow) SortSavedVirtuals(t, saved);
+                    else RememberOp(BuildCreatedCopyOp(saved, dest));
+                }
+                if (!sortNow)
+                {
+                    RememberDropHistory(
+                        DropHistoryAction.SaveVirtualFiles,
+                        t,
+                        DropPayloadKind.VirtualFiles,
+                        saved.Length,
+                        saved.Length > 0 ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
+                        destination: saved.Length == 1 ? saved[0] : dest,
+                        detail: saved.Length > 0 ? null : "No virtual files were extracted.");
+                }
+                ShowToast(saved.Length > 0
+                    ? $"Saved: {saved.Length} item(s) → {t.Name}"
+                    : "Nothing to save", saved.Length > 0,
+                    saved.Length > 0 ? ToastKind.Success : ToastKind.Warning);
             }
-        }
-        else if (VirtualFileService.HasVirtualFiles(e.Data))
-        {
-            var saved = VirtualFileService.Extract(e.Data, dest);
-            bool sortNow = DropDispatch.SortsNow(t.IsSorter);
-            if (saved.Length > 0)
+            // Selected text (a browser attaches the page URL to it) must save as a file before the link
+            // branch, or a text selection dropped on a folder would be mistaken for a link tile.
+            else if (LinkTargetService.HasSelectedText(data))
             {
-                if (sortNow) SortSavedVirtuals(t, saved);
-                else RememberOp(BuildCreatedCopyOp(saved, dest));
+                SaveDroppedText(t, dest, data);
             }
-            if (!sortNow)
+            else if (AddTargetsFromDrop(data, _currentGroup))
             {
-                RememberDropHistory(
-                    DropHistoryAction.SaveVirtualFiles,
-                    t,
-                    DropPayloadKind.VirtualFiles,
-                    saved.Length,
-                    saved.Length > 0 ? DropHistoryStatus.Succeeded : DropHistoryStatus.Failed,
-                    destination: saved.Length == 1 ? saved[0] : dest,
-                    detail: saved.Length > 0 ? null : "No virtual files were extracted.");
             }
-            ShowToast(saved.Length > 0
-                ? $"Saved: {saved.Length} item(s) → {t.Name}"
-                : "Nothing to save", saved.Length > 0,
-                saved.Length > 0 ? ToastKind.Success : ToastKind.Warning);
-        }
-        // Selected text (a browser attaches the page URL to it) must save as a file before the link
-        // branch, or a text selection dropped on a folder would be mistaken for a link tile.
-        else if (LinkTargetService.HasSelectedText(e.Data))
-        {
-            SaveDroppedText(t, dest, e.Data);
-        }
-        else if (AddTargetsFromDrop(e.Data, _currentGroup))
-        {
-        }
-        else if (LinkTargetService.HasSavedMessagesLabel(e.Data))
-        {
-            ShowToast("Saved Messages target was not added", kind: ToastKind.Warning);
-        }
-        else if (TextDropService.HasText(e.Data))
-        {
-            SaveDroppedText(t, dest, e.Data);
+            else if (LinkTargetService.HasSavedMessagesLabel(data))
+            {
+                ShowToast("Saved Messages target was not added", kind: ToastKind.Warning);
+            }
+            else if (TextDropService.HasText(data))
+            {
+                SaveDroppedText(t, dest, data);
+            }
         }
     }
 

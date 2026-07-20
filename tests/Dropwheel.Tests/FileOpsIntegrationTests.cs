@@ -62,12 +62,52 @@ public sealed class FileOpsIntegrationTests : IDisposable
 
     [Fact]
     [Trait("Category", "WindowsIntegration")]
+    public void Shell_execute_to_creates_a_missing_destination_parent()
+    {
+        var source = Path.Combine(_root, "source.txt");
+        var destination = Path.Combine(_root, "missing", "nested", "renamed.txt");
+        File.WriteAllText(source, "payload");
+
+        var result = FileOps.ExecuteToDetailed(
+            new[] { (source, destination) },
+            DropAction.Copy,
+            silent: true);
+
+        Assert.Equal(FileOperationStatus.Succeeded, result.Status);
+        Assert.Equal("payload", File.ReadAllText(destination));
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void Shell_keep_both_reports_the_actual_collision_renamed_path()
+    {
+        var sourceDir = Directory.CreateDirectory(Path.Combine(_root, "source"));
+        var destinationDir = Directory.CreateDirectory(Path.Combine(_root, "destination"));
+        var source = Path.Combine(sourceDir.FullName, "report.txt");
+        var occupied = Path.Combine(destinationDir.FullName, "report.txt");
+        File.WriteAllText(source, "new");
+        File.WriteAllText(occupied, "old");
+
+        var result = FileOps.ExecuteDetailed(
+            new[] { source }, destinationDir.FullName, DropAction.Copy, policy: ConflictPolicy.KeepBoth);
+
+        Assert.Equal(FileOperationStatus.Succeeded, result.Status);
+        var change = Assert.Single(result.UndoableChanges);
+        Assert.NotEqual(occupied, change.Destination);
+        Assert.Equal("new", File.ReadAllText(change.Destination));
+        Assert.Equal("old", File.ReadAllText(occupied));
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void MoveWithoutOverwrite_skips_a_cross_volume_directory_without_copying_or_deleting_it()
     {
         var source = Directory.CreateDirectory(Path.Combine(_root, "cross-volume folder"));
         var sourceFile = Path.Combine(source.FullName, "payload.txt");
         File.WriteAllText(sourceFile, "payload");
-        var destinationRoot = CreateRootOnAnotherVolume(_root);
+        var destinationRoot = TryCreateRootOnAnotherVolume(_root);
+        if (destinationRoot is null)
+            return;
         var destination = Path.Combine(destinationRoot, source.Name);
 
         try
@@ -90,7 +130,9 @@ public sealed class FileOpsIntegrationTests : IDisposable
         var source = Directory.CreateDirectory(Path.Combine(_root, "conflicting folder"));
         var sourceOnly = Path.Combine(source.FullName, "source-only.txt");
         File.WriteAllText(sourceOnly, "source");
-        var destinationRoot = CreateRootOnAnotherVolume(_root);
+        var destinationRoot = TryCreateRootOnAnotherVolume(_root);
+        if (destinationRoot is null)
+            return;
         var destination = Directory.CreateDirectory(Path.Combine(destinationRoot, source.Name));
         var existing = Path.Combine(destination.FullName, "existing.txt");
         File.WriteAllText(existing, "existing");
@@ -119,7 +161,9 @@ public sealed class FileOpsIntegrationTests : IDisposable
         var link = Path.Combine(source.FullName, "link");
         CreateJunction(link, external.FullName);
 
-        var destinationRoot = CreateRootOnAnotherVolume(_root);
+        var destinationRoot = TryCreateRootOnAnotherVolume(_root);
+        if (destinationRoot is null)
+            return;
         var destination = Path.Combine(destinationRoot, source.Name);
         try
         {
@@ -165,7 +209,7 @@ public sealed class FileOpsIntegrationTests : IDisposable
                 $"Could not create a test junction: {process.StandardError.ReadToEnd().Trim()}");
     }
 
-    private static string CreateRootOnAnotherVolume(string sourcePath)
+    private static string? TryCreateRootOnAnotherVolume(string sourcePath)
     {
         var sourceRoot = Path.GetPathRoot(sourcePath);
         foreach (var drive in DriveInfo.GetDrives())
@@ -187,7 +231,6 @@ public sealed class FileOpsIntegrationTests : IDisposable
             catch (IOException) { }
         }
 
-        throw new InvalidOperationException(
-            "Cross-volume integration test requires a second writable fixed drive.");
+        return null;
     }
 }
