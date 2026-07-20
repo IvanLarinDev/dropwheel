@@ -1,6 +1,13 @@
 # Changelog
 
 - - -
+## [v0.28.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.27.0..v0.28.0) - 2026-07-20
+#### Features
+- harden drop workflows and tray controls (#43) - ([3d9face](https://github.com/IvanLarinDev/dropwheel/commit/3d9faceaacc63e26dce70551d4003ceabef103fa)) - Ivan Larin
+#### Documentation
+- translate Markdown documentation to English (#40) - ([f6976e2](https://github.com/IvanLarinDev/dropwheel/commit/f6976e2013d749a1242c944125f61de8facd0dc3)) - Ivan Larin
+
+- - -
 ## [v0.27.0](https://github.com/IvanLarinDev/dropwheel/compare/v0.26.1..v0.27.0) - 2026-07-19
 #### Features
 - improve onboarding and harden drop execution (#42) - ([64eac4c](https://github.com/IvanLarinDev/dropwheel/commit/64eac4cd6e3d69f6984847fd3fd6c30ece69eb5f)) - Ivan Larin
