@@ -38,7 +38,7 @@ public partial class OverlayWindow
         ShowToast($"Explorer selection: {files.Length} item(s). Choose a target or click Add.", kind: ToastKind.Info);
     }
 
-    private bool TryHandleExplorerBridgeTarget(TargetItem target)
+    private async Task<bool> TryHandleExplorerBridgeTargetAsync(TargetItem target)
     {
         if (_explorerBridgeFiles is not { Length: > 0 } files) return false;
 
@@ -54,7 +54,7 @@ public partial class OverlayWindow
             return true;
         }
 
-        if (DropExplorerFiles(target, files))
+        if (await DropExplorerFilesAsync(target, files))
         {
             _explorerBridgeFiles = null;
             CloseCloud();
@@ -99,7 +99,7 @@ public partial class OverlayWindow
             || TargetItem.IsExeExtension(path);
     }
 
-    private bool DropExplorerFiles(TargetItem target, string[] files)
+    private async Task<bool> DropExplorerFilesAsync(TargetItem target, string[] files)
     {
         var plan = DropExecutionService.PlanRealFiles(
             target,
@@ -116,7 +116,7 @@ public partial class OverlayWindow
         if (!ConfirmDropPreflight(target, DropPayloadKind.Files, plan.TargetKind, files.Length))
             return false;
 
-        ExecuteRealFileDrop(target, files, plan, fromExplorer: true);
+        await ExecuteRealFileDropAsync(target, files, plan, fromExplorer: true);
         return true;
     }
 }

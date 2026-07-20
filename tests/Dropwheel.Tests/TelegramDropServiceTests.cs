@@ -142,7 +142,30 @@ public sealed class TelegramDropServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreatePayload_prefers_file_drop_list_over_text()
+    public async Task PasteIntoTelegramWhenReady_rechecks_focus_inside_dispatcher_callback()
+    {
+        var pasted = false;
+        var telegramWindow = new IntPtr(42);
+        var foregroundWindow = telegramWindow;
+
+        var result = await TelegramDropService.PasteIntoTelegramWhenReady(
+            TimeSpan.Zero,
+            TimeSpan.Zero,
+            () => pasted = true,
+            () => foregroundWindow,
+            readyDelay: TimeSpan.Zero,
+            dispatchPaste: callback =>
+            {
+                foregroundWindow = IntPtr.Zero;
+                return Task.FromResult(callback());
+            });
+
+        Assert.False(result);
+        Assert.False(pasted);
+    }
+
+    [Fact]
+    public async Task CreatePayload_prefers_file_drop_list_over_text()
     {
         var file = Path.Combine(_root, "note.txt");
         File.WriteAllText(file, "hello");
@@ -150,7 +173,7 @@ public sealed class TelegramDropServiceTests : IDisposable
         data.SetData(WpfDataFormats.FileDrop, new[] { file });
         data.SetData(WpfDataFormats.UnicodeText, "fallback text");
 
-        var payload = TelegramDropService.CreatePayload(data, Path.Combine(_root, "staging"));
+        var payload = await TelegramDropService.CreatePayloadAsync(data, Path.Combine(_root, "staging"));
 
         Assert.NotNull(payload);
         Assert.Equal(TelegramDropKind.Files, payload.Kind);
@@ -158,12 +181,12 @@ public sealed class TelegramDropServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreatePayload_uses_text_when_no_files_are_present()
+    public async Task CreatePayload_uses_text_when_no_files_are_present()
     {
         var data = new WpfDataObject();
         data.SetData(WpfDataFormats.UnicodeText, "message");
 
-        var payload = TelegramDropService.CreatePayload(data, Path.Combine(_root, "staging"));
+        var payload = await TelegramDropService.CreatePayloadAsync(data, Path.Combine(_root, "staging"));
 
         Assert.NotNull(payload);
         Assert.Equal(TelegramDropKind.Text, payload.Kind);
@@ -171,11 +194,11 @@ public sealed class TelegramDropServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreatePayload_ignores_missing_file_paths()
+    public async Task CreatePayload_ignores_missing_file_paths()
     {
         var data = new WpfDataObject();
         data.SetData(WpfDataFormats.FileDrop, new[] { Path.Combine(_root, "missing.txt") });
 
-        Assert.Null(TelegramDropService.CreatePayload(data, Path.Combine(_root, "staging")));
+        Assert.Null(await TelegramDropService.CreatePayloadAsync(data, Path.Combine(_root, "staging")));
     }
 }

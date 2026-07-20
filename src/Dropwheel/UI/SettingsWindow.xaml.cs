@@ -484,10 +484,17 @@ public partial class SettingsWindow : Window
         OverflowThresholdLabel.Opacity = on ? 1.0 : 0.5;
     }
 
-    private void OnSave(object sender, RoutedEventArgs e)
+    private async void OnSave(object sender, RoutedEventArgs e)
     {
         // Save is disabled while any field is invalid, so validation has already passed here.
-        var c = TargetStore.Config;
+        AppConfig c;
+        try { c = TargetStore.CloneConfig(TargetStore.Config); }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Could not prepare settings", ex);
+            DwMessageBox.Show(this, "Save settings", "The settings draft could not be prepared.");
+            return;
+        }
         var hk = HotkeyBox.Text.Trim();
         if (ThemeBox.SelectedItem is string theme) c.Theme = theme;
         if (OpenAnimationBox.SelectedItem is OpenAnimationChoice animation) c.OpenAnimation = animation.Value;
@@ -512,7 +519,16 @@ public partial class SettingsWindow : Window
         if (int.TryParse(ToastSecondsBox.Text, out int toastSeconds))
             c.ToastSeconds = Math.Clamp(toastSeconds, 1, 60);
         c.ToastSound = ToastSoundBox.IsChecked == true;
-        TargetStore.Save();
+        IsEnabled = false;
+        try { await TargetStore.ReplaceAndSaveAsync(c); }
+        catch (Exception ex)
+        {
+            ErrorLog.Write("Could not save settings", ex);
+            IsEnabled = true;
+            DwMessageBox.Show(this, "Save settings",
+                "Your settings could not be saved. The previous settings are still active.");
+            return;
+        }
         try { StartupService.SetEnabled(AutostartBox.IsChecked == true); }
         catch (Exception ex)
         {

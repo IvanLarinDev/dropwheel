@@ -1,291 +1,94 @@
 using System.IO;
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace Dropwheel.Tests;
 
+/// <summary>Structural XAML accessibility checks. Onboarding behavior and rollback are covered by
+/// OnboardingStateTests; these tests avoid coupling to code-behind source text.</summary>
 public sealed class OnboardingAccessibilityTests
 {
-    [Fact]
-    public void Onboarding_window_uses_approved_logical_size()
-    {
-        var path = OnboardingXamlPath();
+    private static readonly XNamespace Xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
 
-        Assert.True(File.Exists(path), "The approved onboarding window must exist.");
-        var xaml = File.ReadAllText(path);
-        Assert.Contains("Width=\"640\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Height=\"480\"", xaml, StringComparison.Ordinal);
+    [Fact]
+    public void Window_has_approved_size_and_constrained_layout()
+    {
+        var root = Document().Root!;
+        Assert.Equal("640", (string?)root.Attribute("Width"));
+        Assert.Equal("480", (string?)root.Attribute("Height"));
+
+        var scroll = Descendants("ScrollViewer").Single();
+        Assert.Equal("Auto", (string?)scroll.Attribute("VerticalScrollBarVisibility"));
+        Assert.Equal("Disabled", (string?)scroll.Attribute("HorizontalScrollBarVisibility"));
     }
 
     [Fact]
-    public void Onboarding_window_exposes_the_approved_quick_start_choices()
+    public void Window_exposes_the_approved_quick_start_copy()
     {
-        var xaml = File.ReadAllText(OnboardingXamlPath());
-        var expectedText = new[]
+        var copy = Document().Descendants()
+            .SelectMany(element => element.Attributes()
+                .Where(attribute => attribute.Name.LocalName is "Text" or "Content")
+                .Select(attribute => attribute.Value))
+            .ToArray();
+        foreach (var expected in new[]
         {
-            "Ready in under a minute.",
-            "Quick setup",
-            "Default targets",
-            "Downloads, Documents, Desktop, Pictures",
-            "Open anywhere",
-            "Ctrl+Alt+Space",
-            "Explorer SendTo shortcut",
-            "Start with Windows",
-            "Decide later",
-            "Open wheel",
-            "Finish setup",
-        };
-
-        Assert.All(expectedText, text => Assert.Contains(text, xaml, StringComparison.Ordinal));
+            "Ready in under a minute.", "Quick setup", "Default targets",
+            "Downloads, Documents, Desktop, Pictures", "Open anywhere", "Ctrl+Alt+Space",
+            "Explorer SendTo shortcut", "Start with Windows", "_Decide later", "_Open wheel",
+            "_Finish setup",
+        })
+            Assert.Contains(expected, copy);
     }
 
     [Fact]
-    public void Interactive_controls_have_keyboard_and_automation_contracts()
+    public void Interactive_controls_expose_keyboard_and_automation_metadata()
     {
-        var xaml = File.ReadAllText(OnboardingXamlPath());
-        var expectedContracts = new[]
-        {
-            "KeyboardNavigation.TabNavigation=\"Cycle\"",
-            "AutomationProperties.LiveSetting=\"Polite\"",
-            "AutomationProperties.Name=\"Enable Explorer SendTo shortcut\"",
-            "AutomationProperties.HelpText=\"Adds Dropwheel to Explorer's Send to menu\"",
-            "AutomationProperties.Name=\"Start Dropwheel with Windows\"",
-            "AutomationProperties.HelpText=\"Launches Dropwheel after sign-in\"",
-            "KeyboardNavigation.TabIndex=\"0\"",
-            "KeyboardNavigation.TabIndex=\"1\"",
-            "Content=\"_Decide later\"",
-            "Content=\"_Open wheel\"",
-            "Content=\"_Finish setup\"",
-        };
+        var elements = Document().Descendants().ToArray();
+        var sendTo = elements.Single(element =>
+            (string?)element.Attribute("AutomationProperties.Name") == "Enable Explorer SendTo shortcut");
+        var startup = elements.Single(element =>
+            (string?)element.Attribute("AutomationProperties.Name") == "Start Dropwheel with Windows");
 
-        Assert.All(expectedContracts, contract => Assert.Contains(contract, xaml, StringComparison.Ordinal));
+        Assert.Equal("Adds Dropwheel to Explorer's Send to menu",
+            (string?)sendTo.Attribute("AutomationProperties.HelpText"));
+        Assert.Equal("Launches Dropwheel after sign-in",
+            (string?)startup.Attribute("AutomationProperties.HelpText"));
+        Assert.Contains(elements, element => (string?)element.Attribute("KeyboardNavigation.TabIndex") == "0");
+        Assert.Contains(elements, element => (string?)element.Attribute("KeyboardNavigation.TabIndex") == "1");
     }
 
     [Fact]
-    public void Constrained_work_areas_remain_scrollable()
+    public void Inline_error_is_focusable_and_assertive()
     {
-        var xaml = File.ReadAllText(OnboardingXamlPath());
-        var code = File.ReadAllText(Path.ChangeExtension(OnboardingXamlPath(), ".xaml.cs"));
+        var error = Document().Descendants().Single(element =>
+            (string?)element.Attribute(Xaml + "Name") == "ErrorText");
 
-        Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("HorizontalScrollBarVisibility=\"Disabled\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("MaxHeight = SystemParameters.WorkArea.Height", code, StringComparison.Ordinal);
-        Assert.Contains("MaxWidth = SystemParameters.WorkArea.Width", code, StringComparison.Ordinal);
+        Assert.Equal("True", (string?)error.Attribute("Focusable"));
+        Assert.Equal("Assertive", (string?)error.Attribute("AutomationProperties.LiveSetting"));
     }
 
-    [Fact]
-    public void Inline_errors_receive_focus_and_raise_an_assertive_live_event()
-    {
-        var xaml = File.ReadAllText(OnboardingXamlPath());
-        var code = File.ReadAllText(Path.ChangeExtension(OnboardingXamlPath(), ".xaml.cs"));
+    private static IEnumerable<XElement> Descendants(string localName) =>
+        Document().Descendants().Where(element => element.Name.LocalName == localName);
 
-        Assert.Contains("x:Name=\"ErrorText\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("Focusable=\"True\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.LiveSetting=\"Assertive\"", xaml, StringComparison.Ordinal);
-        Assert.Contains("RaiseAutomationEvent(AutomationEvents.LiveRegionChanged)", code, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Window_actions_route_through_the_tested_setup_coordinator()
-    {
-        var codePath = Path.ChangeExtension(OnboardingXamlPath(), ".xaml.cs");
-
-        Assert.True(File.Exists(codePath), "Onboarding actions need a thin code-behind adapter.");
-        var code = File.ReadAllText(codePath);
-        var expectedWiring = new[]
-        {
-            "Themes.ApplyWindow(this)",
-            "_setup.DecideLater()",
-            "_setup.Finish(new OnboardingOptions(",
-            "ExplorerSendToToggle.IsChecked == true",
-            "StartWithWindowsToggle.IsChecked == true",
-            "_openWheel()",
-            "ErrorText.Visibility = Visibility.Visible",
-        };
-
-        Assert.All(expectedWiring, wiring => Assert.Contains(wiring, code, StringComparison.Ordinal));
-        Assert.DoesNotContain("StartupService.", code, StringComparison.Ordinal);
-        Assert.DoesNotContain("ExplorerBridgeService.", code, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Open_wheel_callback_runs_only_after_setup_succeeds()
-    {
-        var codePath = Path.ChangeExtension(OnboardingXamlPath(), ".xaml.cs");
-        var code = File.ReadAllText(codePath);
-
-        Assert.Contains("if (TryFinish()) _openWheel();", code, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Application_startup_schedules_onboarding_only_after_successful_normal_startup()
-    {
-        var appCode = File.ReadAllText(Path.Combine(
-            RepositoryRoot(), "src", "Dropwheel", "App.xaml.cs"));
-        const string gate = "OnboardingState.ShouldShow(TargetStore.Config, _exitAfterExplorerDelivery)";
-        const string schedule = "Dispatcher.BeginInvoke(ShowOnboarding)";
-        var requiredWiring = new[]
-        {
-            gate,
-            schedule,
-            "ExplorerBridgeService.InstallSendTo(CurrentAppPath())",
-            "StartupService.SetEnabled(true)",
-            "TargetStore.Save",
-            "new OnboardingWindow(",
-            "new OnboardingOptions(hadExplorerSendTo, hadStartup)",
-        };
-
-        Assert.All(requiredWiring, wiring => Assert.Contains(wiring, appCode, StringComparison.Ordinal));
-        Assert.True(
-            appCode.IndexOf("_watcher.Start();", StringComparison.Ordinal)
-                < appCode.IndexOf(gate, StringComparison.Ordinal),
-            "Onboarding must be scheduled only after normal startup has completed successfully.");
-        Assert.DoesNotContain("OnboardingState.Complete", appCode, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Application_wiring_restores_preexisting_system_integration_state_on_failure()
-    {
-        var appCode = File.ReadAllText(Path.Combine(
-            RepositoryRoot(), "src", "Dropwheel", "App.xaml.cs"));
-        var rollbackWiring = new[]
-        {
-            "bool hadExplorerSendTo = ExplorerBridgeService.IsSendToInstalled()",
-            "bool hadStartup = StartupService.IsEnabled",
-            "rollbackExplorerSendTo:",
-            "if (hadExplorerSendTo) ExplorerBridgeService.InstallSendTo(CurrentAppPath())",
-            "rollbackStartup:",
-            "StartupService.SetEnabled(hadStartup)",
-            "uninstallExplorerSendTo: ExplorerBridgeService.UninstallSendTo",
-            "disableStartup: () => StartupService.SetEnabled(false)",
-            "initialOptions: new OnboardingOptions(hadExplorerSendTo, hadStartup)",
-        };
-
-        Assert.All(rollbackWiring, wiring => Assert.Contains(wiring, appCode, StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void Dispatched_onboarding_failure_does_not_terminate_successful_startup()
-    {
-        var appCode = File.ReadAllText(Path.Combine(
-            RepositoryRoot(), "src", "Dropwheel", "App.xaml.cs"));
-
-        var normalizedAppCode = appCode.ReplaceLineEndings("\n");
-        Assert.Contains("private void ShowOnboarding()\n    {\n        try", normalizedAppCode, StringComparison.Ordinal);
-        Assert.Contains("ErrorLog.Write(\"Could not show onboarding\", ex)", appCode, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Tray_menu_refreshes_startup_state_after_onboarding_changes_it()
-    {
-        var trayCode = File.ReadAllText(Path.Combine(
-            RepositoryRoot(), "src", "Dropwheel", "App.Tray.cs"));
-        int opening = trayCode.IndexOf("menu.Opening +=", StringComparison.Ordinal);
-        Assert.True(opening >= 0, "The tray menu opening handler must exist.");
-
-        int refresh = trayCode.IndexOf("auto.Checked = StartupService.IsEnabled;", opening, StringComparison.Ordinal);
-        Assert.True(refresh > opening, "Opening the tray must re-read the current startup integration state.");
-    }
-
-    [Fact]
-    public void Tray_help_reopens_quick_start_without_resetting_onboarding_state()
-    {
-        var trayCode = File.ReadAllText(Path.Combine(
-            RepositoryRoot(), "src", "Dropwheel", "App.Tray.cs"));
-        var help = trayCode.IndexOf("new WF.ToolStripMenuItem(\"Help\")", StringComparison.Ordinal);
-        var quickStart = trayCode.IndexOf(
-            "new WF.ToolStripMenuItem(\"Quick start…\")",
-            StringComparison.Ordinal);
-        var exit = trayCode.IndexOf("menu.Items.Add(\"Exit\"", StringComparison.Ordinal);
-
-        Assert.True(help >= 0, "The tray must expose its help entry to returning users.");
-        Assert.True(quickStart > help, "Quick start must live under the tray Help entry.");
-        Assert.True(exit > quickStart, "Help must remain discoverable directly before Exit.");
-        Assert.Contains("quickStart.Click += (_, _) => ShowOnboarding();", trayCode, StringComparison.Ordinal);
-        Assert.DoesNotContain("OnboardingState.", trayCode, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Repeated_onboarding_requests_activate_the_existing_window()
-    {
-        var appCode = File.ReadAllText(Path.Combine(
-            RepositoryRoot(), "src", "Dropwheel", "App.xaml.cs"));
-        var expectedLifecycle = new[]
-        {
-            "private OnboardingWindow? _onboardingWindow;",
-            "if (_onboardingWindow is { IsVisible: true } existing)",
-            "existing.WindowState = WindowState.Normal;",
-            "existing.Activate();",
-            "_onboardingWindow = window;",
-            "window.Closed += (_, _) =>",
-            "ReferenceEquals(_onboardingWindow, window)",
-        };
-
-        Assert.All(expectedLifecycle, contract => Assert.Contains(contract, appCode, StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void Reopened_quick_start_reflects_current_system_integration_state()
-    {
-        var windowCode = File.ReadAllText(Path.ChangeExtension(OnboardingXamlPath(), ".xaml.cs"));
-        var appCode = File.ReadAllText(Path.Combine(
-            RepositoryRoot(), "src", "Dropwheel", "App.xaml.cs"));
-
-        var expectedWindowWiring = new[]
-        {
-            "OnboardingOptions initialOptions",
-            "ExplorerSendToToggle.IsChecked = initialOptions.EnableExplorerSendTo;",
-            "StartWithWindowsToggle.IsChecked = initialOptions.StartWithWindows;",
-        };
-        Assert.All(expectedWindowWiring, wiring => Assert.Contains(wiring, windowCode, StringComparison.Ordinal));
-        Assert.Contains(
-            "new OnboardingOptions(hadExplorerSendTo, hadStartup)",
-            appCode,
-            StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Setup_copy_explains_that_finishing_applies_both_on_and_off_choices()
-    {
-        var xaml = File.ReadAllText(OnboardingXamlPath());
-
-        Assert.Contains(
-            "Finishing setup applies these choices to Windows. You can change either later from the tray menu.",
-            xaml,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "Only options you switch on will change Windows.",
-            xaml,
-            StringComparison.Ordinal);
-    }
-
-    private static string OnboardingXamlPath() => Path.Combine(
-        RepositoryRoot(), "src", "Dropwheel", "UI", "OnboardingWindow.xaml");
+    private static XDocument Document() => XDocument.Load(Path.Combine(
+        RepositoryRoot(), "src", "Dropwheel", "UI", "OnboardingWindow.xaml"));
 
     private static string RepositoryRoot()
     {
         var injectedRoot = typeof(OnboardingAccessibilityTests).Assembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(static attribute => attribute.Key == "RepositoryRoot")
-            ?.Value;
-        var starts = new[]
+            .FirstOrDefault(attribute => attribute.Key == "RepositoryRoot")?.Value;
+        foreach (var start in new[]
         {
             injectedRoot,
             Environment.GetEnvironmentVariable("DROPWHEEL_REPOSITORY_ROOT"),
             AppContext.BaseDirectory,
             Environment.CurrentDirectory,
-        };
-
-        foreach (var start in starts.Where(static value => !string.IsNullOrWhiteSpace(value)))
+        }.Where(value => !string.IsNullOrWhiteSpace(value)))
         {
-            for (var directory = new DirectoryInfo(start!);
-                 directory is not null;
-                 directory = directory.Parent)
-            {
-                if (File.Exists(Path.Combine(directory.FullName, "Dropwheel.slnx")))
-                    return directory.FullName;
-            }
+            for (var directory = new DirectoryInfo(start!); directory != null; directory = directory.Parent)
+                if (File.Exists(Path.Combine(directory.FullName, "Dropwheel.slnx"))) return directory.FullName;
         }
-
         throw new DirectoryNotFoundException("Could not locate the Dropwheel repository root.");
     }
 }

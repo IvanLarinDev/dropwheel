@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using Dropwheel.Services;
 
 namespace Dropwheel.Tests;
@@ -16,6 +17,17 @@ public sealed class ExplorerBridgeIpcTests
         Assert.NotEqual(
             ExplorerBridgeIpc.PipeNameForSession(1),
             ExplorerBridgeIpc.PipeNameForSession(2));
+    }
+
+    [Fact]
+    public void Request_encoder_rejects_unbounded_payloads()
+    {
+        Assert.False(ExplorerBridgeIpc.TryEncodeRequest(
+            Enumerable.Repeat("x", ExplorerBridgeIpc.MaxPathCount + 1).ToArray(), out _));
+        Assert.False(ExplorerBridgeIpc.TryEncodeRequest(
+            new[] { new string('x', ExplorerBridgeIpc.MaxPathChars + 1) }, out _));
+        Assert.True(ExplorerBridgeIpc.TryEncodeRequest(new[] { @"C:\ok.txt" }, out var payload));
+        Assert.InRange(payload.Length, 1, ExplorerBridgeIpc.MaxRequestBytes);
     }
 
     [Fact]
@@ -148,11 +160,23 @@ public sealed class ExplorerBridgeIpcTests
 
     private static Process StartDropwheel(params string[] arguments)
     {
-        var startInfo = new ProcessStartInfo("dotnet") { UseShellExecute = false };
+        var startInfo = new ProcessStartInfo(CompatibleDotnetHost()) { UseShellExecute = false };
         startInfo.ArgumentList.Add(typeof(ExplorerBridgeIpc).Assembly.Location);
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
         return Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start the Dropwheel process.");
+    }
+
+    private static string CompatibleDotnetHost()
+    {
+        for (var directory = new DirectoryInfo(RuntimeEnvironment.GetRuntimeDirectory());
+             directory != null;
+             directory = directory.Parent)
+        {
+            var candidate = Path.Combine(directory.FullName, "dotnet.exe");
+            if (File.Exists(candidate)) return candidate;
+        }
+        throw new InvalidOperationException("Could not locate the dotnet host for the IPC smoke process.");
     }
 
     private static bool SendFromIsolatedProfile(string profile, IReadOnlyList<string> paths)

@@ -10,6 +10,7 @@ public static class TargetStore
 {
     public static AppConfig Config { get; private set; } = new();
     internal static string? DirOverride { get; set; }
+    private static readonly object SaveGate = new();
 
     /// <summary>Raised after the config is durably written to disk. Subscriber failures are logged
     /// and isolated so a completed write is never reported to callers as a failed save.</summary>
@@ -40,15 +41,10 @@ public static class TargetStore
             try
             {
                 var configText = File.ReadAllText(FilePath);
-                Config = DeserializeConfig(configText, out var sanitizedInvalidEnums) ?? new();
-                var needsSave = sanitizedInvalidEnums;
-                if (Config.Presets == null) { Config.Presets = PresetService.Defaults(); needsSave = true; }
-                var clampedThreshold = WheelLayout.ClampThreshold(Config.OverflowThreshold);
-                if (clampedThreshold != Config.OverflowThreshold) { Config.OverflowThreshold = clampedThreshold; needsSave = true; }
-                var clampedScale = WheelLayout.ClampScale(Config.WheelScale);
-                if (clampedScale != Config.WheelScale) { Config.WheelScale = clampedScale; needsSave = true; }
-                if (InitializeGroupShortcuts()) needsSave = true;
-                if (needsSave) Save();
+                var loaded = DeserializeConfig(configText, out var sanitizedInvalidEnums) ?? new();
+                var needsSave = Normalize(loaded) | sanitizedInvalidEnums;
+                if (needsSave) ReplaceAndSave(loaded);
+                else Config = loaded;
                 return;
             }
             catch (JsonException ex) { ErrorLog.Write("Config is corrupted; backing it up and recreating defaults", ex); shouldBackup = true; }
@@ -77,33 +73,18 @@ public static class TargetStore
             error = $"Settings file not found: {FilePath}";
             return false;
         }
-        AppConfig loaded;
         try
         {
-            loaded = DeserializeConfig(File.ReadAllText(FilePath), out _) ?? new();
+            var loaded = DeserializeConfig(File.ReadAllText(FilePath), out var sanitizedInvalidEnums) ?? new();
+            Normalize(loaded);
+            ReplaceAndSave(loaded);
+            return true;
         }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             error = ex.Message;
             return false;
         }
-        var previous = Config;
-        Config = loaded;
-        Config.Presets ??= PresetService.Defaults();
-        Config.OverflowThreshold = WheelLayout.ClampThreshold(Config.OverflowThreshold);
-        Config.WheelScale = WheelLayout.ClampScale(Config.WheelScale);
-        InitializeGroupShortcuts();
-        try
-        {
-            Save();
-        }
-        catch (InvalidOperationException ex)
-        {
-            Config = previous;
-            error = ex.Message;
-            return false;
-        }
-        return true;
     }
 
     internal static string BackupPath(DateTime now)
@@ -134,12 +115,46 @@ public static class TargetStore
     /// target config.json stays intact instead of becoming half-empty.</summary>
     public static void Save()
     {
+        WriteConfig(Config);
+        NotifySaved();
+    }
+
+    /// <summary>Durably writes a fully prepared replacement before publishing it. This is the
+    /// transactional path used by settings and reload: a failed write cannot leak partial values into
+    /// the live configuration.</summary>
+    internal static void ReplaceAndSave(AppConfig replacement)
+    {
+        Normalize(replacement);
+        WriteConfig(replacement);
+        Config = replacement;
+        NotifySaved();
+    }
+
+    /// <summary>Runs the retrying disk write away from the UI thread. Publication and save listeners
+    /// resume on the caller's synchronization context after the durable write succeeds.</summary>
+    internal static async Task ReplaceAndSaveAsync(AppConfig replacement)
+    {
+        Normalize(replacement);
+        await Task.Run(() => WriteConfig(replacement));
+        Config = replacement;
+        NotifySaved();
+    }
+
+    internal static AppConfig CloneConfig(AppConfig source) =>
+        JsonSerializer.Deserialize<AppConfig>(JsonSerializer.Serialize(source, Opts), Opts)
+        ?? throw new InvalidOperationException("Could not create a settings draft.");
+
+    private static void WriteConfig(AppConfig config)
+    {
         try
         {
-            Directory.CreateDirectory(Dir);
-            var tmp = FilePath + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(Config, Opts));
-            MoveWithRetry(tmp, FilePath);
+            lock (SaveGate)
+            {
+                Directory.CreateDirectory(Dir);
+                var tmp = FilePath + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(config, Opts));
+                MoveWithRetry(tmp, FilePath);
+            }
         }
         catch (Exception ex)
         {
@@ -147,6 +162,10 @@ public static class TargetStore
             throw new InvalidOperationException("Could not save settings. See error.log for details.", ex);
         }
 
+    }
+
+    private static void NotifySaved()
+    {
         foreach (var subscriber in Saved?.GetInvocationList() ?? [])
         {
             try { ((Action)subscriber)(); }
@@ -176,88 +195,82 @@ public static class TargetStore
         }
     }
 
-    public static IEnumerable<TargetItem> Groups => Config.Targets.Where(t => t.IsGroup);
+    public static IEnumerable<TargetItem> Groups => TargetCollection.Groups(Config);
 
-    public static string? NextAvailableGroupCode(IEnumerable<string?>? reserved = null)
+    public static string? NextAvailableGroupCode(IEnumerable<string?>? reserved = null) =>
+        TargetCollection.NextAvailableGroupCode(Config, reserved);
+
+    private static bool Normalize(AppConfig config)
     {
-        var used = (reserved ?? Groups.Select(group => group.GroupCode))
-            .Where(GroupShortcutSequence.IsValidCode)
-            .Select(code => code!)
-            .ToHashSet(StringComparer.Ordinal);
-        for (int code = 1; code <= 99; code++)
+        var changed = false;
+        if (config.Targets == null) { config.Targets = new(); changed = true; }
+        if (config.Presets == null) { config.Presets = PresetService.Defaults(); changed = true; }
+        if (config.HintShows == null) { config.HintShows = new(); changed = true; }
+        changed |= NormalizeTargets(config.Targets);
+        var presetCount = config.Presets.Count;
+        config.Presets.RemoveAll(static preset => preset is null);
+        changed |= config.Presets.Count != presetCount;
+        foreach (var preset in config.Presets)
         {
-            var candidate = code.ToString();
-            if (!used.Contains(candidate)) return candidate;
+            if (preset.Name is null) { preset.Name = ""; changed = true; }
+            if (preset.Dest is null) { preset.Dest = ""; changed = true; }
+            if (preset.Extensions is null) { preset.Extensions = ""; changed = true; }
         }
-        return used.Contains("0") ? null : "0";
+        var clampedThreshold = WheelLayout.ClampThreshold(config.OverflowThreshold);
+        if (clampedThreshold != config.OverflowThreshold) { config.OverflowThreshold = clampedThreshold; changed = true; }
+        var clampedScale = WheelLayout.ClampScale(config.WheelScale);
+        if (clampedScale != config.WheelScale) { config.WheelScale = clampedScale; changed = true; }
+        return TargetCollection.InitializeGroupShortcuts(config) | changed;
     }
 
-    private static bool InitializeGroupShortcuts()
+    /// <summary>System.Text.Json can place nulls into non-nullable collection properties when a hand-edited
+    /// config explicitly contains them. Remove those entries recursively before publishing the graph, and
+    /// restore nullable-at-runtime rule lists so every TargetStore consumer sees its declared contract.</summary>
+    private static bool NormalizeTargets(List<TargetItem> targets)
     {
-        if (Config.GroupShortcutsInitialized) return false;
-
-        var used = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var group in Groups)
+        var changed = false;
+        var targetCount = targets.Count;
+        targets.RemoveAll(static target => target is null);
+        changed |= targets.Count != targetCount;
+        foreach (var target in targets)
         {
-            if (GroupShortcutSequence.IsValidCode(group.GroupCode) && used.Add(group.GroupCode!))
-                continue;
-
-            group.GroupCode = NextAvailableGroupCode(used);
-            if (group.GroupCode != null) used.Add(group.GroupCode);
+            if (target.Name is null) { target.Name = ""; changed = true; }
+            if (target.Path is null) { target.Path = ""; changed = true; }
+            if (target.Children != null) changed |= NormalizeTargets(target.Children);
+            if (target.Rules == null) continue;
+            var ruleCount = target.Rules.Count;
+            target.Rules.RemoveAll(static rule => rule is null);
+            changed |= target.Rules.Count != ruleCount;
+            foreach (var rule in target.Rules)
+            {
+                if (rule.Dest is null) { rule.Dest = ""; changed = true; }
+                if (rule.All == null)
+                {
+                    rule.All = [];
+                    changed = true;
+                    continue;
+                }
+                var conditionCount = rule.All.Count;
+                rule.All.RemoveAll(static condition => condition is null);
+                changed |= rule.All.Count != conditionCount;
+                foreach (var condition in rule.All)
+                    if (condition.Value is null) { condition.Value = ""; changed = true; }
+            }
         }
-        Config.GroupShortcutsInitialized = true;
-        return true;
+        return changed;
     }
 
-    public static IReadOnlyList<TargetItem> OrderedForDisplay(IList<TargetItem> targets)
-    {
-        var indexed = targets.Select((target, index) => new { target, index }).ToArray();
-        if (!indexed.Any(x => x.target.TilePosition.HasValue))
-            return indexed
-                .OrderByDescending(x => x.target.Pinned)
-                .ThenBy(x => x.index)
-                .Select(x => x.target)
-                .ToArray();
+    public static IReadOnlyList<TargetItem> OrderedForDisplay(IList<TargetItem> targets) =>
+        TargetCollection.OrderedForDisplay(targets);
 
-        return indexed
-            .OrderBy(x => x.target.TilePosition ?? int.MaxValue)
-            .ThenBy(x => x.index)
-            .Select(x => x.target)
-            .ToArray();
-    }
+    public static void RenumberTilePositions(IList<TargetItem> targets) =>
+        TargetCollection.RenumberTilePositions(targets);
 
-    public static void RenumberTilePositions(IList<TargetItem> targets)
-    {
-        for (int i = 0; i < targets.Count; i++)
-            targets[i].TilePosition = i;
-    }
+    public static bool MoveTileBefore(IList<TargetItem> targets, TargetItem source, TargetItem before) =>
+        TargetCollection.MoveTileBefore(targets, source, before);
 
-    public static bool MoveTileBefore(IList<TargetItem> targets, TargetItem source, TargetItem before)
-    {
-        if (ReferenceEquals(source, before)) return false;
-        var ordered = OrderedForDisplay(targets).ToList();
-        if (!ordered.Remove(source)) return false;
-        var insert = ordered.IndexOf(before);
-        if (insert < 0) return false;
-        ordered.Insert(insert, source);
-        ApplyTileOrder(targets, ordered);
-        return true;
-    }
-
-    public static bool MoveTileToIndex(IList<TargetItem> targets, TargetItem source, int destinationIndex)
-    {
-        var ordered = OrderedForDisplay(targets).ToList();
-        var sourceIndex = ordered.IndexOf(source);
-        if (sourceIndex < 0 || ordered.Count == 0) return false;
-
-        destinationIndex = Math.Clamp(destinationIndex, 0, ordered.Count - 1);
-        if (sourceIndex == destinationIndex) return false;
-
-        ordered.RemoveAt(sourceIndex);
-        ordered.Insert(destinationIndex, source);
-        ApplyTileOrder(targets, ordered);
-        return true;
-    }
+    public static bool MoveTileToIndex(IList<TargetItem> targets, TargetItem source, int destinationIndex) =>
+        TargetCollection.MoveTileToIndex(targets, source, destinationIndex);
 
     /// <summary>Mark a target pinned and move it first on its level. The flag alone only orders
     /// tiles while no manual order exists, so the move is what keeps the pin visible afterwards.</summary>
@@ -267,30 +280,13 @@ public static class TargetStore
         MoveTileToIndex(targets, source, 0);
     }
 
-    public static bool MoveTileToEnd(IList<TargetItem> targets, TargetItem source)
-    {
-        var ordered = OrderedForDisplay(targets).ToList();
-        if (ordered.Count > 0 && ReferenceEquals(ordered[^1], source)) return false;
-        if (!ordered.Remove(source)) return false;
-        ordered.Add(source);
-        ApplyTileOrder(targets, ordered);
-        return true;
-    }
-
-    private static void ApplyTileOrder(IList<TargetItem> targets, IReadOnlyList<TargetItem> ordered)
-    {
-        targets.Clear();
-        foreach (var target in ordered) targets.Add(target);
-        RenumberTilePositions(targets);
-    }
+    public static bool MoveTileToEnd(IList<TargetItem> targets, TargetItem source) =>
+        TargetCollection.MoveTileToEnd(targets, source);
 
     /// <summary>Remove a target everywhere (from the root and all groups). Used both for a real delete
     /// and as the first half of a move — so it must NOT touch the item's cached icon.</summary>
     public static void RemoveEverywhere(TargetItem item)
-    {
-        Config.Targets.Remove(item);
-        foreach (var g in Groups) g.Children!.Remove(item);
-    }
+        => TargetCollection.RemoveEverywhere(Config, item);
 
     /// <summary>Deletes a target for good (a group takes its children with it) and removes any favicon it
     /// had cached under the icons folder, so a deleted link doesn't leave an orphan file behind. Unlike
@@ -332,22 +328,10 @@ public static class TargetStore
 
     /// <summary>Move a target into a group (null = root).</summary>
     public static void MoveToGroup(TargetItem item, TargetItem? group)
-    {
-        var destination = group?.Children ?? Config.Targets;
-        if (ReferenceEquals(ContainingList(item), destination)) return;
-        RemoveEverywhere(item);
-        item.TilePosition = null;
-        destination.Add(item);
-    }
+        => TargetCollection.MoveToGroup(Config, item, group);
 
     public static TargetItem? FindParentGroup(TargetItem item)
-        => Groups.FirstOrDefault(g => g.Children!.Contains(item));
-
-    private static IList<TargetItem>? ContainingList(TargetItem item)
-    {
-        if (Config.Targets.Contains(item)) return Config.Targets;
-        return Groups.Select(g => (IList<TargetItem>)g.Children!).FirstOrDefault(children => children.Contains(item));
-    }
+        => TargetCollection.FindParentGroup(Config, item);
 
     private static AppConfig? DeserializeConfig(string json, out bool sanitizedInvalidEnums)
     {

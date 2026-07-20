@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.IO;
-using System.Windows.Threading;
 using Dropwheel.Models;
 
 namespace Dropwheel.Services;
@@ -83,7 +82,7 @@ public sealed class WatcherService
 
         public bool TryRunSort(Action sort, CancellationToken cancellationToken)
         {
-            // Only the stop/cancel check is guarded; the blocking SHFileOperation runs OUTSIDE the lock.
+            // Only the stop/cancel check is guarded; the blocking shell operation runs OUTSIDE the lock.
             // Holding _gate across the move would make a UI-thread Cancel() (app Exit, or dropping a
             // watched folder on config save) wait for the whole move to finish, freezing the overlay.
             // The move is kept safe instead by the cancellation token (SortOne checks it throughout) and
@@ -97,23 +96,23 @@ public sealed class WatcherService
         }
     }
 
-    private readonly Dispatcher _ui;
+    private readonly Action<Action> _postToUi;
     private readonly Action<int> _notifySorted;
     private readonly Dictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, byte> _inFlight = new(StringComparer.OrdinalIgnoreCase);
+    internal int InFlightCount => _inFlight.Count;
+    internal bool IsInFlight(string path) => _inFlight.ContainsKey(path);
     // Bound concurrent moves: a bulk dump of hundreds of files must not spawn hundreds of threads
-    // blocked on SHFileOperation and thrash the disk against each other.
+    // blocked on Windows shell operations and thrash the disk against each other.
     private readonly SemaphoreSlim _moveGate = new(Math.Max(2, Environment.ProcessorCount / 2));
-    private readonly DispatcherTimer _toastTimer;
+    private readonly Timer _toastTimer;
     private int _pendingCount;
 
-    public WatcherService(Dispatcher ui, Action<int> notifySorted)
+    public WatcherService(Action<Action> postToUi, Action<int> notifySorted)
     {
-        _ui = ui;
+        _postToUi = postToUi;
         _notifySorted = notifySorted;
-        _toastTimer = new DispatcherTimer(DispatcherPriority.Background, _ui)
-        { Interval = TimeSpan.FromSeconds(2) };
-        _toastTimer.Tick += OnToastTick;
+        _toastTimer = new Timer(_ => _postToUi(FlushToast), null, Timeout.Infinite, Timeout.Infinite);
     }
 
     /// <summary>Starts watching and subscribes to config saves so toggling the Watch flag takes
@@ -132,6 +131,7 @@ public sealed class WatcherService
             e.Cancel();
         }
         _entries.Clear();
+        _toastTimer.Change(Timeout.Infinite, Timeout.Infinite);
     }
 
     /// <summary>Re-syncs watchers to the current set of watched sorter folders: adds new folders,
@@ -294,39 +294,9 @@ public sealed class WatcherService
     {
         try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!File.Exists(file) && !Directory.Exists(file)) return;
-            var plan = SortService.MovePlan(entry.Target, new[] { file });
-            foreach (var (folder, files) in plan)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (SameFolder(folder, file)) continue; // file stays in its own folder - no move, no loop
-                // Create the destination folder first: otherwise SHFileOperation moving a single file
-                // to a non-existent path treats the last segment as a new file name, not a folder.
-                cancellationToken.ThrowIfCancellationRequested();
-                Directory.CreateDirectory(folder);
-                int moved = 0;
-                foreach (var source in files)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (FileOps.MoveWithoutOverwrite(source, folder))
-                    {
-                        moved++;
-                        continue;
-                    }
-
-                    var destination = Path.Combine(
-                        folder,
-                        Path.GetFileName(Path.TrimEndingDirectorySeparator(source)));
-                    if (File.Exists(destination) || Directory.Exists(destination))
-                        ErrorLog.Write($"Auto-sort skipped '{source}' because destination already exists: '{destination}'");
-                    else
-                        ErrorLog.Write($"Failed to move '{source}' to '{folder}'");
-                }
-
-                if (moved > 0 && !cancellationToken.IsCancellationRequested)
-                    _ui.InvokeAsync(() => QueueToast(moved)); // coalesce the toast on the UI thread
-            }
+            var moved = WatcherFileProcessor.Sort(entry.Target, file, cancellationToken);
+            if (moved > 0 && !cancellationToken.IsCancellationRequested)
+                _postToUi(() => QueueToast(moved));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception ex) { ErrorLog.Write($"Auto-sort of '{file}' failed", ex); }
@@ -338,6 +308,7 @@ public sealed class WatcherService
     internal static TargetItem CreateSortSnapshot(TargetItem target) => new()
     {
         Path = target.Path,
+        ConflictPolicy = target.ConflictPolicy,
         SortRules = target.SortRules?.ToDictionary(pair => pair.Key, pair => pair.Value),
         Rules = target.Rules?.Select(rule => rule.Clone()).ToList(),
     };
@@ -351,13 +322,12 @@ public sealed class WatcherService
     private void QueueToast(int count)
     {
         _pendingCount += count;
-        _toastTimer.Stop();
-        _toastTimer.Start();
+        _toastTimer.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
     }
 
-    private void OnToastTick(object? sender, EventArgs e)
+    private void FlushToast()
     {
-        _toastTimer.Stop();
+        _toastTimer.Change(Timeout.Infinite, Timeout.Infinite);
         int n = _pendingCount;
         _pendingCount = 0;
         if (n > 0) _notifySorted(n);

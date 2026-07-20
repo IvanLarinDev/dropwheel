@@ -4,7 +4,7 @@ using Dropwheel.Services;
 
 namespace Dropwheel.Tests;
 
-/// <summary>Verifies that file operations on an empty list don't call SHFileOperation with a weird
+/// <summary>Verifies that file operations on an empty list don't call the Windows shell with a weird
 /// empty pFrom, but return success right away (nothing to do).</summary>
 public sealed class FileOpsTests
 {

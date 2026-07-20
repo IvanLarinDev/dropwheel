@@ -15,10 +15,28 @@ public static partial class VirtualFileService
     /// <summary>Upper bound on a single virtual file written to disk. A malicious drag source can return
     /// an IStream that never ends; without a cap that would fill the disk. Generous enough for any real
     /// dropped attachment, so it only ever stops a runaway source.</summary>
-    internal const long MaxVirtualFileBytes = 2L * 1024 * 1024 * 1024;
+    internal const long MaxVirtualFileBytes = 512L * 1024 * 1024;
+    internal const long MaxVirtualBatchBytes = 1024L * 1024 * 1024;
+    internal const int VirtualCopyBufferBytes = 81920;
 
-    private static bool SaveContents(IComData com, int index, string path)
+    private readonly record struct ContentSaveResult(long BytesConsumed, bool Saved);
+
+    private sealed class ContentCommitState
     {
+        internal object Gate { get; } = new();
+        internal bool Committed { get; set; }
+        internal ContentSaveResult Result { get; set; }
+    }
+
+    private static ContentSaveResult SaveContents(
+        IComData com,
+        int index,
+        string path,
+        long maxBytes,
+        ContentCommitState commit,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         var tmp = TempPathFor(path);
         var fmt = new FORMATETC
         {
@@ -30,16 +48,23 @@ public static partial class VirtualFileService
         com.GetData(ref fmt, out STGMEDIUM med);
         try
         {
-            if (med.unionmember == IntPtr.Zero) return false; // the source gave no medium for this index
-            var saved = med.tymed switch
+            cancellationToken.ThrowIfCancellationRequested();
+            if (med.unionmember == IntPtr.Zero) return default; // the source gave no medium for this index
+            var result = med.tymed switch
             {
-                TYMED.TYMED_ISTREAM => SaveIStream(med.unionmember, tmp),
-                TYMED.TYMED_HGLOBAL => SaveHGlobal(med.unionmember, tmp),
-                _ => false,
+                TYMED.TYMED_ISTREAM => SaveIStream(med.unionmember, tmp, maxBytes, cancellationToken),
+                TYMED.TYMED_HGLOBAL => SaveHGlobal(med.unionmember, tmp, maxBytes, cancellationToken),
+                _ => default,
             };
-            if (!saved) return false;
-            File.Move(tmp, path);
-            return true;
+            if (!result.Saved) return result;
+            lock (commit.Gate)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                File.Move(tmp, path);
+                commit.Result = result;
+                commit.Committed = true;
+            }
+            return result;
         }
         finally
         {
@@ -48,33 +73,45 @@ public static partial class VirtualFileService
         }
     }
 
-    private static bool SaveIStream(IntPtr punk, string path)
+    private static ContentSaveResult SaveIStream(
+        IntPtr punk,
+        string path,
+        long maxBytes,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var stream = (IStream)Marshal.GetObjectForIUnknown(punk);
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             using var fs = File.Create(path);
-            var buf = new byte[81920];
+            var buf = new byte[VirtualCopyBufferBytes];
             long total = 0;
             IntPtr pRead = Marshal.AllocHGlobal(4);
             try
             {
                 while (true)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     stream.Read(buf, buf.Length, pRead);
+                    cancellationToken.ThrowIfCancellationRequested();
                     int read = Marshal.ReadInt32(pRead);
                     if (read <= 0) break;
                     total += read;
-                    if (total > MaxVirtualFileBytes)
+                    if (total > maxBytes)
                     {
-                        ErrorLog.Write($"Virtual file exceeded {MaxVirtualFileBytes} bytes; aborting to avoid an unbounded write");
-                        return false; // SaveContents' finally deletes the partial temp file
+                        ErrorLog.Write($"Virtual file exceeded {maxBytes} bytes; aborting to avoid an unbounded write");
+                        // Charge the full allowance even though the partial temp file is deleted. Otherwise
+                        // thousands of oversized items could each consume the per-file allowance.
+                        return new ContentSaveResult(maxBytes, Saved: false);
                     }
+                    cancellationToken.ThrowIfCancellationRequested();
                     fs.Write(buf, 0, read);
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
             }
             finally { Marshal.FreeHGlobal(pRead); }
-            return true;
+            return new ContentSaveResult(total, Saved: true);
         }
         finally { Marshal.ReleaseComObject(stream); }
     }
@@ -84,22 +121,38 @@ public static partial class VirtualFileService
     /// in the file. HGLOBAL for CFSTR_FILECONTENTS has no reliable "real length" field, and trimming
     /// trailing zeros is wrong (a legitimate binary also contains zeros). In practice sources deliver
     /// files via ISTREAM (the branch above); this is a rare fallback.</summary>
-    private static bool SaveHGlobal(IntPtr h, string path)
+    private static ContentSaveResult SaveHGlobal(
+        IntPtr h,
+        string path,
+        long maxBytes,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var p = GlobalLock(h);
-        if (p == IntPtr.Zero) return false;
+        if (p == IntPtr.Zero) return default;
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             long size = (long)GlobalSize(h);
-            if (size > MaxVirtualFileBytes)
+            if (size > maxBytes)
             {
                 ErrorLog.Write($"Virtual file HGLOBAL of {size} bytes exceeds the cap; skipped");
-                return false;
+                return new ContentSaveResult(maxBytes, Saved: false);
             }
-            var buf = new byte[size];
-            Marshal.Copy(p, buf, 0, buf.Length);
-            File.WriteAllBytes(path, buf);
-            return true;
+            using var fs = File.Create(path);
+            var buf = new byte[Math.Min(VirtualCopyBufferBytes, checked((int)size))];
+            long offset = 0;
+            while (offset < size)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var count = (int)Math.Min(buf.Length, size - offset);
+                Marshal.Copy(IntPtr.Add(p, checked((int)offset)), buf, 0, count);
+                cancellationToken.ThrowIfCancellationRequested();
+                fs.Write(buf, 0, count);
+                offset += count;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return new ContentSaveResult(size, Saved: true);
         }
         finally { GlobalUnlock(h); }
     }

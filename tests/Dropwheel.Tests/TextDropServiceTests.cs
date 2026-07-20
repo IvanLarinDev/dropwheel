@@ -101,6 +101,32 @@ public sealed class TextDropServiceTests : IDisposable
     }
 
     [Fact]
+    public void GetText_treats_cf_html_offsets_as_utf8_bytes()
+    {
+        const string before = "<html><body>Привет";
+        const string fragment = "<b>résumé</b>";
+        const string after = "</body></html>";
+        var headerTemplate = "Version:0.9\r\nStartFragment:{0:D10}\r\nEndFragment:{1:D10}\r\n";
+        var placeholder = string.Format(headerTemplate, 0, 0);
+        var start = Encoding.UTF8.GetByteCount(placeholder + before);
+        var end = start + Encoding.UTF8.GetByteCount(fragment);
+        var html = string.Format(headerTemplate, start, end) + before + fragment + after;
+        var data = new TestDataObject(WpfDataFormats.Html, Encoding.UTF8.GetBytes(html));
+
+        Assert.Equal("résumé", TextDropService.GetText(data));
+    }
+
+    [Fact]
+    public void GetText_rejects_an_oversized_external_stream()
+    {
+        var data = new TestDataObject(
+            "text/plain",
+            new MemoryStream(new byte[TextDropService.MaxTextBytes + 1]));
+
+        Assert.Null(TextDropService.GetText(data));
+    }
+
+    [Fact]
     public void Save_writes_content_with_timestamped_name()
     {
         var path = TextDropService.Save("hello world", _root, When);

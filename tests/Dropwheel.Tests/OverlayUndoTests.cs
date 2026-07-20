@@ -40,6 +40,7 @@ public sealed class OverlayUndoTests : IDisposable
         var op = OverlayWindow.BuildOpBefore(DropAction.Copy, new[] { src }, dest);
         var copy = Path.Combine(dest, "report.txt");
         File.WriteAllText(copy, "new");
+        op = OverlayWindow.CaptureUndoState(op);
 
         var targets = OverlayWindow.CopyUndoTargets(op);
 
@@ -88,6 +89,7 @@ public sealed class OverlayUndoTests : IDisposable
         var renamed = Path.Combine(dest, "archive-report.pdf");
         var op = OverlayWindow.BuildRenamedOp(DropAction.Copy, new[] { src }, dest, new[] { renamed });
         File.WriteAllText(renamed, "new"); // the copy the drop created
+        op = OverlayWindow.CaptureUndoState(op);
 
         Assert.Equal(new[] { renamed }, OverlayWindow.CopyUndoTargets(op));
     }
@@ -108,6 +110,83 @@ public sealed class OverlayUndoTests : IDisposable
             new[] { new FileOperationChange(completedSource, completedDestination) });
 
         Assert.Equal(new[] { completedDestination }, OverlayWindow.CopyUndoTargets(op));
+    }
+
+    [Fact]
+    public void Copy_undo_refuses_a_destination_edited_after_the_drop()
+    {
+        var src = Path.Combine(_root, "src", "report.txt");
+        var dest = Path.Combine(_root, "dest");
+        Directory.CreateDirectory(Path.GetDirectoryName(src)!);
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(src, "original");
+        var op = OverlayWindow.BuildOpBefore(DropAction.Copy, new[] { src }, dest);
+        var copy = Path.Combine(dest, "report.txt");
+        File.Copy(src, copy);
+        op = OverlayWindow.CaptureUndoState(op);
+
+        // Keep the same length and edit immediately: identity alone is unchanged, so this specifically
+        // verifies that the native last-write timestamp is read from the correct structure offsets.
+        File.WriteAllText(copy, "modified");
+
+        Assert.Empty(OverlayWindow.CopyUndoTargets(op));
+        Assert.False(OverlayWindow.UndoOne(op));
+        Assert.True(File.Exists(copy));
+    }
+
+    [Fact]
+    public void Copy_undo_refuses_a_replacement_at_the_same_path()
+    {
+        var src = Path.Combine(_root, "src", "report.txt");
+        var dest = Path.Combine(_root, "dest");
+        Directory.CreateDirectory(Path.GetDirectoryName(src)!);
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(src, "original");
+        var op = OverlayWindow.BuildOpBefore(DropAction.Copy, new[] { src }, dest);
+        var copy = Path.Combine(dest, "report.txt");
+        File.Copy(src, copy);
+        op = OverlayWindow.CaptureUndoState(op);
+
+        File.Delete(copy);
+        File.WriteAllText(copy, "replacement");
+
+        Assert.Empty(OverlayWindow.CopyUndoTargets(op));
+        Assert.False(OverlayWindow.UndoOne(op));
+        Assert.Equal("replacement", File.ReadAllText(copy));
+    }
+
+    [Fact]
+    public void Duplicate_destination_changes_are_not_armed_for_undo()
+    {
+        var destination = Path.Combine(_root, "same.txt");
+        File.WriteAllText(destination, "latest");
+
+        var op = OverlayWindow.BuildPartialOp(
+            DropAction.Copy,
+            new[]
+            {
+                new FileOperationChange(Path.Combine(_root, "a.txt"), destination),
+                new FileOperationChange(Path.Combine(_root, "b.txt"), destination),
+            });
+
+        Assert.False(OverlayWindow.CanUndo(op));
+        Assert.False(OverlayWindow.UndoOne(op));
+        Assert.Equal("latest", File.ReadAllText(destination));
+    }
+
+    [Fact]
+    public void Copy_undo_is_disabled_for_files_too_large_to_verify_safely()
+    {
+        var source = Path.Combine(_root, "source.bin");
+        var destination = Path.Combine(_root, "large.bin");
+        using (var file = File.Create(destination)) file.SetLength(65L * 1024 * 1024);
+
+        var op = OverlayWindow.BuildPartialOp(
+            DropAction.Copy,
+            new[] { new FileOperationChange(source, destination) });
+
+        Assert.False(OverlayWindow.CanUndo(op));
+        Assert.True(File.Exists(destination));
     }
 
     [Fact]

@@ -174,6 +174,29 @@ public partial class App
                 WF.ToolTipIcon.Info);
         };
         menu.Items.Add(pauseSort);
+        var bypassConfirmations = new WF.ToolStripMenuItem("Bypass drop confirmations")
+        {
+            ToolTipText = "Temporarily skip selected drop confirmations. Clear-history and group-delete "
+                        + "confirmations stay enabled. Resets on restart.",
+        };
+        bypassConfirmations.DropDown.ShowItemToolTips = true;
+        var bypassRun = CreateDropConfirmationBypassItem(
+            "Run dropped files",
+            DropConfirmationKind.RunDroppedFiles,
+            GlyphPower,
+            "Dropped files will run without confirmation until Dropwheel restarts.");
+        var bypassTelegram = CreateDropConfirmationBypassItem(
+            "Telegram handoff",
+            DropConfirmationKind.TelegramHandoff,
+            GlyphSend,
+            "Telegram handoff will copy, open, and paste without confirmation until Dropwheel restarts.");
+        var bypassWatchedSorter = CreateDropConfirmationBypassItem(
+            "Watched sorter rules",
+            DropConfirmationKind.WatchedSorterRules,
+            GlyphFolder,
+            "Watched sorter rules will run without confirmation until Dropwheel restarts.");
+        bypassConfirmations.DropDownItems.AddRange([bypassRun, bypassTelegram, bypassWatchedSorter]);
+        menu.Items.Add(bypassConfirmations);
         menu.Items.Add(new WF.ToolStripSeparator());
         var settings = (WF.ToolStripMenuItem)menu.Items.Add("Settings…", null, (_, _) => _overlay?.OpenSettings());
         var configFolder = (WF.ToolStripMenuItem)menu.Items.Add("Open config folder", null,
@@ -205,6 +228,10 @@ public partial class App
             SetToggleIcon(sendTo, GlyphSend);
             SetToggleIcon(pauseAuto, GlyphPause);
             SetToggleIcon(pauseSort, GlyphPause);
+            bypassConfirmations.Image = Glyph(GlyphCheck, muted);
+            SetToggleIcon(bypassRun, GlyphPower);
+            SetToggleIcon(bypassTelegram, GlyphSend);
+            SetToggleIcon(bypassWatchedSorter, GlyphFolder);
             settings.Image = Glyph(GlyphSettings, muted);
             configFolder.Image = Glyph(GlyphFolder, muted);
             export.Image = Glyph(GlyphExport, muted);
@@ -224,12 +251,40 @@ public partial class App
                 auto.Checked = StartupService.IsEnabled;
                 sendTo.Checked = ExplorerBridgeService.IsSendToInstalled();
             }
+            bypassRun.Checked = DropTrustGate.IsBypassed(DropConfirmationKind.RunDroppedFiles);
+            bypassTelegram.Checked = DropTrustGate.IsBypassed(DropConfirmationKind.TelegramHandoff);
+            bypassWatchedSorter.Checked = DropTrustGate.IsBypassed(DropConfirmationKind.WatchedSorterRules);
             PopulateRecentDrops(recentDrops);
             StyleTrayMenu(menu);
             RefreshTrayIcons();
         };
         _tray.ContextMenuStrip = menu;
         _tray.DoubleClick += (_, _) => _overlay?.ToggleCloud();
+    }
+
+    private WF.ToolStripMenuItem CreateDropConfirmationBypassItem(
+        string text,
+        DropConfirmationKind kind,
+        string glyph,
+        string enabledMessage)
+    {
+        var item = new WF.ToolStripMenuItem(text)
+        {
+            Checked = DropTrustGate.IsBypassed(kind),
+            CheckOnClick = true,
+            ToolTipText = "Temporary safety bypass; resets on restart.",
+        };
+        item.Click += (_, _) =>
+        {
+            DropTrustGate.SetBypassed(kind, item.Checked);
+            SetToggleIcon(item, glyph);
+            _tray?.ShowBalloonTip(
+                3500,
+                "Dropwheel",
+                item.Checked ? enabledMessage : $"{text} confirmation restored.",
+                item.Checked ? WF.ToolTipIcon.Warning : WF.ToolTipIcon.Info);
+        };
+        return item;
     }
 
     private void PopulateRecentDrops(WF.ToolStripMenuItem recentDrops)
@@ -393,74 +448,7 @@ public partial class App
     /// Re-applied on each open so a theme change takes effect live. Light themes get the same custom
     /// renderer as dark ones — the stock one would draw its own check boxes over the glyph icons.</summary>
     private static void StyleTrayMenu(WF.ContextMenuStrip menu)
-    {
-        var p = Dropwheel.UI.Palettes.Current;
-        StyleStrip(menu, CreateTrayMenuRenderer(p), ToSd(p.Surface), ToSd(p.Text));
-    }
-
-    internal static WF.ToolStripRenderer CreateTrayMenuRenderer(Dropwheel.UI.Palette palette) =>
-        new TrayMenuRenderer(new PaletteMenuColors(palette), palette);
-
-    /// <summary>Applies the renderer and colors to the strip and every nested drop-down. A submenu is
-    /// its own ToolStrip that does not inherit the parent's colors — without this it keeps the stock
-    /// light look, unreadable next to a dark main menu.</summary>
-    private static void StyleStrip(WF.ToolStrip strip, WF.ToolStripRenderer renderer, SD.Color back, SD.Color fore)
-    {
-        strip.Renderer = renderer;
-        strip.BackColor = back;
-        strip.ForeColor = fore;
-        foreach (WF.ToolStripItem item in strip.Items)
-            if (item is WF.ToolStripDropDownItem dd)
-                StyleStrip(dd.DropDown, renderer, back, fore);
-    }
-
-    /// <summary>The checked state is already shown by the item's accent check glyph (SetToggleIcon),
-    /// so the stock check box that would be drawn behind it is suppressed entirely.</summary>
-    private sealed class TrayMenuRenderer : WF.ToolStripProfessionalRenderer
-    {
-        private readonly Dropwheel.UI.Palette _palette;
-
-        public TrayMenuRenderer(WF.ProfessionalColorTable table, Dropwheel.UI.Palette palette) : base(table)
-        {
-            _palette = palette;
-            RoundedEdges = false;
-        }
-
-        protected override void OnRenderMenuItemBackground(WF.ToolStripItemRenderEventArgs e)
-        {
-            if (e.Item.Enabled)
-            {
-                base.OnRenderMenuItemBackground(e);
-                return;
-            }
-
-            var colors = ResolveTrayMenuItemColors(_palette, enabled: false, selected: e.Item.Selected);
-            using var brush = new SD.SolidBrush(colors.Background);
-            e.Graphics.FillRectangle(brush, new SD.Rectangle(SD.Point.Empty, e.Item.Size));
-        }
-
-        protected override void OnRenderItemText(WF.ToolStripItemTextRenderEventArgs e)
-        {
-            e.TextColor = ResolveTrayMenuItemColors(_palette, e.Item.Enabled, e.Item.Selected).Text;
-            if (e.Item.Enabled)
-            {
-                base.OnRenderItemText(e);
-                return;
-            }
-
-            // ToolStripRenderer replaces every disabled color with SystemColors.GrayText. Draw the
-            // horizontal tray-menu label directly so the palette's verified muted color survives.
-            WF.TextRenderer.DrawText(
-                e.Graphics,
-                e.Text,
-                e.TextFont,
-                e.TextRectangle,
-                e.TextColor,
-                e.TextFormat);
-        }
-
-        protected override void OnRenderItemCheck(WF.ToolStripItemImageRenderEventArgs e) { }
-    }
+        => TrayMenuTheme.Apply(menu, Dropwheel.UI.Palettes.Current);
 
     /// <summary>The app version for the tray header, from the assembly's informational version
     /// (without the trailing +commit), falling back to the plain assembly version.</summary>
@@ -474,58 +462,8 @@ public partial class App
         return "v" + (asm.GetName().Version?.ToString() ?? "?");
     }
 
-    private static SD.Color ToSd(System.Windows.Media.Color c) => SD.Color.FromArgb(c.R, c.G, c.B);
-
-    private static SD.Color Blend(System.Windows.Media.Color a, System.Windows.Media.Color b, double t) =>
-        SD.Color.FromArgb(
-            (int)(a.R + (b.R - a.R) * t),
-            (int)(a.G + (b.G - a.G) * t),
-            (int)(a.B + (b.B - a.B) * t));
-
-    internal readonly record struct TrayMenuItemColors(SD.Color Background, SD.Color Text);
-
-    /// <summary>Resolves the two colors that must stay coupled for a tray-menu item. Disabled items
-    /// deliberately ignore selection: WinForms otherwise paints the OS highlight behind muted text,
-    /// which can make the label disappear and incorrectly suggests that the item is actionable.</summary>
-    internal static TrayMenuItemColors ResolveTrayMenuItemColors(
-        Dropwheel.UI.Palette palette,
-        bool enabled,
-        bool selected) =>
-        new(
-            enabled && selected ? Blend(palette.Surface, palette.Accent, 0.30) : ToSd(palette.Surface),
-            ToSd(enabled ? palette.Text : palette.TextMuted));
-
-    private sealed class PaletteMenuColors : WF.ProfessionalColorTable
-    {
-        private readonly SD.Color _bg, _hover, _pressed, _line;
-
-        public PaletteMenuColors(Dropwheel.UI.Palette p)
-        {
-            _bg = ToSd(p.Surface);
-            _hover = Blend(p.Surface, p.Accent, 0.30);
-            // An item whose submenu is open is drawn "pressed" — without these overrides the stock
-            // near-white gradient kicks in and light text on it becomes unreadable.
-            _pressed = Blend(p.Surface, p.Accent, 0.18);
-            _line = ToSd(p.Border);
-        }
-
-        public override SD.Color ToolStripDropDownBackground => _bg;
-        public override SD.Color ImageMarginGradientBegin => _bg;
-        public override SD.Color ImageMarginGradientMiddle => _bg;
-        public override SD.Color ImageMarginGradientEnd => _bg;
-        public override SD.Color MenuBorder => _line;
-        public override SD.Color MenuItemBorder => _line;
-        public override SD.Color MenuItemSelected => _hover;
-        public override SD.Color MenuItemSelectedGradientBegin => _hover;
-        public override SD.Color MenuItemSelectedGradientEnd => _hover;
-        public override SD.Color MenuItemPressedGradientBegin => _pressed;
-        public override SD.Color MenuItemPressedGradientMiddle => _pressed;
-        public override SD.Color MenuItemPressedGradientEnd => _pressed;
-        public override SD.Color CheckBackground => _hover;
-        public override SD.Color CheckSelectedBackground => _hover;
-        public override SD.Color SeparatorDark => _line;
-        public override SD.Color SeparatorLight => _bg;
-    }
+    private static SD.Color ToSd(System.Windows.Media.Color color) =>
+        TrayMenuTheme.ToDrawingColor(color);
 
     // The tray's own icon (its native handle must be freed on exit). Stays null when the shared
     // SystemIcons.Application is used — that one must not be disposed.

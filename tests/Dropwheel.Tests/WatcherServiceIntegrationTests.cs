@@ -1,8 +1,5 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using System.Windows.Threading;
 using Dropwheel.Models;
 using Dropwheel.Services;
 
@@ -58,7 +55,7 @@ public sealed class WatcherServiceIntegrationTests : IDisposable
             Assert.Equal(isolatedProfile, TargetStore.Dir, ignoreCase: true);
             TargetStore.Config.Targets.Clear();
             TargetStore.Config.Targets.Add(target);
-            service = new WatcherService(Dispatcher.CurrentDispatcher, _ => { });
+            service = new WatcherService(action => action(), _ => { });
             service.Start();
             var fileNames = Enumerable.Range(0, fileCount)
                 .Select(index => $"burst-{index:D2}.jpg")
@@ -119,17 +116,9 @@ public sealed class WatcherServiceIntegrationTests : IDisposable
     }
 
     private static bool IsInFlight(WatcherService service, string path)
-        => GetInFlight(service).ContainsKey(path);
+        => service.IsInFlight(path);
 
-    private static bool IsIdle(WatcherService service) => GetInFlight(service).IsEmpty;
-
-    private static ConcurrentDictionary<string, byte> GetInFlight(WatcherService service)
-    {
-        var field = typeof(WatcherService).GetField("_inFlight", BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("WatcherService._inFlight not found.");
-        return (ConcurrentDictionary<string, byte>?)field.GetValue(service)
-            ?? throw new InvalidOperationException("WatcherService._inFlight is not initialized.");
-    }
+    private static bool IsIdle(WatcherService service) => service.InFlightCount == 0;
 
     private static async Task AssertEventuallyAsync(
         Func<bool> condition,

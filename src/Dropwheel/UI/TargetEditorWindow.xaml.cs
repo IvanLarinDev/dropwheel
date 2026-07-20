@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -10,6 +11,7 @@ namespace Dropwheel.UI;
 
 public partial class TargetEditorWindow : Window
 {
+    public bool HasChanges { get; private set; }
     private readonly TargetItem _target;
     private readonly TargetItem? _preselect;
     private readonly bool _isNew;
@@ -161,6 +163,7 @@ public partial class TargetEditorWindow : Window
         _target.Emoji = emoji.Length == 0 ? null : emoji;
         _target.TileColor = string.IsNullOrEmpty(_tileColor) ? null : _tileColor;
         _target.Pinned = PinBox.IsChecked == true;
+        HasChanges = true;
         Close();
     }
 
@@ -189,12 +192,17 @@ public partial class TargetEditorWindow : Window
     /// invalid.</summary>
     private bool SaveTargetFields()
     {
-        _target.Path = PathBox.Text.Trim();
-        _target.Override = (DropAction)ActionBox.SelectedIndex;
+        var path = PathBox.Text.Trim();
+        if (!TryReadLaunchOptions(path, out var launch)) return false;
+        var action = (DropAction)ActionBox.SelectedIndex;
         var nameTemplate = NameTemplateBox.Text.Trim();
+        var conflictPolicy = (ConflictPolicy)Math.Max(0, ConflictBox.SelectedIndex);
+
+        _target.Path = path;
+        _target.Override = action;
         _target.NameTemplate = nameTemplate.Length == 0 ? null : nameTemplate;
-        _target.ConflictPolicy = (ConflictPolicy)Math.Max(0, ConflictBox.SelectedIndex);
-        if (!TrySaveLaunchOptions()) return false;
+        _target.ConflictPolicy = conflictPolicy;
+        _target.Launch = launch;
         TargetStore.MoveToGroup(_target, _groupChoices[Math.Max(0, GroupCombo.SelectedIndex)]);
         if (_rulesMode)
         {
@@ -223,10 +231,12 @@ public partial class TargetEditorWindow : Window
             if (dlg.Choice == GroupDeleteChoice.KeepChildren)
             {
                 TargetStore.DissolveGroup(_target);
+                HasChanges = true;
                 Close();
                 return;
             }
             TargetStore.DeleteTarget(_target);
+            HasChanges = true;
             Close();
             return;
         }
@@ -236,6 +246,7 @@ public partial class TargetEditorWindow : Window
         int index = Math.Max(0, list.IndexOf(_target));
         TargetStore.DeleteTarget(_target);
         Deleted = new DeletedTarget(list, _target, index);
+        HasChanges = true;
         Close();
     }
 
@@ -265,10 +276,16 @@ public partial class TargetEditorWindow : Window
         LaunchProgramBox.IsEnabled = LaunchArgsBox.IsEnabled = LaunchWorkDirBox.IsEnabled = custom;
         var path = string.IsNullOrWhiteSpace(PathBox.Text) ? @"C:\Tools\target.bat" : PathBox.Text.Trim();
         var options = custom ? CurrentLaunchOptions() : null;
-        var psi = LaunchService.BuildStartInfo(path, new[] { @"C:\Drop\a.txt", @"C:\Drop\b b.txt" }, options);
-        LaunchPreviewText.Text = string.IsNullOrWhiteSpace(psi.Arguments)
-            ? psi.FileName
-            : $"{psi.FileName} {psi.Arguments}";
+        ProcessStartInfo psi;
+        try { psi = LaunchService.BuildStartInfo(path, new[] { @"C:\Drop\a.txt", @"C:\Drop\b b.txt" }, options); }
+        catch (InvalidOperationException ex)
+        {
+            LaunchPreviewText.Text = "";
+            LaunchStatusText.Text = ex.Message;
+            return;
+        }
+        var previewArgs = psi.ArgumentList.Count > 0 ? LaunchService.BuildArgs(psi.ArgumentList) : psi.Arguments;
+        LaunchPreviewText.Text = string.IsNullOrWhiteSpace(previewArgs) ? psi.FileName : $"{psi.FileName} {previewArgs}";
         LaunchStatusText.Text = custom
             ? "Custom launch applies only to this target."
             : "Default launch: Dropwheel runs this target with dropped files.";
@@ -295,16 +312,15 @@ public partial class TargetEditorWindow : Window
         WorkingDirectory = LaunchWorkDirBox.Text.Trim(),
     };
 
-    private bool TrySaveLaunchOptions()
+    private bool TryReadLaunchOptions(string path, out LaunchOptions? launch)
     {
-        if (!IsLaunchPath(_target.Path))
+        launch = null;
+        if (!IsLaunchPath(path))
         {
-            _target.Launch = null;
             return true;
         }
         if (LaunchModeBox.SelectedIndex != 1)
         {
-            _target.Launch = null;
             return true;
         }
 
@@ -314,7 +330,13 @@ public partial class TargetEditorWindow : Window
             ShowEditorError("Custom launch needs a program.");
             return false;
         }
-        _target.Launch = options;
+        try { _ = LaunchService.BuildStartInfo(path, new[] { @"C:\Drop\sample.txt" }, options); }
+        catch (InvalidOperationException ex)
+        {
+            ShowEditorError(ex.Message);
+            return false;
+        }
+        launch = options;
         return true;
     }
 }

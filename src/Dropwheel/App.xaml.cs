@@ -56,9 +56,9 @@ public partial class App : Application
         {
             _mutex = null;
             mutex.Dispose();
-            if (command.Kind == ExplorerBridgeCommandKind.SendToFiles)
-                ExplorerBridgeIpc.TrySendFiles(command.Paths);
-            Shutdown();
+            var delivered = command.Kind != ExplorerBridgeCommandKind.SendToFiles
+                || ExplorerBridgeIpc.TrySendFiles(command.Paths);
+            Shutdown(delivered ? 0 : 3);
             return;
         }
         _ownsMutex = true;
@@ -101,7 +101,7 @@ public partial class App : Application
             if (command.Kind == ExplorerBridgeCommandKind.SendToFiles)
                 Dispatcher.BeginInvoke(() => _overlay.OpenFromExplorerFiles(command.Paths));
 
-            _watcher = new WatcherService(Dispatcher, ShowSortedToast);
+            _watcher = new WatcherService(action => Dispatcher.BeginInvoke(action), ShowSortedToast);
             _watcher.Start();
 
             if (OnboardingState.ShouldShow(TargetStore.Config, _exitAfterExplorerDelivery))

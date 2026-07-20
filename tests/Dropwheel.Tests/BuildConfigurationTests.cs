@@ -192,24 +192,8 @@ public sealed class BuildConfigurationTests
         Assert.True(outputCleanup >= 0, "Runtime verifier must remove its temporary output.");
         Assert.True(successEmission > outputCleanup, "Success markers must be emitted only after output cleanup succeeds.");
 
-        var app = File.ReadAllText(Path.Combine(root, "src", "Dropwheel", "App.xaml.cs"));
-        var profileOverride = app.IndexOf("TargetStore.DirOverride = command.SmokeProfileRoot", StringComparison.Ordinal);
-        var configLoad = app.IndexOf("TargetStore.Load()", StringComparison.Ordinal);
-        Assert.True(profileOverride >= 0, "Smoke mode must set an explicit TargetStore root.");
-        Assert.True(configLoad > profileOverride, "The smoke profile must be set before config is loaded.");
-        Assert.Contains("_smokeProbePath", app, StringComparison.Ordinal);
-        Assert.Contains("ExplorerBridgeCommandKind.SmokeSendFiles", app, StringComparison.Ordinal);
-        Assert.Contains("Shutdown(ExplorerBridgeIpc.TrySendFiles(command.Paths) ? 0 : 3)", app, StringComparison.Ordinal);
-        Assert.Contains("SmokeTestProtocol.IsExpectedProbe", app, StringComparison.Ordinal);
-        Assert.DoesNotContain("paths.Contains(_smokeProbePath", app, StringComparison.Ordinal);
-        Assert.Contains("SmokeTestProtocol.WriteAcknowledgement", app, StringComparison.Ordinal);
-        Assert.Contains("SmokeTestProtocol.WriteDeliveryMarker", app, StringComparison.Ordinal);
-        Assert.Contains("if (!_exitAfterExplorerDelivery)", app, StringComparison.Ordinal);
-        Assert.Contains("InitTray(maintainSystemIntegrations: !_exitAfterExplorerDelivery)", app, StringComparison.Ordinal);
-
-        var tray = File.ReadAllText(Path.Combine(root, "src", "Dropwheel", "App.Tray.cs"));
-        Assert.Contains("InitTray(bool maintainSystemIntegrations)", tray, StringComparison.Ordinal);
-        Assert.Contains("if (maintainSystemIntegrations)", tray, StringComparison.Ordinal);
+        // Application behavior is exercised by ExplorerBridgeIpcTests and OnboardingStateTests.
+        // This test intentionally validates only the executable verifier artifact.
     }
 
     [Fact]
